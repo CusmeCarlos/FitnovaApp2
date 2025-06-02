@@ -1,0 +1,43 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Mi Perfil</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <form [formGroup]="profileForm" (ngSubmit)="onSubmit()">
+    <ion-item>
+      <ion-label position="stacked">Edad</ion-label>
+      <ion-input type="number" formControlName="age"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Género</ion-label>
+      <ion-select formControlName="gender">
+        <ion-select-option value="male">Masculino</ion-select-option>
+        <ion-select-option value="female">Femenino</ion-select-option>
+        <ion-select-option value="other">Otro</ion-select-option>
+      </ion-select>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Peso (kg)</ion-label>
+      <ion-input type="number" formControlName="weight"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Altura (cm)</ion-label>
+      <ion-input type="number" formControlName="height"></ion-input>
+    </ion-item>
+
+    <!-- Aquí podrías expandir con History y Goals -->
+
+    <ion-button expand="block" type="submit" [disabled]="profileForm.invalid">
+      Guardar Perfil
+    </ion-button>
+    
+  </form>
+</ion-content>

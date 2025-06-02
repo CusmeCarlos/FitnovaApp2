@@ -1,17 +1,29 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Tab 3
-    </ion-title>
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>Mi Perfil</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 3</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content>
+  <ion-card *ngIf="user">
+    <ion-card-header>
+      <ion-card-subtitle>{{ user.email }}</ion-card-subtitle>
+      <ion-card-title>{{ user.displayName }}</ion-card-title>
+    </ion-card-header>
 
-  <app-explore-container name="Tab 3 page"></app-explore-container>
+    <ion-card-content>
+      <p><strong>Rol:</strong> {{ user.role }}</p>
+      <p><strong>UID:</strong> {{ user.uid }}</p>
+      <p>
+        <strong>Email verificado:</strong>
+        <ion-badge color="{{ user.emailVerified ? 'success' : 'warning' }}">
+          {{ user.emailVerified ? 'Sí' : 'No' }}
+        </ion-badge>
+      </p>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-button expand="block" color="danger" (click)="logout()">
+    Cerrar sesión
+  </ion-button>
 </ion-content>

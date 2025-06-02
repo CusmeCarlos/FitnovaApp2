@@ -5,6 +5,9 @@
     </ion-title>
   </ion-toolbar>
 </ion-header>
+<ion-content class="ion-padding">
+  <h2>Bienvenido, {{ user?.displayName || 'usuario' }}</h2>
+</ion-content>
 
 <ion-content [fullscreen]="true">
   <ion-header collapse="condense">
