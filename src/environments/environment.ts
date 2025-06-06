@@ -1,8 +1,6 @@
-// This file can be replaced during build by using the `fileReplacements` array.
-// `ng build` replaces `environment.ts` with `environment.prod.ts`.
-// The list of file replacements can be found in `angular.json`.
-
 // src/environments/environment.ts
+// ✅ CONFIGURACIÓN ACTUALIZADA PARA INCREMENTO 2
+
 export const environment = {
   production: false,
   firebase: {
@@ -13,6 +11,27 @@ export const environment = {
     messagingSenderId: "553990987723",
     appId: "1:553990987723:web:c6adf166677069789aa04e",
     measurementId: "G-85QSFTH679"
+  },
+  // ✅ CONFIGURACIÓN PARA MEDIAPIPE
+  mediapipe: {
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.5,
+    enableSegmentation: false,
+    smoothLandmarks: true
+  },
+  // ✅ CONFIGURACIÓN DE POSES
+  pose: {
+    maxFps: 30,
+    canvasWidth: 640,
+    canvasHeight: 480,
+    enableDebugInfo: true,
+    colors: {
+      landmarks: '#00FF00',
+      connections: '#0099FF',
+      errors: '#FF3030',
+      angles: '#FFD700'
+    }
   }
 };
 

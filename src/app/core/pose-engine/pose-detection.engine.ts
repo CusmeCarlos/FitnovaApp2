@@ -1,5 +1,5 @@
 // src/app/core/pose-engine/pose-detection.engine.ts
-// Motor principal de detección de poses con MediaPipe
+// ✅ VERSIÓN COMPLETA DEL ENGINE CON MEDIAPIPE REAL
 
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
@@ -10,6 +10,10 @@ declare global {
   interface Window {
     Pose: any;
     Camera: any;
+    drawConnectors: any;
+    drawLandmarks: any;
+    POSE_CONNECTIONS: any;
+    POSE_LANDMARKS: any;
   }
 }
 
@@ -83,19 +87,25 @@ export class PoseDetectionEngine {
 
   private async loadMediaPipeScripts(): Promise<void> {
     try {
-      console.log('📦 Cargando MediaPipe scripts...');
+      console.log('📦 Verificando MediaPipe scripts...');
       this.statusStream.next('loading');
 
-      // Cargar scripts de MediaPipe desde CDN
-      await this.loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
-      await this.loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js');
-      await this.loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js');
-      await this.loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js');
+      // Verificar si MediaPipe ya está disponible
+      if (window.Pose && window.Camera) {
+        console.log('✅ MediaPipe ya está disponible');
+        this.mediaPipeLoaded = true;
+        await this.initializePose();
+        return;
+      }
 
-      console.log('✅ MediaPipe scripts cargados');
-      this.mediaPipeLoaded = true;
+      // Si no está disponible, los scripts deberían cargarse desde index.html
+      console.log('⏳ Esperando que MediaPipe se cargue...');
       
-      // Ahora inicializar MediaPipe
+      // Esperar a que los scripts se carguen
+      await this.waitForMediaPipe();
+      
+      console.log('✅ MediaPipe detectado, inicializando...');
+      this.mediaPipeLoaded = true;
       await this.initializePose();
 
     } catch (error) {
@@ -105,26 +115,27 @@ export class PoseDetectionEngine {
     }
   }
 
-  private loadScript(src: string): Promise<void> {
+  private waitForMediaPipe(): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Verificar si el script ya está cargado
-      const existingScript = document.querySelector(`script[src="${src}"]`);
-      if (existingScript) {
-        resolve();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = src;
-      script.onload = () => {
-        console.log(`✅ Script cargado: ${src}`);
-        resolve();
+      let attempts = 0;
+      const maxAttempts = 30; // 3 segundos máximo
+      
+      const checkMediaPipe = () => {
+        attempts++;
+        
+        if (window.Pose && window.Camera) {
+          console.log('✅ MediaPipe encontrado en intento', attempts);
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          console.error('❌ MediaPipe no se cargó después de', maxAttempts, 'intentos');
+          reject(new Error('MediaPipe no disponible'));
+        } else {
+          console.log('⏳ Esperando MediaPipe... intento', attempts);
+          setTimeout(checkMediaPipe, 100);
+        }
       };
-      script.onerror = () => {
-        console.error(`❌ Error cargando script: ${src}`);
-        reject(new Error(`Failed to load script: ${src}`));
-      };
-      document.head.appendChild(script);
+      
+      checkMediaPipe();
     });
   }
 
@@ -165,14 +176,19 @@ export class PoseDetectionEngine {
     }
   }
 
-  // 📹 INICIAR CÁMARA Y DETECCIÓN
-  // REEMPLAZAR el método startCamera con este:
-
+  // 📹 INICIAR CÁMARA Y DETECCIÓN - VERSIÓN COMPLETA
   async startCamera(videoElement: HTMLVideoElement, canvasElement: HTMLCanvasElement): Promise<void> {
     try {
-      console.log('📹 Iniciando cámara (versión mejorada)...');
+      console.log('📹 Iniciando cámara con MediaPipe...');
       this.statusStream.next('initializing');
-  
+
+      // Esperar a que MediaPipe esté listo
+      await this.ensureMediaPipeLoaded();
+
+      if (!this.isInitialized) {
+        throw new Error('MediaPipe no está inicializado');
+      }
+
       // ✅ OBTENER STREAM DE CÁMARA
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -182,76 +198,92 @@ export class PoseDetectionEngine {
           frameRate: { ideal: 30, min: 15, max: 60 }
         }
       });
-  
+
       console.log('✅ Stream obtenido:', {
         tracks: stream.getVideoTracks().length,
         settings: stream.getVideoTracks()[0]?.getSettings()
       });
-  
+
       // ✅ CONFIGURAR VIDEO
       videoElement.srcObject = stream;
       videoElement.playsInline = true;
       videoElement.muted = true;
       videoElement.autoplay = true;
-  
+
       // ✅ ESPERAR A QUE EL VIDEO ESTÉ LISTO
       await new Promise<void>((resolve, reject) => {
         const timeoutId = setTimeout(() => {
           reject(new Error('Timeout cargando video'));
         }, 10000);
-  
+
         const onLoadedMetadata = () => {
           clearTimeout(timeoutId);
           console.log('✅ Video metadata cargada:', {
             videoWidth: videoElement.videoWidth,
             videoHeight: videoElement.videoHeight,
-            duration: videoElement.duration,
             readyState: videoElement.readyState
           });
           resolve();
         };
-  
+
         const onError = (error: any) => {
           clearTimeout(timeoutId);
           console.error('❌ Error cargando video:', error);
           reject(error);
         };
-  
+
         videoElement.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
         videoElement.addEventListener('error', onError, { once: true });
         
-        // Si ya está cargado
         if (videoElement.readyState >= 2) {
-          clearTimeout(timeoutId);
           onLoadedMetadata();
         }
       });
-  
+
       // ✅ REPRODUCIR VIDEO
       try {
         await videoElement.play();
         console.log('✅ Video reproduciendo');
       } catch (playError) {
         console.error('❌ Error reproduciendo:', playError);
-        // Intentar de nuevo después de interacción del usuario
       }
-  
+
       // ✅ CONFIGURAR CANVAS
       canvasElement.width = videoElement.videoWidth || 640;
       canvasElement.height = videoElement.videoHeight || 480;
-  
+
       console.log('✅ Canvas configurado:', {
         width: canvasElement.width,
         height: canvasElement.height
       });
-  
-      // ✅ INICIAR BUCLE DE RENDERIZADO
+
+      // 🚀 INICIALIZAR CAMERA DE MEDIAPIPE
+      if (window.Camera) {
+        this.camera = new window.Camera(videoElement, {
+          onFrame: async () => {
+            if (this.pose && this.isRunning) {
+              await this.pose.send({ image: videoElement });
+            }
+          },
+          width: canvasElement.width,
+          height: canvasElement.height
+        });
+
+        // ✅ INICIAR CÁMARA DE MEDIAPIPE
+        await this.camera.start();
+        console.log('✅ Camera de MediaPipe iniciada');
+      } else {
+        // Fallback: usar requestAnimationFrame si Camera no está disponible
+        this.startManualProcessing(videoElement);
+      }
+
+      // ✅ MARCAR COMO CORRIENDO
       this.isRunning = true;
       this.statusStream.next('running');
-      this.startSimpleRenderLoop(videoElement, canvasElement);
-  
-      console.log('🎉 Cámara iniciada exitosamente');
-  
+      this.startFpsTracking();
+
+      console.log('🎉 Cámara y MediaPipe iniciados exitosamente');
+
     } catch (error) {
       console.error('❌ Error iniciando cámara:', error);
       this.statusStream.next('error');
@@ -259,157 +291,27 @@ export class PoseDetectionEngine {
     }
   }
 
-
-// AGREGAR estos métodos después del método startCamera:
-
-private startSimpleRenderLoop(video: HTMLVideoElement, canvas: HTMLCanvasElement): void {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  console.log('🎬 Iniciando bucle de renderizado mejorado...');
-
-  let frameCount = 0;
-  let lastFpsTime = performance.now();
-
-  const renderFrame = (currentTime: number) => {
-    if (!this.isRunning) {
-      console.log('🛑 Renderizado detenido');
-      return;
-    }
-
-    try {
-      // 🔧 LIMPIAR CANVAS
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // 🔄 PROCESAMIENTO MANUAL COMO FALLBACK
+  private startManualProcessing(videoElement: HTMLVideoElement): void {
+    console.log('🔄 Iniciando procesamiento manual...');
+    
+    const processFrame = async () => {
+      if (this.isRunning && this.pose && videoElement.readyState >= 2) {
+        try {
+          await this.pose.send({ image: videoElement });
+        } catch (error) {
+          console.error('❌ Error en procesamiento manual:', error);
+        }
+      }
       
-      // 📹 DIBUJAR VIDEO - MEJORADO
-      if (video.readyState >= 2 && video.videoWidth > 0) {
-        console.log('🎥 Dibujando frame de video:', {
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight,
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height,
-          readyState: video.readyState
-        });
-        
-        // Dibujar el video completo en el canvas
-        ctx.drawImage(
-          video, 
-          0, 0, video.videoWidth, video.videoHeight,  // Source
-          0, 0, canvas.width, canvas.height           // Destination
-        );
-        
-        // 🎯 OPCIONAL: Aplicar efecto espejo
-        ctx.save();
-        ctx.scale(-1, 1);
-        ctx.drawImage(
-          video,
-          0, 0, video.videoWidth, video.videoHeight,
-          -canvas.width, 0, canvas.width, canvas.height
-        );
-        ctx.restore();
-        
-      } else {
-        console.warn('⚠️ Video no listo:', {
-          readyState: video.readyState,
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight
-        });
-        
-        // 🎨 Dibujar placeholder mientras el video carga
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '20px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(
-          'Iniciando cámara...', 
-          canvas.width / 2, 
-          canvas.height / 2
-        );
+      if (this.isRunning) {
+        requestAnimationFrame(processFrame);
       }
+    };
+    
+    requestAnimationFrame(processFrame);
+  }
 
-      // 📊 CALCULAR FPS
-      frameCount++;
-      if (currentTime - lastFpsTime >= 1000) {
-        const fps = Math.round((frameCount * 1000) / (currentTime - lastFpsTime));
-        this.fpsStream.next(fps);
-        console.log(`📊 FPS: ${fps}`);
-        frameCount = 0;
-        lastFpsTime = currentTime;
-      }
-
-      // 🤖 SIMULAR POSE BÁSICA PARA TESTING
-      this.simulateBasicPose();
-
-    } catch (error) {
-      console.error('❌ Error en render loop:', error);
-    }
-
-    // 🔄 CONTINUAR BUCLE
-    requestAnimationFrame(renderFrame);
-  };
-
-  // 🚀 INICIAR BUCLE
-  console.log('🚀 Iniciando requestAnimationFrame...');
-  requestAnimationFrame(renderFrame);
-}
-
-private simulateBasicPose(): void {
-  // Pose simulada básica para testing
-  const mockPose: PoseKeypoints = {
-    nose: { x: 0.5, y: 0.3, z: 0, visibility: 0.9 },
-    left_eye_inner: { x: 0.48, y: 0.28, z: 0, visibility: 0.8 },
-    left_eye: { x: 0.47, y: 0.29, z: 0, visibility: 0.8 },
-    left_eye_outer: { x: 0.46, y: 0.30, z: 0, visibility: 0.8 },
-    right_eye_inner: { x: 0.52, y: 0.28, z: 0, visibility: 0.8 },
-    right_eye: { x: 0.53, y: 0.29, z: 0, visibility: 0.8 },
-    right_eye_outer: { x: 0.54, y: 0.30, z: 0, visibility: 0.8 },
-    left_ear: { x: 0.45, y: 0.32, z: 0, visibility: 0.7 },
-    right_ear: { x: 0.55, y: 0.32, z: 0, visibility: 0.7 },
-    mouth_left: { x: 0.48, y: 0.35, z: 0, visibility: 0.8 },
-    mouth_right: { x: 0.52, y: 0.35, z: 0, visibility: 0.8 },
-    left_shoulder: { x: 0.4, y: 0.4, z: 0, visibility: 0.8 },
-    right_shoulder: { x: 0.6, y: 0.4, z: 0, visibility: 0.8 },
-    left_elbow: { x: 0.35, y: 0.5, z: 0, visibility: 0.7 },
-    right_elbow: { x: 0.65, y: 0.5, z: 0, visibility: 0.7 },
-    left_wrist: { x: 0.3, y: 0.6, z: 0, visibility: 0.6 },
-    right_wrist: { x: 0.7, y: 0.6, z: 0, visibility: 0.6 },
-    left_pinky: { x: 0.28, y: 0.62, z: 0, visibility: 0.5 },
-    right_pinky: { x: 0.72, y: 0.62, z: 0, visibility: 0.5 },
-    left_index: { x: 0.29, y: 0.61, z: 0, visibility: 0.5 },
-    right_index: { x: 0.71, y: 0.61, z: 0, visibility: 0.5 },
-    left_thumb: { x: 0.31, y: 0.59, z: 0, visibility: 0.5 },
-    right_thumb: { x: 0.69, y: 0.59, z: 0, visibility: 0.5 },
-    left_hip: { x: 0.4, y: 0.6, z: 0, visibility: 0.7 },
-    right_hip: { x: 0.6, y: 0.6, z: 0, visibility: 0.7 },
-    left_knee: { x: 0.4, y: 0.8, z: 0, visibility: 0.6 },
-    right_knee: { x: 0.6, y: 0.8, z: 0, visibility: 0.6 },
-    left_ankle: { x: 0.4, y: 0.95, z: 0, visibility: 0.5 },
-    right_ankle: { x: 0.6, y: 0.95, z: 0, visibility: 0.5 },
-    left_heel: { x: 0.39, y: 0.96, z: 0, visibility: 0.5 },
-    right_heel: { x: 0.61, y: 0.96, z: 0, visibility: 0.5 },
-    left_foot_index: { x: 0.41, y: 0.97, z: 0, visibility: 0.5 },
-    right_foot_index: { x: 0.59, y: 0.97, z: 0, visibility: 0.5 }
-  };
-
-  // Simular ángulos
-  const mockAngles: BiomechanicalAngles = {
-    left_knee_angle: 90 + Math.random() * 20,
-    right_knee_angle: 90 + Math.random() * 20,
-    left_elbow_angle: 120 + Math.random() * 30,
-    right_elbow_angle: 120 + Math.random() * 30,
-    left_hip_angle: 175 + Math.random() * 10,
-    right_hip_angle: 175 + Math.random() * 10,
-    spine_angle: 85 + Math.random() * 5,
-    shoulder_symmetry: Math.random() * 5,
-    hip_symmetry: Math.random() * 3,
-    knee_symmetry: Math.random() * 4
-  };
-
-  this.poseStream.next(mockPose);
-  this.anglesStream.next(mockAngles);
-}
   // 🛑 DETENER CÁMARA Y DETECCIÓN
   async stopCamera(): Promise<void> {
     try {
@@ -427,24 +329,58 @@ private simulateBasicPose(): void {
     }
   }
 
-  // 🧠 PROCESAMIENTO PRINCIPAL DE RESULTADOS
+  // 🧠 PROCESAMIENTO PRINCIPAL DE RESULTADOS - VERSIÓN COMPLETA
   private processPoseResults(results: any): void {
+    const startTime = performance.now();
+  
+    // ✅ VERIFICAR SI HAY POSES VÁLIDAS
     if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
+      console.log('⚠️ No se detectaron poses');
       this.poseStream.next(null);
       this.anglesStream.next(null);
       return;
     }
-
+  
     try {
+      console.log('🎯 Pose detectada con', results.poseLandmarks.length, 'landmarks');
+      
+      // Convertir landmarks de MediaPipe a nuestro formato
       const poseKeypoints = this.convertToKeypoints(results.poseLandmarks);
+      
+      // Calcular ángulos biomecánicos
       const angles = this.calculateBiomechanicalAngles(poseKeypoints);
       
-      this.poseStream.next(poseKeypoints);
-      this.anglesStream.next(angles);
-
+      // ✅ SOLO EMITIR SI LAS POSES SON VÁLIDAS
+      if (this.isPoseValid(poseKeypoints)) {
+        this.poseStream.next(poseKeypoints);
+        this.anglesStream.next(angles);
+        console.log('✅ Pose válida emitida');
+      } else {
+        console.log('⚠️ Pose inválida, no emitiendo');
+        this.poseStream.next(null);
+        this.anglesStream.next(null);
+      }
+  
+      // Actualizar métricas de rendimiento
+      const processingTime = performance.now() - startTime;
+      this.updatePerformanceMetrics(processingTime);
+  
     } catch (error) {
       console.error('❌ Error procesando pose:', error);
     }
+  }
+  
+  // ✅ AGREGAR ESTE MÉTODO NUEVO
+  private isPoseValid(pose: PoseKeypoints): boolean {
+    // Verificar que los landmarks principales tengan buena visibilidad
+    const keyLandmarks = [
+      pose.left_shoulder, pose.right_shoulder,
+      pose.left_hip, pose.right_hip,
+      pose.left_knee, pose.right_knee
+    ];
+    
+    const validLandmarks = keyLandmarks.filter(landmark => landmark.visibility > 0.5);
+    return validLandmarks.length >= 4; // Al menos 4 de 6 landmarks clave
   }
 
   // 🔄 CONVERSIÓN DE LANDMARKS MEDIAPIPE A NUESTRO FORMATO
@@ -502,7 +438,7 @@ private simulateBasicPose(): void {
     };
   }
 
-  // 📐 CÁLCULO DE ÁNGULOS BIOMECÁNICOS
+  // 📐 CÁLCULO DE ÁNGULOS BIOMECÁNICOS - IMPLEMENTACIÓN COMPLETA
   private calculateBiomechanicalAngles(pose: PoseKeypoints): BiomechanicalAngles {
     return {
       left_shoulder_angle: this.calculateAngle(
@@ -543,25 +479,37 @@ private simulateBasicPose(): void {
     };
   }
 
+  // 📐 CALCULAR ÁNGULO ENTRE TRES PUNTOS
   private calculateAngle(pointA: PoseLandmark, pointB: PoseLandmark, pointC: PoseLandmark): number {
+    // Vector BA
     const vectorBA = {
       x: pointA.x - pointB.x,
       y: pointA.y - pointB.y
     };
 
+    // Vector BC
     const vectorBC = {
       x: pointC.x - pointB.x,
       y: pointC.y - pointB.y
     };
 
+    // Calcular ángulo usando producto punto
     const dotProduct = vectorBA.x * vectorBC.x + vectorBA.y * vectorBC.y;
     const magnitudeBA = Math.sqrt(vectorBA.x * vectorBA.x + vectorBA.y * vectorBA.y);
     const magnitudeBC = Math.sqrt(vectorBC.x * vectorBC.x + vectorBC.y * vectorBC.y);
 
-    const angleRad = Math.acos(dotProduct / (magnitudeBA * magnitudeBC));
+    if (magnitudeBA === 0 || magnitudeBC === 0) {
+      return 0;
+    }
+
+    const cosAngle = dotProduct / (magnitudeBA * magnitudeBC);
+    const clampedCos = Math.max(-1, Math.min(1, cosAngle)); // Clamp para evitar NaN
+    const angleRad = Math.acos(clampedCos);
+    
     return (angleRad * 180) / Math.PI;
   }
 
+  // 🔧 CALCULAR ÁNGULO DE LA COLUMNA
   private calculateSpineAngle(pose: PoseKeypoints): number {
     const midShoulder = {
       x: (pose.left_shoulder.x + pose.right_shoulder.x) / 2,
@@ -580,6 +528,7 @@ private simulateBasicPose(): void {
     return 90 - (angleRad * 180) / Math.PI;
   }
 
+  // 🔧 CALCULAR ÁNGULO DEL CUELLO
   private calculateNeckAngle(pose: PoseKeypoints): number {
     const midShoulder = {
       x: (pose.left_shoulder.x + pose.right_shoulder.x) / 2,
@@ -593,10 +542,31 @@ private simulateBasicPose(): void {
     return 90 - (angleRad * 180) / Math.PI;
   }
 
+  // ⚖️ CALCULAR SIMETRÍA ENTRE DOS PUNTOS
   private calculateSymmetry(leftValue: number, rightValue: number): number {
     return Math.abs(leftValue - rightValue) * 100;
   }
 
+  // 📊 SEGUIMIENTO DE FPS
+  private startFpsTracking(): void {
+    const updateFps = () => {
+      if (!this.isRunning) return;
+
+      const now = Date.now();
+      if (now - this.lastFpsUpdate >= 1000) {
+        const fps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate));
+        this.fpsStream.next(fps);
+        this.frameCount = 0;
+        this.lastFpsUpdate = now;
+      }
+
+      requestAnimationFrame(updateFps);
+    };
+
+    updateFps();
+  }
+
+  // 📊 ACTUALIZAR MÉTRICAS DE RENDIMIENTO
   private updatePerformanceMetrics(processingTime: number): void {
     this.frameCount++;
     this.processingTimes.push(processingTime);
@@ -604,17 +574,9 @@ private simulateBasicPose(): void {
     if (this.processingTimes.length > 30) {
       this.processingTimes.shift();
     }
-
-    const now = Date.now();
-    if (now - this.lastFpsUpdate >= 1000) {
-      const avgProcessingTime = this.processingTimes.reduce((a, b) => a + b, 0) / this.processingTimes.length;
-      const fps = Math.round(1000 / avgProcessingTime);
-      
-      this.fpsStream.next(fps);
-      this.lastFpsUpdate = now;
-    }
   }
 
+  // 🧹 LIMPIAR RECURSOS
   ngOnDestroy(): void {
     this.stopCamera();
     if (this.pose) {

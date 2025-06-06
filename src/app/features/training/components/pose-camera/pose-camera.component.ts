@@ -1,5 +1,5 @@
 // src/app/features/training/components/pose-camera/pose-camera.component.ts
-// ✅ VERSIÓN CORREGIDA - SIN ERRORES DE REFERENCIAS
+// ✅ VERSIÓN COMPLETA CON MEDIAPIPE REAL
 
 import { 
   Component, 
@@ -27,6 +27,16 @@ import {
   ExerciseType,
   RepetitionPhase 
 } from '../../../../shared/models/pose.models';
+
+// Declaraciones globales para MediaPipe
+declare global {
+  interface Window {
+    drawConnectors: any;
+    drawLandmarks: any;
+    POSE_CONNECTIONS: any;
+    POSE_LANDMARKS: any;
+  }
+}
 
 @Component({
   selector: 'app-pose-camera',
@@ -119,10 +129,10 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     // Configurar suscripciones primero
     this.setupSubscriptions();
     
-    // Inicializar con delay mayor
+    // Inicializar con delay
     setTimeout(() => {
       this.attemptInitialization();
-    }, 1000); // Aumentar a 1 segundo para móviles
+    }, 500);
   }
 
   ngOnDestroy(): void {
@@ -147,7 +157,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       console.log('❌ Elementos no listos, reintentando...');
       
       if (this.initializationAttempts < this.maxInitializationAttempts) {
-        const delay = this.initializationAttempts * 300; // 300ms, 600ms, 900ms...
+        const delay = this.initializationAttempts * 300;
         setTimeout(() => {
           this.attemptInitialization();
         }, delay);
@@ -160,12 +170,11 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // ✅ VERIFICACIÓN DE ELEMENTOS - REFERENCIAS CORREGIDAS
+  // ✅ VERIFICACIÓN DE ELEMENTOS
   private areElementsReady(): boolean {
     try {
       console.log('🔍 Verificando elementos del DOM...');
       
-      // Verificar que las referencias ViewChild existen
       const hasVideoRef = !!this.videoElementRef;
       const hasCanvasRef = !!this.canvasElementRef;
       const hasOverlayRef = !!this.overlayElementRef;
@@ -175,25 +184,15 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
         canvasRef: hasCanvasRef,
         overlayRef: hasOverlayRef
       });
-  
+
       if (!hasVideoRef || !hasCanvasRef || !hasOverlayRef) {
         console.error('❌ Faltan referencias ViewChild');
         return false;
       }
       
-      // Verificar que los elementos DOM existen
       const video = this.videoElementRef.nativeElement;
       const canvas = this.canvasElementRef.nativeElement;
       const overlay = this.overlayElementRef.nativeElement;
-      
-      console.log('📊 Elementos DOM:', {
-        video: !!video,
-        canvas: !!canvas,
-        overlay: !!overlay,
-        videoType: video?.constructor.name,
-        canvasType: canvas?.constructor.name,
-        overlayType: overlay?.constructor.name
-      });
       
       const hasElements = !!(video && canvas && overlay);
       
@@ -202,7 +201,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
         return false;
       }
       
-      // Verificar tipos correctos
       const hasCorrectTypes = 
         video instanceof HTMLVideoElement &&
         canvas instanceof HTMLCanvasElement &&
@@ -229,347 +227,415 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // 🚀 SECUENCIA DE INICIO
-// 🚀 SECUENCIA DE INICIO
-private async startCameraSequence(): Promise<void> {
-  try {
-    console.log('🚀 === INICIANDO SECUENCIA DE CÁMARA ===');
-    
-    // ✅ 1. LIMPIAR ESTADOS
-    this.error = null;
-    // NO cambiar isLoading aquí todavía
-    this.cdr.detectChanges();
-    
-    // ✅ 2. VERIFICAR ELEMENTOS INMEDIATAMENTE (sin waitForDOMRender)
-    if (!this.areElementsReady()) {
-      console.log('⏳ Elementos no listos, esperando...');
-      await this.waitForDOMRender();
+  // 🚀 SECUENCIA DE INICIO COMPLETA CON MEDIAPIPE
+  private async startCameraSequence(): Promise<void> {
+    try {
+      console.log('🚀 === INICIANDO SECUENCIA DE CÁMARA CON MEDIAPIPE ===');
       
-      // Verificar de nuevo después de esperar
+      this.error = null;
+      this.cdr.detectChanges();
+      
+      // Verificar elementos
       if (!this.areElementsReady()) {
-        throw new Error('Elementos del DOM no están disponibles después de esperar');
+        console.log('⏳ Elementos no listos, esperando...');
+        await this.waitForDOMRender();
+        
+        if (!this.areElementsReady()) {
+          throw new Error('Elementos del DOM no están disponibles después de esperar');
+        }
       }
+      
+      // Inicializar canvas
+      await this.initializeCanvas();
+      
+      // Iniciar MediaPipe y cámara
+      console.log('📱 Iniciando MediaPipe y cámara...');
+      await this.startCameraWithMediaPipe();
+      
+      // Finalizar
+      this.isLoading = false;
+      this.cdr.detectChanges();
+      console.log('✅ Secuencia de cámara completada');
+      
+    } catch (error) {
+      console.error('💥 Error en secuencia de cámara:', error);
+      this.error = this.getErrorMessage(error);
+      this.isLoading = false;
+      this.initializationInProgress = false;
+      this.cdr.detectChanges();
+      throw error;
     }
-    
-    // ✅ 3. INICIALIZAR CANVAS
-    await this.initializeCanvas();
-    
-    // ✅ 4. INICIAR STREAM DE CÁMARA
-    console.log('📱 Iniciando stream de cámara...');
-    await this.startCameraStream();
-    
-    // ✅ 5. FINALIZAR - AHORA SÍ CAMBIAR isLoading
-    this.isLoading = false;
-    this.cdr.detectChanges();
-    console.log('✅ Secuencia de cámara completada');
-    
-  } catch (error) {
-    console.error('💥 Error en secuencia de cámara:', error);
-    this.error = this.getErrorMessage(error);
-    this.isLoading = false;
-    this.initializationInProgress = false;
-    this.cdr.detectChanges();
-    throw error;
   }
-}
 
-// 🎯 PASO A PASO: AGREGAR POSES SIN ROMPER EL VIDEO
-// REEMPLAZA startCameraStream() con esta versión que agrega SOLO contextos:
-
-// 🎯 MICRO-PASO 2: MOSTRAR OVERLAY TRANSPARENTE
-// REEMPLAZA startCameraStream() con esta versión:
-
-private async startCameraStream(): Promise<void> {
-  try {
-    console.log('📱 === MICRO-PASO 2: OVERLAY TRANSPARENTE ===');
-    
-    const video = this.videoElementRef?.nativeElement;
-    const canvas = this.canvasElementRef?.nativeElement;
-    const overlay = this.overlayElementRef?.nativeElement;
-    
-    if (!video || !canvas || !overlay) {
-      throw new Error('❌ Elementos DOM no disponibles para cámara');
+  private async startCameraWithMediaPipe(): Promise<void> {
+    try {
+      console.log('📱 === INICIANDO MEDIAPIPE REAL ===');
+      
+      const video = this.videoElementRef?.nativeElement;
+      const canvas = this.canvasElementRef?.nativeElement;
+      const overlay = this.overlayElementRef?.nativeElement;
+      
+      if (!video || !canvas || !overlay) {
+        throw new Error('❌ Elementos DOM no disponibles para cámara');
+      }
+  
+      // 🎥 OBTENER STREAM
+      console.log('🎥 Solicitando cámara...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
+        audio: false
+      });
+  
+      console.log('✅ Stream obtenido:', stream);
+  
+      // ✅ CONFIGURAR VIDEO VISIBLE
+      video.srcObject = stream;
+      video.autoplay = true;
+      video.muted = true;
+      video.playsInline = true;
+  
+      // ✅ APLICAR ESTILOS PARA QUE SE VEA
+      video.style.cssText = `
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        z-index: 15 !important;
+        display: block !important;
+        transform: scaleX(-1) !important;
+        background: red !important;
+      `;
+  
+      // ✅ ESPERAR A QUE EL VIDEO CARGUE
+      await new Promise<void>((resolve) => {
+        const onLoaded = () => {
+          console.log('✅ Video metadata loaded');
+          resolve();
+        };
+        
+        video.addEventListener('loadedmetadata', onLoaded, { once: true });
+        
+        if (video.readyState >= 2) {
+          onLoaded();
+        }
+      });
+  
+      // ✅ REPRODUCIR VIDEO
+      try {
+        await video.play();
+        console.log('✅ Video playing');
+      } catch (e) {
+        console.error('❌ Play error:', e);
+      }
+  
+      // 🎨 CONFIGURAR CANVAS
+      this.canvasCtx = canvas.getContext('2d')!;
+      this.overlayCtx = overlay.getContext('2d')!;
+      console.log('✅ Contextos obtenidos');
+  
+      // 📐 CONFIGURAR DIMENSIONES
+      const videoWidth = video.videoWidth || 640;
+      const videoHeight = video.videoHeight || 480;
+      
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
+      overlay.width = videoWidth;
+      overlay.height = videoHeight;
+      console.log('✅ Canvas dimensiones configuradas:', { width: videoWidth, height: videoHeight });
+  
+      // 🎨 CONFIGURAR ESTILOS DE CANVAS
+      this.setupCanvasStyles(canvas, overlay);
+  
+      // 🚀 INICIAR MEDIAPIPE
+      console.log('🎥 Iniciando PoseDetectionEngine...');
+      await this.poseEngine.startCamera(video, canvas);
+      console.log('✅ PoseDetectionEngine iniciado');
+  
+      // 🎬 INICIAR RENDER LOOP
+      this.startRenderLoop();
+  
+      // ✅ MARCAR COMO LISTO
+      this.isInitialized = true;
+      this.isRunning = true;
+      this.initializationInProgress = false;
+      await this.forceVideoDisplay();
+      console.log('🎉 === MEDIAPIPE REAL COMPLETADO ===');
+      
+    } catch (error) {
+      console.error('💥 Error en MediaPipe:', error);
+      this.error = `Error: ${this.getErrorMessage(error)}`;
+      this.isInitialized = false;
+      this.isRunning = false;
+      this.initializationInProgress = false;
+      this.isLoading = false;
+      this.cdr.detectChanges();
+      throw error;
     }
-
-    // ✅ AGREGAR CONTEXTOS (del paso anterior)
-    this.canvasCtx = canvas.getContext('2d')!;
-    this.overlayCtx = overlay.getContext('2d')!;
-    console.log('✅ Contextos obtenidos');
-
-    // 🎥 OBTENER STREAM (igual que funcionó)
-    console.log('🎥 Solicitando cámara...');
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: 'user',
-        width: { ideal: 640, min: 480 },
-        height: { ideal: 480, min: 320 },
-        frameRate: { ideal: 30 }
-      },
-      audio: false
-    });
+  } // ← CIERRA EL MÉTODO startCameraWithMediaPipe AQUÍ
+  
+  // ✅ MÉTODO SEPARADO (FUERA del método anterior)
+  private async forceVideoDisplay(): Promise<void> {
+    const video = this.videoElementRef?.nativeElement;
+    if (!video) return;
+  
+    console.log('🔧 Forzando display del video...');
     
-    console.log('✅ Stream obtenido');
+    // ✅ CREAR NUEVO STREAM SOLO PARA DISPLAY
+    try {
+      const displayStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
+        audio: false
+      });
+  
+      console.log('✅ Nuevo stream para display creado');
+  
+      // ✅ CREAR VIDEO ELEMENT SEPARADO PARA DISPLAY
+      const displayVideo = document.createElement('video');
+      displayVideo.srcObject = displayStream;
+      displayVideo.autoplay = true;
+      displayVideo.muted = true;
+      displayVideo.playsInline = true;
+  
+      // ✅ APLICAR ESTILOS AL VIDEO DE DISPLAY
+      displayVideo.style.cssText = `
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+        z-index: 20 !important;
+        display: block !important;
+        transform: scaleX(-1) !important;
+        background: transparent !important;
+      `;
+  
+      // ✅ AGREGAR AL CONTAINER
+      const container = this.videoElementRef.nativeElement.parentElement;
+      if (container) {
+        container.appendChild(displayVideo);
+        console.log('✅ Video de display agregado al DOM');
+      }
+  
+      // ✅ REPRODUCIR VIDEO DE DISPLAY
+      await displayVideo.play();
+      console.log('✅ Video de display reproduciendo');
+  
+    } catch (error) {
+      console.error('❌ Error creando video de display:', error);
+    }
+  }
+ 
 
-    // ✅ CONFIGURAR SOLO EL VIDEO (igual que funcionó)
-    video.srcObject = stream;
-    video.autoplay = true;
-    video.muted = true;
-    video.playsInline = true;
+  // 🎨 CONFIGURAR ESTILOS DE CANVAS
+  private setupCanvasStyles(canvas: HTMLCanvasElement, overlay: HTMLCanvasElement): void {
+    const video = this.videoElementRef?.nativeElement;
     
-    // 🎯 MANTENER CANVAS OCULTO, PERO MOSTRAR OVERLAY TRANSPARENTE
-    canvas.style.display = 'none'; // ← Canvas sigue oculto
+    // Canvas principal (oculto)
+    canvas.style.display = 'none';
     
-    // 🆕 NUEVO: MOSTRAR OVERLAY PERO TRANSPARENTE
+    // VIDEO VISIBLE
+    if (video) {
+      video.style.display = 'block';
+      video.style.position = 'absolute';
+      video.style.top = '0';
+      video.style.left = '0';
+      video.style.width = '100%';
+      video.style.height = '100%';
+      video.style.objectFit = 'cover';
+      video.style.zIndex = '1';
+      video.style.transform = 'scaleX(-1)';
+    }
+    
+    // Overlay encima
     overlay.style.display = 'block';
     overlay.style.position = 'absolute';
     overlay.style.top = '0';
     overlay.style.left = '0';
     overlay.style.width = '100%';
     overlay.style.height = '100%';
-    overlay.style.zIndex = '10'; // Encima del video
+    overlay.style.zIndex = '10';
     overlay.style.pointerEvents = 'none';
     overlay.style.background = 'transparent';
-    console.log('🆕 Overlay mostrado (transparente)');
-    
-    // ✅ CONFIGURAR VIDEO PARA QUE SE VEA (igual que funcionó)
-    video.style.display = 'block';
-    video.style.position = 'absolute';
-    video.style.top = '0';
-    video.style.left = '0';
-    video.style.width = '100%';
-    video.style.height = '100%';
-    video.style.objectFit = 'cover';
-    video.style.transform = 'scaleX(-1)';
-    video.style.zIndex = '1'; // Debajo del overlay
-    video.style.backgroundColor = 'transparent';
-    
-    // ✅ ESPERAR METADATA (igual que funcionó)
-    await new Promise<void>((resolve, reject) => {
-      let resolved = false;
-      
-      const onReady = () => {
-        if (resolved) return;
-        resolved = true;
-        
-        console.log('✅ Video listo:', {
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight,
-          readyState: video.readyState
-        });
-        
-        resolve();
-      };
-      
-      const onError = (error: any) => {
-        if (resolved) return;
-        resolved = true;
-        console.error('❌ Error:', error);
-        reject(error);
-      };
-      
-      video.addEventListener('loadedmetadata', onReady, { once: true });
-      video.addEventListener('canplay', onReady, { once: true });
-      video.addEventListener('error', onError, { once: true });
-      
-      if (video.readyState >= 2) {
-        onReady();
-      }
-      
-      setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          console.warn('⏰ Timeout, continuando...');
-          resolve();
-        }
-      }, 3000);
-    });
-
-    // ✅ REPRODUCIR (igual que funcionó)
-    try {
-      await video.play();
-      console.log('✅ Video reproduciendo');
-    } catch (playError) {
-      console.error('❌ Error play:', playError);
-    }
-
-    // ✅ CONFIGURAR CANVAS DIMENSIONES (del paso anterior)
-    const videoWidth = video.videoWidth || 640;
-    const videoHeight = video.videoHeight || 480;
-    
-    canvas.width = videoWidth;
-    canvas.height = videoHeight;
-    overlay.width = videoWidth;
-    overlay.height = videoHeight;
-    console.log('✅ Canvas dimensiones configuradas:', { width: videoWidth, height: videoHeight });
-
-    // 🆕 NUEVO: INICIAR RENDER LOOP BÁSICO (solo limpiar overlay)
-  
-
-    // ✅ SIMULAR POSES BÁSICAS (del paso anterior)
-    this.simulateBasicPoses();
-
-    // 🚫 NO INICIALIZAR ENGINE (igual que funcionó)
-    console.log('⏸️ Engine deshabilitado');
-
-    // ✅ MARCAR COMO LISTO (igual que funcionó)
-    this.isInitialized = true;
-    this.isRunning = true;
-    this.initializationInProgress = false;
-    
-    // 📊 SIMULAR FPS (igual que funcionó)
-    this.startFpsSimulation();
-    
-    console.log('🎉 === MICRO-PASO 2 COMPLETADO: OVERLAY TRANSPARENTE ===');
-    
-  } catch (error) {
-    console.error('💥 Error:', error);
-    this.error = `Error: ${this.getErrorMessage(error)}`;
-    this.isInitialized = false;
-    this.isRunning = false;
-    this.initializationInProgress = false;
-    this.isLoading = false;
-    this.cdr.detectChanges();
-    throw error;
   }
-}
 
-// 🎯 MICRO-PASO 4: AGREGAR PUNTOS CLAVE PRINCIPALES
-// REEMPLAZA startTransparentRenderLoop() con esta versión:
-
-// 🎯 MICRO-PASO 3: DIBUJAR UN PUNTO SIMPLE
-// REEMPLAZA startTransparentRenderLoop() con esta versión:
-
-private startTransparentRenderLoop(overlay: HTMLCanvasElement): void {
-  console.log('🎨 Iniciando render loop con punto simple...');
-  
-  const renderFrame = () => {
-    if (!this.isRunning || !this.overlayCtx) return;
+  // 🎬 RENDER LOOP CON POSES REALES
+  private startRenderLoop(): void {
+    console.log('🎬 Iniciando render loop con poses reales...');
     
-    try {
-      // 🧹 LIMPIAR OVERLAY
-      this.overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+    const renderFrame = () => {
+      if (!this.isRunning || !this.overlayCtx) return;
       
-      // 🆕 NUEVO: DIBUJAR UN PUNTO SIMPLE SI SKELETON HABILITADO
-      if (this.showSkeleton && this.currentPose) {
-        console.log('🔴 Dibujando punto simple...');
+      try {
+        // Limpiar overlay
+        this.overlayCtx.clearRect(0, 0, this.overlayCtx.canvas.width, this.overlayCtx.canvas.height);
         
-        // Dibujar solo un punto rojo en el centro de la nariz
-        const nose = this.currentPose.nose;
-        if (nose && nose.visibility > 0.5) {
-          this.overlayCtx.fillStyle = '#FF0000'; // Rojo brillante
-          this.overlayCtx.beginPath();
-          this.overlayCtx.arc(
-            nose.x * overlay.width,  // Posición X
-            nose.y * overlay.height, // Posición Y
-            10, // Radio del punto
-            0, 2 * Math.PI
-          );
-          this.overlayCtx.fill();
-          console.log('🔴 Punto dibujado en nariz:', { x: nose.x * overlay.width, y: nose.y * overlay.height });
+        // Dibujar pose si está disponible y skeleton habilitado
+        if (this.showSkeleton && this.currentPose) {
+          this.drawPoseOnOverlay(this.currentPose);
         }
+
+        // Dibujar información adicional
+        this.drawOverlay();
+        
+      } catch (error) {
+        console.error('❌ Error en render loop:', error);
       }
       
-    } catch (error) {
-      console.error('❌ Error en render con punto:', error);
-    }
+      requestAnimationFrame(renderFrame);
+    };
     
     requestAnimationFrame(renderFrame);
-  };
-  
-  requestAnimationFrame(renderFrame);
-}
+  }
 
-// 🆕 TAMBIÉN AGREGAR ESTE MÉTODO PARA TOGGLE DEL SKELETON:
-
-
-
-
-
-// 📊 MÉTODO PARA SIMULAR FPS (igual que funcionó):
-private startFpsSimulation(): void {
-  let frameCount = 0;
-  let lastTime = performance.now();
-  
-  const updateFps = () => {
-    if (!this.isRunning) return;
-    
-    frameCount++;
-    const currentTime = performance.now();
-    
-    if (currentTime - lastTime >= 1000) {
-      this.fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
-      frameCount = 0;
-      lastTime = currentTime;
-      this.cdr.detectChanges();
+  // 🎨 DIBUJAR POSE EN OVERLAY
+  private drawPoseOnOverlay(pose: PoseKeypoints): void {
+    if (!window.drawConnectors || !window.drawLandmarks || !window.POSE_CONNECTIONS) {
+      // Fallback: dibujar manualmente
+      this.drawPoseManually(pose);
+      return;
     }
+
+    try {
+      const ctx = this.overlayCtx;
+      
+      // Convertir pose a formato MediaPipe
+      const landmarks = this.convertPoseToMediaPipeFormat(pose);
+      
+      // Dibujar conexiones usando MediaPipe
+      window.drawConnectors(ctx, landmarks, window.POSE_CONNECTIONS, {
+        color: this.POSE_COLORS.connections,
+        lineWidth: 2
+      });
+      
+      // Dibujar landmarks usando MediaPipe
+      window.drawLandmarks(ctx, landmarks, {
+        color: this.POSE_COLORS.landmarks,
+        radius: 4
+      });
+      
+    } catch (error) {
+      console.error('❌ Error dibujando con MediaPipe, usando fallback:', error);
+      this.drawPoseManually(pose);
+    }
+  }
+
+  // 🔄 CONVERTIR POSE A FORMATO MEDIAPIPE
+  private convertPoseToMediaPipeFormat(pose: PoseKeypoints): any[] {
+    const landmarks: any[] = [];
+    const width = this.overlayCtx.canvas.width;
+    const height = this.overlayCtx.canvas.height;
     
-    requestAnimationFrame(updateFps);
-  };
-  
-  requestAnimationFrame(updateFps);
-}
-
-// ✅ SIMULAR POSES BÁSICAS (del paso anterior):
-private simulateBasicPoses(): void {
-  console.log('🤖 Iniciando simulación de poses...');
-  
-  setInterval(() => {
-    if (!this.isRunning) return;
+    // Orden específico de MediaPipe Pose
+    const orderedLandmarks = [
+      pose.nose, pose.left_eye_inner, pose.left_eye, pose.left_eye_outer,
+      pose.right_eye_inner, pose.right_eye, pose.right_eye_outer,
+      pose.left_ear, pose.right_ear, pose.mouth_left, pose.mouth_right,
+      pose.left_shoulder, pose.right_shoulder, pose.left_elbow, pose.right_elbow,
+      pose.left_wrist, pose.right_wrist, pose.left_pinky, pose.right_pinky,
+      pose.left_index, pose.right_index, pose.left_thumb, pose.right_thumb,
+      pose.left_hip, pose.right_hip, pose.left_knee, pose.right_knee,
+      pose.left_ankle, pose.right_ankle, pose.left_heel, pose.right_heel,
+      pose.left_foot_index, pose.right_foot_index
+    ];
     
-    const mockPose: PoseKeypoints = {
-      nose: { x: 0.5, y: 0.3, z: 0, visibility: 0.9 },
-      left_eye_inner: { x: 0.48, y: 0.28, z: 0, visibility: 0.8 },
-      left_eye: { x: 0.47, y: 0.29, z: 0, visibility: 0.8 },
-      left_eye_outer: { x: 0.46, y: 0.30, z: 0, visibility: 0.8 },
-      right_eye_inner: { x: 0.52, y: 0.28, z: 0, visibility: 0.8 },
-      right_eye: { x: 0.53, y: 0.29, z: 0, visibility: 0.8 },
-      right_eye_outer: { x: 0.54, y: 0.30, z: 0, visibility: 0.8 },
-      left_ear: { x: 0.45, y: 0.32, z: 0, visibility: 0.7 },
-      right_ear: { x: 0.55, y: 0.32, z: 0, visibility: 0.7 },
-      mouth_left: { x: 0.48, y: 0.35, z: 0, visibility: 0.8 },
-      mouth_right: { x: 0.52, y: 0.35, z: 0, visibility: 0.8 },
-      left_shoulder: { x: 0.4, y: 0.4, z: 0, visibility: 0.8 },
-      right_shoulder: { x: 0.6, y: 0.4, z: 0, visibility: 0.8 },
-      left_elbow: { x: 0.35, y: 0.5, z: 0, visibility: 0.7 },
-      right_elbow: { x: 0.65, y: 0.5, z: 0, visibility: 0.7 },
-      left_wrist: { x: 0.3, y: 0.6, z: 0, visibility: 0.6 },
-      right_wrist: { x: 0.7, y: 0.6, z: 0, visibility: 0.6 },
-      left_pinky: { x: 0.28, y: 0.62, z: 0, visibility: 0.5 },
-      right_pinky: { x: 0.72, y: 0.62, z: 0, visibility: 0.5 },
-      left_index: { x: 0.29, y: 0.61, z: 0, visibility: 0.5 },
-      right_index: { x: 0.71, y: 0.61, z: 0, visibility: 0.5 },
-      left_thumb: { x: 0.31, y: 0.59, z: 0, visibility: 0.5 },
-      right_thumb: { x: 0.69, y: 0.59, z: 0, visibility: 0.5 },
-      left_hip: { x: 0.4, y: 0.6, z: 0, visibility: 0.7 },
-      right_hip: { x: 0.6, y: 0.6, z: 0, visibility: 0.7 },
-      left_knee: { x: 0.4, y: 0.8, z: 0, visibility: 0.6 },
-      right_knee: { x: 0.6, y: 0.8, z: 0, visibility: 0.6 },
-      left_ankle: { x: 0.4, y: 0.95, z: 0, visibility: 0.5 },
-      right_ankle: { x: 0.6, y: 0.95, z: 0, visibility: 0.5 },
-      left_heel: { x: 0.39, y: 0.96, z: 0, visibility: 0.5 },
-      right_heel: { x: 0.61, y: 0.96, z: 0, visibility: 0.5 },
-      left_foot_index: { x: 0.41, y: 0.97, z: 0, visibility: 0.5 },
-      right_foot_index: { x: 0.59, y: 0.97, z: 0, visibility: 0.5 }
-    };
-
-    this.currentPose = mockPose;
-    console.log('🤖 Pose simulada actualizada');
+    orderedLandmarks.forEach(landmark => {
+      landmarks.push({
+        x: landmark.x * width,
+        y: landmark.y * height,
+        z: landmark.z,
+        visibility: landmark.visibility
+      });
+    });
     
-  }, 1000);
-}
+    return landmarks;
+  }
 
-// 📊 AGREGAR ESTE MÉTODO PARA SIMULAR FPS:
+  // 🎨 DIBUJAR POSE MANUALMENTE (FALLBACK)
+  private drawPoseManually(pose: PoseKeypoints): void {
+    const ctx = this.overlayCtx;
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
 
+    // Dibujar conexiones principales
+    this.drawConnection(pose.left_shoulder, pose.right_shoulder, width, height);
+    this.drawConnection(pose.left_shoulder, pose.left_hip, width, height);
+    this.drawConnection(pose.right_shoulder, pose.right_hip, width, height);
+    this.drawConnection(pose.left_hip, pose.right_hip, width, height);
+    
+    // Brazos
+    this.drawConnection(pose.left_shoulder, pose.left_elbow, width, height);
+    this.drawConnection(pose.left_elbow, pose.left_wrist, width, height);
+    this.drawConnection(pose.right_shoulder, pose.right_elbow, width, height);
+    this.drawConnection(pose.right_elbow, pose.right_wrist, width, height);
+    
+    // Piernas
+    this.drawConnection(pose.left_hip, pose.left_knee, width, height);
+    this.drawConnection(pose.left_knee, pose.left_ankle, width, height);
+    this.drawConnection(pose.right_hip, pose.right_knee, width, height);
+    this.drawConnection(pose.right_knee, pose.right_ankle, width, height);
 
-  // ⏳ ESPERAR A QUE EL POSE ENGINE ESTÉ LISTO
+    // Dibujar landmarks principales
+    this.drawLandmark(pose.nose, width, height);
+    this.drawLandmark(pose.left_shoulder, width, height);
+    this.drawLandmark(pose.right_shoulder, width, height);
+    this.drawLandmark(pose.left_elbow, width, height);
+    this.drawLandmark(pose.right_elbow, width, height);
+    this.drawLandmark(pose.left_wrist, width, height);
+    this.drawLandmark(pose.right_wrist, width, height);
+    this.drawLandmark(pose.left_hip, width, height);
+    this.drawLandmark(pose.right_hip, width, height);
+    this.drawLandmark(pose.left_knee, width, height);
+    this.drawLandmark(pose.right_knee, width, height);
+    this.drawLandmark(pose.left_ankle, width, height);
+    this.drawLandmark(pose.right_ankle, width, height);
+  }
+
+  // 🔗 DIBUJAR CONEXIÓN ENTRE DOS PUNTOS
+  private drawConnection(start: any, end: any, width: number, height: number): void {
+    if (start.visibility > 0.5 && end.visibility > 0.5) {
+      const ctx = this.overlayCtx;
+      ctx.strokeStyle = this.POSE_COLORS.connections;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(start.x * width, start.y * height);
+      ctx.lineTo(end.x * width, end.y * height);
+      ctx.stroke();
+    }
+  }
+
+  // 📍 DIBUJAR LANDMARK
+  private drawLandmark(landmark: any, width: number, height: number): void {
+    if (landmark.visibility > 0.5) {
+      const ctx = this.overlayCtx;
+      ctx.fillStyle = this.POSE_COLORS.landmarks;
+      ctx.beginPath();
+      ctx.arc(
+        landmark.x * width,
+        landmark.y * height,
+        6,
+        0,
+        2 * Math.PI
+      );
+      ctx.fill();
+    }
+  }
+
+  // ⏳ ESPERAR RENDERIZADO DOM
   private async waitForDOMRender(): Promise<void> {
     return new Promise((resolve) => {
       console.log('⏳ Esperando renderizado DOM...');
       
-      // ❌ NO CAMBIAR isLoading AQUÍ - Causa problemas con *ngIf
-      // this.isLoading = false; // ELIMINAR ESTA LÍNEA
-      
-      // ✅ Simplemente esperar a que los elementos estén disponibles
       const maxAttempts = 10;
       let attempts = 0;
       
@@ -577,22 +643,11 @@ private simulateBasicPoses(): void {
         attempts++;
         console.log(`🔄 Verificando elementos... Intento ${attempts}/${maxAttempts}`);
         
-        // Verificar que las referencias ViewChild existen
         const hasRefs = !!(
           this.videoElementRef?.nativeElement && 
           this.canvasElementRef?.nativeElement && 
           this.overlayElementRef?.nativeElement
         );
-        
-        console.log('📊 Estado de elementos:', {
-          videoRef: !!this.videoElementRef,
-          canvasRef: !!this.canvasElementRef,
-          overlayRef: !!this.overlayElementRef,
-          videoElement: !!this.videoElementRef?.nativeElement,
-          canvasElement: !!this.canvasElementRef?.nativeElement,
-          overlayElement: !!this.overlayElementRef?.nativeElement,
-          hasRefs
-        });
         
         if (hasRefs) {
           console.log('✅ Elementos DOM están listos');
@@ -601,20 +656,19 @@ private simulateBasicPoses(): void {
           setTimeout(checkElements, 100);
         } else {
           console.warn('⚠️ Timeout esperando renderizado DOM, continuando...');
-          resolve(); // Continuar aunque no esté listo
+          resolve();
         }
       };
       
-      // Empezar verificación después de un pequeño delay
       setTimeout(checkElements, 50);
     });
   }
-  // 🎨 INICIALIZAR CANVAS - REFERENCIAS CORREGIDAS
+
+  // 🎨 INICIALIZAR CANVAS
   private async initializeCanvas(): Promise<void> {
     try {
       console.log('🎨 Inicializando canvas...');
       
-      // ✅ VERIFICAR ESTADOS PRIMERO
       if (this.isLoading) {
         throw new Error('❌ Aplicación aún cargando');
       }
@@ -623,7 +677,6 @@ private simulateBasicPoses(): void {
         throw new Error('❌ Error presente: ' + this.error);
       }
       
-      // ✅ VERIFICAR REFERENCIAS
       if (!this.videoElementRef || !this.canvasElementRef || !this.overlayElementRef) {
         throw new Error('❌ Referencias ViewChild no disponibles');
       }
@@ -631,24 +684,15 @@ private simulateBasicPoses(): void {
       const canvas = this.canvasElementRef.nativeElement;
       const overlay = this.overlayElementRef.nativeElement;
       const video = this.videoElementRef.nativeElement;
-  
-      console.log('📊 Verificando elementos:', {
-        canvas: !!canvas,
-        overlay: !!overlay,
-        video: !!video,
-        isLoading: this.isLoading,
-        error: this.error
-      });
-  
+
       if (!canvas || !overlay || !video) {
         throw new Error('❌ Elementos canvas no disponibles - DOM no renderizado');
       }
-  
-      // ✅ OBTENER DIMENSIONES CON FALLBACK
+
+      // Dimensiones con fallback
       let width = 640;
       let height = 480;
       
-      // Intentar obtener dimensiones reales del video
       if (video.videoWidth && video.videoHeight) {
         width = video.videoWidth;
         height = video.videoHeight;
@@ -660,57 +704,16 @@ private simulateBasicPoses(): void {
         }
       }
       
-      // Canvas principal
       canvas.width = width;
       canvas.height = height;
-      
-      // Canvas overlay
       overlay.width = width;
       overlay.height = height;
-  
+
       console.log('✅ Canvas inicializados:', { width, height });
       
     } catch (error) {
       console.error('❌ Error en initializeCanvas:', error);
       throw error;
-    }
-  }
-
-  // 📏 REDIMENSIONAR CANVAS - REFERENCIAS CORREGIDAS
-  private resizeCanvas(): void {
-    try {
-      // ✅ USAR LAS REFERENCIAS CORRECTAS
-      const video = this.videoElementRef?.nativeElement;
-      const canvas = this.canvasElementRef?.nativeElement;
-      const overlay = this.overlayElementRef?.nativeElement;  
-      
-      if (!canvas || !overlay) {
-        console.warn('⚠️ Canvas elements no disponibles para resize');
-        return;
-      }
-
-      // Dimensiones estándar para cámara
-      const canvasWidth = 640;
-      const canvasHeight = 480;
-
-      console.log('📏 Aplicando dimensiones:', { canvasWidth, canvasHeight });
-
-      // Aplicar dimensiones a ambos canvas
-      [canvas, overlay].forEach(element => {
-        element.width = canvasWidth;
-        element.height = canvasHeight;
-        element.style.width = `${canvasWidth}px`;
-        element.style.height = `${canvasHeight}px`;
-      });
-
-      // Configurar video también
-      if (video) {
-        video.width = canvasWidth;
-        video.height = canvasHeight;
-      }
-      
-    } catch (error) {
-      console.error('❌ Error en resizeCanvas:', error);
     }
   }
 
@@ -722,7 +725,6 @@ private simulateBasicPoses(): void {
         this.currentPose = pose;
         if (pose) {
           this.poseDetected.emit(pose);
-          this.drawPose(pose);
         }
       })
     );
@@ -741,6 +743,7 @@ private simulateBasicPoses(): void {
     this.subscriptions.push(
       this.poseEngine.fps$.subscribe(fps => {
         this.fps = fps;
+        this.cdr.detectChanges();
       })
     );
 
@@ -770,8 +773,6 @@ private simulateBasicPoses(): void {
       console.log('⏭️ Ya inicializado o en progreso');
     }
   }
-  // 🚀 SECUENCIA DE INICIO
-
 
   // 🚀 MÉTODO PÚBLICO PARA INICIAR CÁMARA MANUALMENTE
   public async startCamera(): Promise<void> {
@@ -808,133 +809,29 @@ private simulateBasicPoses(): void {
   }
 
   // 🧠 ANALIZAR MOVIMIENTO
-// REEMPLAZAR el método analyzeMovement con este:
+  private analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
+    if (!this.enableErrorDetection) return;
 
-private analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
-  if (!this.enableErrorDetection) return;
-
-  const analysis = this.biomechanicsAnalyzer.analyzeFrame(pose, angles);
-  
-  this.currentErrors = analysis.errors;
-  this.currentPhase = analysis.phase;
-  this.currentQuality = analysis.qualityScore;
-  
-  if (analysis.repetitionCount > this.repetitionCount) {
-    this.repetitionCount = analysis.repetitionCount;
-    this.repetitionComplete.emit(this.repetitionCount);
-  }
-
-  if (analysis.errors.length > 0) {
-    this.errorDetected.emit(analysis.errors);
-  }
-  this.qualityScore.emit(analysis.qualityScore);
-
-  this.drawOverlay();
-}
-
-  // 🎨 DIBUJAR POSE EN CANVAS
-  private drawPose(pose: PoseKeypoints): void {
-    if (!this.showSkeleton || !this.overlayCtx) return;
-
-    const ctx = this.overlayCtx;
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    this.drawConnections(pose);
-    this.drawLandmarks(pose);
+    const analysis = this.biomechanicsAnalyzer.analyzeFrame(pose, angles);
     
-    if (this.showAngles && this.currentAngles) {
-      this.drawAngles(pose, this.currentAngles);
-    }
-  }
-
-  // 🔗 DIBUJAR CONEXIONES DEL ESQUELETO
-  private drawConnections(pose: PoseKeypoints): void {
-    const ctx = this.overlayCtx;
-    ctx.strokeStyle = this.POSE_COLORS.connections;
-    ctx.lineWidth = 3;
-
-    const connections = [
-      [pose.left_shoulder, pose.right_shoulder],
-      [pose.left_shoulder, pose.left_hip],
-      [pose.right_shoulder, pose.right_hip],
-      [pose.left_hip, pose.right_hip],
-      [pose.left_shoulder, pose.left_elbow],
-      [pose.left_elbow, pose.left_wrist],
-      [pose.right_shoulder, pose.right_elbow],
-      [pose.right_elbow, pose.right_wrist],
-      [pose.left_hip, pose.left_knee],
-      [pose.left_knee, pose.left_ankle],
-      [pose.right_hip, pose.right_knee],
-      [pose.right_knee, pose.right_ankle]
-    ];
-
-    connections.forEach(([start, end]) => {
-      if (start.visibility > 0.5 && end.visibility > 0.5) {
-        ctx.beginPath();
-        ctx.moveTo(start.x * ctx.canvas.width, start.y * ctx.canvas.height);
-        ctx.lineTo(end.x * ctx.canvas.width, end.y * ctx.canvas.height);
-        ctx.stroke();
-      }
-    });
-  }
-
-  // 📍 DIBUJAR LANDMARKS
-  private drawLandmarks(pose: PoseKeypoints): void {
-    const ctx = this.overlayCtx;
+    this.currentErrors = analysis.errors;
+    this.currentPhase = analysis.phase;
+    this.currentQuality = analysis.qualityScore;
     
-    Object.values(pose).forEach(landmark => {
-      if (landmark.visibility > 0.5) {
-        ctx.fillStyle = this.POSE_COLORS.landmarks;
-        ctx.beginPath();
-        ctx.arc(
-          landmark.x * ctx.canvas.width,
-          landmark.y * ctx.canvas.height,
-          6,
-          0,
-          2 * Math.PI
-        );
-        ctx.fill();
-      }
-    });
-  }
-
-  // 📐 DIBUJAR ÁNGULOS
-  private drawAngles(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
-    const ctx = this.overlayCtx;
-    ctx.fillStyle = this.POSE_COLORS.angles;
-    ctx.font = '14px Arial';
-
-    if (this.exerciseType === ExerciseType.SQUATS) {
-      this.drawAngleText(pose.left_knee, `${Math.round(angles.left_knee_angle || 0)}°`);
-      this.drawAngleText(pose.right_knee, `${Math.round(angles.right_knee_angle || 0)}°`);
-    } else if (this.exerciseType === ExerciseType.PUSHUPS) {
-      this.drawAngleText(pose.left_elbow, `${Math.round(angles.left_elbow_angle || 0)}°`);
-      this.drawAngleText(pose.right_elbow, `${Math.round(angles.right_elbow_angle || 0)}°`);
+    if (analysis.repetitionCount > this.repetitionCount) {
+      this.repetitionCount = analysis.repetitionCount;
+      this.repetitionComplete.emit(this.repetitionCount);
     }
-  }
 
-  // 📝 DIBUJAR TEXTO DE ÁNGULO
-  private drawAngleText(landmark: any, text: string): void {
-    if (landmark.visibility > 0.5) {
-      const ctx = this.overlayCtx;
-      const x = landmark.x * ctx.canvas.width;
-      const y = landmark.y * ctx.canvas.height - 10;
-      
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(x - 15, y - 15, 30, 20);
-      
-      ctx.fillStyle = this.POSE_COLORS.angles;
-      ctx.textAlign = 'center';
-      ctx.fillText(text, x, y);
+    if (analysis.errors.length > 0) {
+      this.errorDetected.emit(analysis.errors);
     }
+    this.qualityScore.emit(analysis.qualityScore);
   }
 
   // 🖼️ DIBUJAR OVERLAY CON INFORMACIÓN
   private drawOverlay(): void {
     if (!this.overlayCtx) return;
-    const canvas = this.canvasElementRef?.nativeElement;
-    const overlay = this.overlayElementRef?.nativeElement;
-    const video = this.videoElementRef?.nativeElement;
     
     this.drawInfoPanel();
     this.drawErrors();
@@ -1033,7 +930,6 @@ private analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): void 
   private cleanup(): void {
     this.subscriptions.forEach(sub => sub.unsubscribe());
     this.stopCamera();
-    window.removeEventListener('resize', () => this.resizeCanvas());
   }
 
   // 🎯 MÉTODOS PÚBLICOS PARA EL TEMPLATE
@@ -1068,9 +964,6 @@ private analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): void 
     if (this.currentQuality >= 40) return 'quality-fair';
     return 'quality-poor';
   }
-  // 🎨 MÉTODOS PÚBLICOS PARA EL TEMPLATE - AGREGAR ESTOS
-
-
 
   getCurrentCoachingTip(): string {
     const tips: { [key in ExerciseType]?: string[] } = {
@@ -1093,7 +986,7 @@ private analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): void 
         'Los codos directamente bajo los hombros'
       ]
     };
-  
+
     const exerciseTips = tips[this.exerciseType] || ['¡Sigue así!'];
     const randomIndex = Math.floor(Math.random() * exerciseTips.length);
     return exerciseTips[randomIndex];

@@ -56,6 +56,19 @@ export class BiomechanicsAnalyzer {
         qualityScore: 0
       };
     }
+    // ✅ VERIFICAR VISIBILIDAD MÍNIMA
+  const keyLandmarks = [pose.left_shoulder, pose.right_shoulder, pose.left_hip, pose.right_hip];
+  const validLandmarks = keyLandmarks.filter(landmark => landmark.visibility > 0.5);
+  
+  if (validLandmarks.length < 3) {
+    console.log('⚠️ Pose con poca visibilidad, saltando análisis');
+    return {
+      errors: [],
+      phase: RepetitionPhase.IDLE,
+      repetitionCount: this.repetitionCounter,
+      qualityScore: 0
+    };
+  }
 
     // Suavizar ángulos usando buffer histórico
     const smoothedAngles = this.smoothAngles(angles);
