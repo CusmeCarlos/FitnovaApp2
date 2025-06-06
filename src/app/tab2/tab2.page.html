@@ -1,17 +1,160 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Tab 2
-    </ion-title>
-  </ion-toolbar>
-</ion-header>
-
+<!-- src/app/tab2/tab2.page.html -->
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 2</ion-title>
-    </ion-toolbar>
-  </ion-header>
+  
+  <!-- VISTA PRINCIPAL DE ENTRENAMIENTO -->
+  <div *ngIf="!showCamera" class="training-dashboard">
+    
+    <!-- Header con saludo -->
+    <div class="header-section">
+      <h1>¡Hola {{ user?.displayName || 'Atleta' }}! 💪</h1>
+      <p>¿Listo para entrenar con tu asistente personal de IA?</p>
+    </div>
 
-  <app-explore-container name="Tab 2 page"></app-explore-container>
+    <!-- Estadísticas del día -->
+    <div class="stats-card">
+      <h3>Hoy</h3>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <ion-icon name="time-outline"></ion-icon>
+          <span class="stat-value">{{ todayStats.duration }}</span>
+          <span class="stat-label">min</span>
+        </div>
+        <div class="stat-item">
+          <ion-icon name="fitness-outline"></ion-icon>
+          <span class="stat-value">{{ todayStats.repetitions }}</span>
+          <span class="stat-label">reps</span>
+        </div>
+        <div class="stat-item">
+          <ion-icon name="trophy-outline"></ion-icon>
+          <span class="stat-value">{{ todayStats.avgQuality }}</span>
+          <span class="stat-label">%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ejercicios disponibles -->
+    <div class="exercises-section">
+      <h3>Ejercicios Disponibles</h3>
+      
+      <div class="exercises-grid">
+        
+        <!-- Sentadillas -->
+        <div class="exercise-card" (click)="startExercise('squats')">
+          <div class="exercise-icon">🦵</div>
+          <h4>Sentadillas</h4>
+          <p>Fortalece piernas y glúteos</p>
+          <span class="difficulty beginner">Principiante</span>
+        </div>
+
+        <!-- Flexiones -->
+        <div class="exercise-card" (click)="startExercise('pushups')">
+          <div class="exercise-icon">💪</div>
+          <h4>Flexiones</h4>
+          <p>Trabaja pecho, brazos y core</p>
+          <span class="difficulty intermediate">Intermedio</span>
+        </div>
+
+        <!-- Plancha -->
+        <div class="exercise-card" (click)="startExercise('plank')">
+          <div class="exercise-icon">🏋️</div>
+          <h4>Plancha</h4>
+          <p>Fortalece el core</p>
+          <span class="difficulty beginner">Principiante</span>
+        </div>
+
+        <!-- Estocadas -->
+        <div class="exercise-card" (click)="startExercise('lunges')">
+          <div class="exercise-icon">🏃</div>
+          <h4>Estocadas</h4>
+          <p>Equilibrio y fuerza unilateral</p>
+          <span class="difficulty intermediate">Intermedio</span>
+        </div>
+
+        <!-- Curl de Bíceps -->
+        <div class="exercise-card" (click)="startExercise('bicep_curls')">
+          <div class="exercise-icon">💪</div>
+          <h4>Curl de Bíceps</h4>
+          <p>Fortalece los brazos</p>
+          <span class="difficulty beginner">Principiante</span>
+        </div>
+
+        <!-- Próximamente -->
+        <div class="exercise-card coming-soon">
+          <div class="exercise-icon">⏳</div>
+          <h4>Más ejercicios</h4>
+          <p>Próximamente...</p>
+          <span class="difficulty">Pronto</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Botón de estadísticas detalladas -->
+    <div class="bottom-actions">
+      <ion-button 
+        fill="outline" 
+        expand="block" 
+        (click)="showDetailedStats()">
+        <ion-icon name="analytics-outline" slot="start"></ion-icon>
+        Ver Estadísticas Detalladas
+      </ion-button>
+    </div>
+
+  </div>
+
+  <!-- VISTA DE CÁMARA ACTIVA -->
+  <div *ngIf="showCamera" class="camera-section">
+    
+    <!-- Header de la sesión -->
+    <div class="session-header">
+      <ion-button 
+        fill="clear" 
+        color="light" 
+        (click)="exitCamera()">
+        <ion-icon name="arrow-back" slot="icon-only"></ion-icon>
+      </ion-button>
+      
+      <div class="session-info">
+        <h3>{{ getExerciseName(selectedExercise) }}</h3>
+        <div class="session-stats">
+          <span>{{ sessionData.repetitions }} reps</span>
+          <span>{{ sessionData.avgQuality }}% calidad</span>
+        </div>
+      </div>
+      
+      <ion-button 
+        fill="clear" 
+        color="light" 
+        (click)="showDetailedStats()">
+        <ion-icon name="stats-chart" slot="icon-only"></ion-icon>
+      </ion-button>
+    </div>
+
+    <!-- Componente de cámara -->
+    <app-pose-camera
+      [exerciseType]="selectedExercise"
+      [showSkeleton]="true"
+      [showAngles]="false"
+      [enableErrorDetection]="true"
+      (poseDetected)="onPoseDetected($event)"
+      (errorDetected)="onErrorDetected($event)"
+      (repetitionComplete)="onRepetitionComplete($event)"
+      (qualityScore)="onQualityScore($event)">
+    </app-pose-camera>
+
+    <!-- Overlay de información en tiempo real -->
+    <div class="realtime-info" *ngIf="sessionData.errors.length > 0">
+      <div class="error-alerts">
+        <div 
+          *ngFor="let error of sessionData.errors; trackBy: trackByErrorType" 
+          class="error-alert"
+          [ngClass]="'severity-' + error.severity">
+          <ion-icon name="warning" color="warning"></ion-icon>
+          <span>{{ error.description }}</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
 </ion-content>

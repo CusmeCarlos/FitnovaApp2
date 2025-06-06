@@ -1,9 +1,11 @@
+// src/app/pages/auth/login/login.page.ts
+
+
 import { Component, OnInit, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { ToastController, LoadingController } from '@ionic/angular';
+import { LoadingController } from '@ionic/angular';
 import { AuthService } from '../../../services/auth.service';
-import { FirebaseError } from 'firebase/app';
 import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -29,7 +31,6 @@ export class LoginPage implements OnInit {
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private toastController: ToastController,
     private loadingController: LoadingController
   ) {
     this.loginForm = this.fb.group({
@@ -58,6 +59,7 @@ export class LoginPage implements OnInit {
   async onSubmit() {
     if (this.loginForm.invalid) return;
     
+    this.loading = true;
     const loading = await this.loadingController.create({
       message: 'Iniciando sesión...',
       spinner: 'crescent'
@@ -67,34 +69,10 @@ export class LoginPage implements OnInit {
     try {
       const { email, password } = this.loginForm.value;
       await this.authService.login(email, password);
-      await this.router.navigate(['/tabs']);
+      // El AuthService ahora maneja el éxito y navegación
     } catch (error) {
-      let message = 'Ocurrió un error durante el inicio de sesión';
-      
-      if (error instanceof FirebaseError) {
-        switch (error.code) {
-          case 'auth/user-not-found':
-            message = 'No existe una cuenta con este correo electrónico';
-            break;
-          case 'auth/wrong-password':
-            message = 'Contraseña incorrecta';
-            break;
-          case 'auth/too-many-requests':
-            message = 'Demasiados intentos fallidos. Intente más tarde';
-            break;
-          case 'auth/invalid-email':
-            message = 'El formato del correo electrónico no es válido';
-            break;
-        }
-      }
-      
-      const toast = await this.toastController.create({
-        message,
-        duration: 3000,
-        position: 'bottom',
-        color: 'danger'
-      });
-      await toast.present();
+      // El ErrorHandlerService ahora maneja todos los errores
+      console.log('Error capturado en login page:', error);
     } finally {
       await loading.dismiss();
       this.loading = false;
@@ -102,6 +80,7 @@ export class LoginPage implements OnInit {
   }
 
   async googleLogin() {
+    this.loading = true;
     const loading = await this.loadingController.create({
       message: 'Iniciando sesión con Google...',
       spinner: 'crescent'
@@ -110,15 +89,10 @@ export class LoginPage implements OnInit {
     
     try {
       await this.authService.googleLogin();
-      await this.router.navigate(['/tabs']);
+      // El AuthService ahora maneja el éxito y navegación
     } catch (error) {
-      const toast = await this.toastController.create({
-        message: 'Error al iniciar sesión con Google',
-        duration: 3000,
-        position: 'bottom',
-        color: 'danger'
-      });
-      await toast.present();
+      // El ErrorHandlerService ahora maneja todos los errores
+      console.log('Error capturado en google login:', error);
     } finally {
       await loading.dismiss();
       this.loading = false;

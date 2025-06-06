@@ -1,0 +1,68 @@
+<!-- 🔧 HTML SIMPLIFICADO PARA DEBUG - pose-camera.component.html -->
+<div class="camera-container">
+  
+  <!-- 🔄 LOADING STATE -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Iniciando cámara...</div>
+  </div>
+
+  <!-- ❌ ERROR STATE -->
+  <div class="error-overlay" *ngIf="error && !isLoading">
+    <div class="error-icon">📷</div>
+    <div class="error-title">Error de Cámara</div>
+    <div class="error-message">{{ error }}</div>
+    <button class="retry-button" (click)="startCamera()">REINTENTAR</button>
+  </div>
+
+  <!-- ✅ CÁMARA ACTIVA - VERSIÓN SIMPLIFICADA PARA DEBUG -->
+  <div class="camera-content" *ngIf="!isLoading && !error">
+    
+    <!-- 📹 VIDEO PRINCIPAL - CONFIGURACIÓN EXTREMA PARA MÓVIL -->
+    <video 
+      #videoElement 
+      class="mobile-video"
+      autoplay 
+      muted 
+      playsinline
+      webkit-playsinline="true"
+      [attr.autoplay]="true"
+      [attr.muted]="true"
+      [attr.playsinline]="true">
+    </video>
+    
+    <!-- 🎨 CANVAS PRINCIPAL -->
+    <canvas 
+      #canvasElement 
+      class="mobile-canvas">
+    </canvas>
+    
+    <!-- 🎯 CANVAS OVERLAY -->
+    <canvas 
+      #overlayElement 
+      class="mobile-overlay">
+    </canvas>
+    
+    <!-- 📊 DEBUG INFO - SIMPLIFICADO -->
+    <div class="debug-info">
+      <div>Estado: {{ isRunning ? 'Corriendo' : 'Detenido' }}</div>
+      <div>Repeticiones: {{ repetitionCount }}</div>
+      <div>FPS: {{ fps }}</div>
+      <div>Errores: {{ currentErrors.length || 0 }}</div>
+    </div>
+    
+    <!-- 🎮 CONTROLES BÁSICOS -->
+    <div class="simple-controls">
+      <button class="big-button" (click)="toggleSkeleton()">
+        {{ showSkeleton ? '🦴 ON' : '🦴 OFF' }}
+      </button>
+      <button class="big-button" (click)="resetSession()">
+        🔄
+      </button>
+      <button class="big-button" (click)="stopCamera()">
+        ⏹️
+      </button>
+    </div>
+    
+  </div>
+</div>

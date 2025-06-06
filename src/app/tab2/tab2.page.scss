@@ -1,0 +1,460 @@
+// src/app/tab2/tab2.page.scss
+
+ion-content {
+  --background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+// 🏠 DASHBOARD PRINCIPAL
+.training-dashboard {
+  padding: 20px;
+  min-height: 100vh;
+}
+
+// 📊 HEADER SECTION
+.header-section {
+  text-align: center;
+  margin-bottom: 30px;
+  color: white;
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  p {
+    font-size: 16px;
+    opacity: 0.9;
+    font-weight: 300;
+  }
+}
+
+// 📈 ESTADÍSTICAS DEL DÍA
+.stats-card {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 25px;
+  margin-bottom: 30px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  h3 {
+    color: white;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .stat-item {
+    text-align: center;
+    color: white;
+
+    ion-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+      opacity: 0.8;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+}
+
+// 🏋️ SECCIÓN DE EJERCICIOS
+.exercises-section {
+  margin-bottom: 30px;
+
+  h3 {
+    color: white;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .exercises-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .exercise-card {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    position: relative;
+    overflow: hidden;
+
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    &:active {
+      transform: translateY(-2px);
+    }
+
+    &.coming-soon {
+      opacity: 0.6;
+      cursor: not-allowed;
+      
+      &:hover {
+        transform: none;
+        box-shadow: none;
+        background: rgba(255, 255, 255, 0.12);
+      }
+    }
+
+    .exercise-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    }
+
+    h4 {
+      color: white;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .difficulty {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+
+      &.beginner {
+        background: rgba(16, 220, 96, 0.2);
+        color: #10dc60;
+        border: 1px solid rgba(16, 220, 96, 0.3);
+      }
+
+      &.intermediate {
+        background: rgba(255, 206, 0, 0.2);
+        color: #ffce00;
+        border: 1px solid rgba(255, 206, 0, 0.3);
+      }
+
+      &.advanced {
+        background: rgba(240, 65, 65, 0.2);
+        color: #f04141;
+        border: 1px solid rgba(240, 65, 65, 0.3);
+      }
+    }
+  }
+}
+
+// 🎯 ACCIONES INFERIORES
+.bottom-actions {
+  margin-top: 30px;
+  margin-bottom: 30px;
+
+  ion-button {
+    --background: rgba(255, 255, 255, 0.15);
+    --color: white;
+    --border-color: rgba(255, 255, 255, 0.3);
+    --border-radius: 12px;
+    height: 48px;
+    font-weight: 500;
+
+    &:hover {
+      --background: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
+// 📹 SECCIÓN DE CÁMARA
+.camera-section {
+  position: relative;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+// 📋 HEADER DE SESIÓN
+.session-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 10;
+  color: white;
+
+  .session-info {
+    flex: 1;
+    text-align: center;
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+      margin-bottom: 4px;
+    }
+
+    .session-stats {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      font-size: 12px;
+      opacity: 0.8;
+
+      span {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 2px 8px;
+        border-radius: 8px;
+      }
+    }
+  }
+}
+
+// ⚠️ INFORMACIÓN EN TIEMPO REAL
+.realtime-info {
+  position: absolute;
+  top: 80px;
+  left: 16px;
+  right: 16px;
+  z-index: 15;
+  pointer-events: none;
+
+  .error-alerts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .error-alert {
+    background: rgba(240, 65, 65, 0.9);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: slideInDown 0.3s ease-out;
+
+    ion-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    &.severity-1, &.severity-2, &.severity-3 {
+      background: rgba(255, 206, 0, 0.9);
+    }
+
+    &.severity-4, &.severity-5, &.severity-6 {
+      background: rgba(255, 149, 0, 0.9);
+    }
+
+    &.severity-7, &.severity-8, &.severity-9, &.severity-10 {
+      background: rgba(240, 65, 65, 0.9);
+    }
+  }
+}
+
+// 📱 RESPONSIVE DESIGN
+@media (max-width: 768px) {
+  .training-dashboard {
+    padding: 16px;
+  }
+
+  .exercises-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .exercise-card {
+    padding: 16px;
+    
+    .exercise-icon {
+      font-size: 40px;
+    }
+
+    h4 {
+      font-size: 16px;
+    }
+  }
+
+  .stats-grid {
+    gap: 16px;
+  }
+
+  .header-section {
+    h1 {
+      font-size: 24px;
+    }
+
+    p {
+      font-size: 14px;
+    }
+  }
+
+  .session-header {
+    height: 60px;
+    padding: 0 12px;
+
+    .session-info {
+      h3 {
+        font-size: 16px;
+      }
+
+      .session-stats {
+        font-size: 11px;
+        gap: 12px;
+      }
+    }
+  }
+
+  .realtime-info {
+    top: 70px;
+    left: 12px;
+    right: 12px;
+
+    .error-alert {
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .training-dashboard {
+    padding: 12px;
+  }
+
+  .stats-card {
+    padding: 20px;
+  }
+
+  .stats-grid {
+    gap: 12px;
+  }
+
+  .stat-item {
+    .stat-value {
+      font-size: 20px;
+    }
+  }
+
+  .exercise-card {
+    padding: 14px;
+  }
+}
+
+// 🎬 ANIMACIONES
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.training-dashboard {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.exercise-card {
+  animation: scaleIn 0.4s ease-out;
+  animation-fill-mode: both;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// Delay para cards
+.exercise-card:nth-child(1) { animation-delay: 0.1s; }
+.exercise-card:nth-child(2) { animation-delay: 0.2s; }
+.exercise-card:nth-child(3) { animation-delay: 0.3s; }
+.exercise-card:nth-child(4) { animation-delay: 0.4s; }
+.exercise-card:nth-child(5) { animation-delay: 0.5s; }
+.exercise-card:nth-child(6) { animation-delay: 0.6s; }
+
+// 🔧 UTILIDADES ADICIONALES
+.trackBy {
+  // Para optimizar ngFor con trackBy
+}
+
+// Estado de calidad específico para tab2
+.quality-indicator {
+  &.excellent {
+    color: #10dc60;
+  }
+  &.good {
+    color: #ffce00;
+  }
+  &.fair {
+    color: #ff9500;
+  }
+  &.poor {
+    color: #f04141;
+  }
+}
