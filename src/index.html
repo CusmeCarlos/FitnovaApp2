@@ -14,11 +14,54 @@
 
   <link rel="icon" type="image/png" href="assets/icon/favicon.png" />
 
-  <!-- MediaPipe Scripts - URLs VERIFICADOS -->
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <!-- ✅ MediaPipe Scripts - ORDEN CORRECTO Y URLs VERIFICADOS -->
+  <!-- 1. Control Utils - Primero -->
   <script crossorigin src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+  
+  <!-- 2. Drawing Utils - Segundo -->
   <script crossorigin src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  
+  <!-- 3. Camera Utils - Tercero -->
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  
+  <!-- 4. Pose - Último y más importante -->
   <script crossorigin src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+
+  <!-- ✅ Script de verificación de MediaPipe -->
+  <script>
+    // Verificar que MediaPipe se haya cargado correctamente
+    window.addEventListener('load', function() {
+      console.log('🔍 Verificando MediaPipe...');
+      
+      const components = {
+        'Pose': window.Pose,
+        'Camera': window.Camera,
+        'drawConnectors': window.drawConnectors,
+        'drawLandmarks': window.drawLandmarks,
+        'POSE_CONNECTIONS': window.POSE_CONNECTIONS,
+        'POSE_LANDMARKS': window.POSE_LANDMARKS
+      };
+      
+      let allLoaded = true;
+      
+      for (const [name, component] of Object.entries(components)) {
+        if (component) {
+          console.log(`✅ ${name}: Disponible`);
+        } else {
+          console.error(`❌ ${name}: NO disponible`);
+          allLoaded = false;
+        }
+      }
+      
+      if (allLoaded) {
+        console.log('🎉 MediaPipe completamente cargado y listo');
+        window.dispatchEvent(new CustomEvent('mediapipe-ready'));
+      } else {
+        console.error('💥 Error: MediaPipe no se cargó completamente');
+        window.dispatchEvent(new CustomEvent('mediapipe-error'));
+      }
+    });
+  </script>
 
   <!-- add to homescreen for ios -->
   <meta name="apple-mobile-web-app-capable" content="yes" />

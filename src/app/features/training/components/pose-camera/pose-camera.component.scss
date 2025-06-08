@@ -1,182 +1,299 @@
-  /* 🎯 CSS EXACTO QUE FUNCIONÓ ANTES */
+/* src/app/features/training/components/pose-camera/pose-camera.component.scss */
+/* ✅ ESTILOS PARA VIEWCHILD STATIC:TRUE */
 
-  .camera-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: #000;
-    overflow: hidden;
-    z-index: 1;
-  }
+.camera-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  overflow: hidden;
+  z-index: 1000;
+}
 
-  .camera-content {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    background: #000;
-  }
+/* 📹 ELEMENTOS DE CÁMARA - SIEMPRE PRESENTES */
+.camera-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
 
-/* 📹 VIDEO - FORZAR VISIBILIDAD */
-.mobile-video {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  z-index: 15 !important; /* CAMBIAR DE 5 A 15 */
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  background: red !important; /* TEMPORAL PARA VER SI APARECE */
+.video-element {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  transform: scaleX(-1);
+  background: #000;
+}
+
+.canvas-element {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  display: none; /* MediaPipe lo usa internamente */
+}
+
+.overlay-element {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  background: transparent;
+  /* ✅ APLICAR TRANSFORM CSS PARA CORREGIR EL ESPEJO */
+  transform: scaleX(-1);
+}
+
+/* 🎨 UI OVERLAY - ENCIMA DE TODO */
+.ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none; /* Permitir que los hijos tengan pointer-events */
+}
+
+/* 🔄 LOADING */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  color: white;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+.loading-text {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.loading-subtitle {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* ❌ ERROR */
+.error-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  color: white;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.error-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 16px;
+}
+
+.error-message {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 30px;
+  max-width: 400px;
+}
+
+.retry-button {
+  background: white;
+  color: #ff6b6b;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s;
   
-  /* Efecto espejo */
-  -webkit-transform: scaleX(-1) !important;
-  transform: scaleX(-1) !important;
+  &:active {
+    transform: scale(0.95);
+  }
 }
 
-/* CAMBIAR ESTOS TAMBIÉN */
-.mobile-canvas {
-  z-index: 1 !important;
-  position: absolute !important;
-  display: none !important; /* OCULTAR TEMPORALMENTE */
+/* 📊 DEBUG PANEL */
+.debug-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 10px;
+  padding: 15px;
+  color: white;
+  font-family: monospace;
+  font-size: 14px;
+  min-width: 150px;
+  pointer-events: auto; /* Permitir interacción */
 }
 
-.mobile-overlay {
-  z-index: 2 !important; /* BAJAR DE 10 A 2 */
-  position: absolute !important;
+.debug-row {
+  margin-bottom: 5px;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
-.debug-info {
-  z-index: 20 !important; /* SUBIR PARA QUE ESTÉ ENCIMA */
+/* 🎮 CONTROLES */
+.controls-panel {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 15px;
+  pointer-events: auto; /* Permitir interacción */
 }
 
-
-
-  /* 🎮 CONTROLES - VOLVER A VERDE BÁSICO */
-  .simple-controls {
-    position: fixed !important;
-    bottom: 30px !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    display: flex !important;
-    gap: 15px !important;
-    z-index: 100 !important;
+.control-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50px;
+  padding: 15px 20px;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 60px;
+  text-align: center;
+  pointer-events: auto; /* Importante para que funcionen */
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.8);
   }
-
-  .big-button {
-    background: rgba(255, 255, 255, 0.95) !important;
-    border: 2px solid #00FF00 !important;
-    border-radius: 50px !important;
-    padding: 15px 20px !important;
-    font-size: 16px !important;
-    font-weight: 700 !important;
-    color: #00AA00 !important;
-    cursor: pointer !important;
-    min-width: 60px !important;
-    text-align: center !important;
-    
-    &:active {
-      transform: scale(0.9) !important;
-      background: #00FF00 !important;
-      color: white !important;
-    }
+  
+  &:active {
+    transform: scale(0.95);
   }
+}
 
-  /* LOADING Y ERROR - SIN CAMBIOS */
-  .loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    color: white;
-  }
+/* ⚠️ ALERTAS */
+.error-alerts {
+  position: absolute;
+  top: 100px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none; /* Las alertas no necesitan interacción */
+}
 
-  .loading-spinner {
-    width: 60px;
-    height: 60px;
-    border: 6px solid rgba(255, 255, 255, 0.3);
-    border-top: 6px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 24px;
-  }
+.error-alert {
+  background: rgba(255, 48, 48, 0.9);
+  border-radius: 10px;
+  padding: 15px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  animation: slideIn 0.3s ease-out;
+}
 
-  .loading-text {
-    font-size: 18px;
-    font-weight: 500;
-    text-align: center;
+/* 📱 RESPONSIVE */
+@media (max-width: 768px) {
+  .debug-panel {
+    top: 10px;
+    left: 10px;
+    padding: 10px;
+    font-size: 12px;
+    min-width: 120px;
   }
+  
+  .controls-panel {
+    bottom: 20px;
+    gap: 10px;
+  }
+  
+  .control-btn {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-width: 50px;
+  }
+  
+  .error-alerts {
+    top: 80px;
+    left: 10px;
+    right: 10px;
+  }
+  
+  .error-alert {
+    padding: 12px;
+    font-size: 13px;
+  }
+}
 
-  .error-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    color: white;
-    padding: 40px 20px;
-    text-align: center;
-  }
+/* 🎬 ANIMACIONES */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
-  .error-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
-  .error-title {
-    font-size: 24px;
-    font-weight: bold;
-    margin-bottom: 16px;
-  }
-
-  .error-message {
-    font-size: 16px;
-    line-height: 1.5;
-    margin-bottom: 32px;
-    opacity: 0.9;
-    max-width: 300px;
-  }
-
-  .retry-button {
-    background: white;
-    color: #ff6b6b;
-    border: none;
-    padding: 16px 32px;
-    border-radius: 30px;
-    font-size: 16px;
-    font-weight: 700;
-    cursor: pointer;
-    
-    &:active {
-      transform: scale(0.95);
-    }
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  /* 🔧 PREVENT ZOOM */
-  * {
-    -webkit-tap-highlight-color: transparent !important;
-    -webkit-touch-callout: none !important;
-    -webkit-user-select: none !important;
-    user-select: none !important;
-  }
+/* 🔧 UTILIDADES */
+* {
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}

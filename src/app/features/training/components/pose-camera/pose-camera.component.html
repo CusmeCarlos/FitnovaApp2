@@ -1,68 +1,83 @@
-<!-- 🔧 HTML SIMPLIFICADO PARA DEBUG - pose-camera.component.html -->
+<!-- src/app/features/training/components/pose-camera/pose-camera.component.html -->
+<!-- ✅ TEMPLATE CON ESTRATEGIA STATIC:TRUE -->
+
 <div class="camera-container">
   
-  <!-- 🔄 LOADING STATE -->
+  <!-- 🔄 ESTADO DE CARGA -->
   <div class="loading-overlay" *ngIf="isLoading">
     <div class="loading-spinner"></div>
     <div class="loading-text">Iniciando cámara...</div>
+    <div class="loading-subtitle" *ngIf="initializationAttempts > 0">
+      Intento {{ initializationAttempts }} de {{ maxInitializationAttempts }}
+    </div>
   </div>
 
-  <!-- ❌ ERROR STATE -->
+  <!-- ❌ ESTADO DE ERROR -->
   <div class="error-overlay" *ngIf="error && !isLoading">
     <div class="error-icon">📷</div>
-    <div class="error-title">Error de Cámara</div>
+    <div class="error-title">Error de Inicialización</div>
     <div class="error-message">{{ error }}</div>
-    <button class="retry-button" (click)="startCamera()">REINTENTAR</button>
+    <button class="retry-button" (click)="startCamera()">
+      REINTENTAR
+    </button>
   </div>
 
-  <!-- ✅ CÁMARA ACTIVA - VERSIÓN SIMPLIFICADA PARA DEBUG -->
-  <div class="camera-content" *ngIf="!isLoading && !error">
+  <!-- ✅ ELEMENTOS DE CÁMARA - SIEMPRE PRESENTES PARA VIEWCHILD STATIC -->
+  <div class="camera-content" 
+       [style.display]="(!isLoading && !error && isInitialized) ? 'block' : 'none'">
     
-    <!-- 📹 VIDEO PRINCIPAL - CONFIGURACIÓN EXTREMA PARA MÓVIL -->
+    <!-- 📹 VIDEO - SIEMPRE EN DOM -->
     <video 
       #videoElement 
-      class="mobile-video"
+      class="video-element"
       autoplay 
       muted 
-      playsinline
-      webkit-playsinline="true"
-      [attr.autoplay]="true"
-      [attr.muted]="true"
-      [attr.playsinline]="true">
+      playsinline>
     </video>
     
-    <!-- 🎨 CANVAS PRINCIPAL -->
+    <!-- 🎨 CANVAS - SIEMPRE EN DOM -->
     <canvas 
       #canvasElement 
-      class="mobile-canvas">
+      class="canvas-element">
     </canvas>
     
-    <!-- 🎯 CANVAS OVERLAY -->
+    <!-- 🎯 OVERLAY - SIEMPRE EN DOM -->
     <canvas 
       #overlayElement 
-      class="mobile-overlay">
+      class="overlay-element">
     </canvas>
     
-    <!-- 📊 DEBUG INFO - SIMPLIFICADO -->
-    <div class="debug-info">
-      <div>Estado: {{ isRunning ? 'Corriendo' : 'Detenido' }}</div>
-      <div>Repeticiones: {{ repetitionCount }}</div>
-      <div>FPS: {{ fps }}</div>
-      <div>Errores: {{ currentErrors.length || 0 }}</div>
+  </div>
+
+  <!-- 📊 UI ELEMENTOS - SOLO CUANDO ESTÁ ACTIVO -->
+  <div class="ui-overlay" *ngIf="!isLoading && !error && isInitialized">
+    
+    <!-- DEBUG PANEL -->
+    <div class="debug-panel" *ngIf="fps > 0">
+      <div class="debug-row">FPS: {{ fps }}</div>
+      <div class="debug-row">Reps: {{ repetitionCount }}</div>
+      <div class="debug-row">Calidad: {{ currentQuality }}%</div>
+      <div class="debug-row">Errores: {{ currentErrors.length }}</div>
     </div>
     
-    <!-- 🎮 CONTROLES BÁSICOS -->
-    <div class="simple-controls">
-      <button class="big-button" (click)="toggleSkeleton()">
+    <!-- CONTROLES -->
+    <div class="controls-panel">
+      <button class="control-btn" (click)="toggleSkeleton()">
         {{ showSkeleton ? '🦴 ON' : '🦴 OFF' }}
       </button>
-      <button class="big-button" (click)="resetSession()">
-        🔄
-      </button>
-      <button class="big-button" (click)="stopCamera()">
-        ⏹️
-      </button>
+      <button class="control-btn" (click)="resetSession()">🔄</button>
+      <button class="control-btn" (click)="stopCamera()">⏹️</button>
+    </div>
+    
+    <!-- ALERTAS DE ERRORES -->
+    <div class="error-alerts" *ngIf="currentErrors.length > 0">
+      <div 
+        *ngFor="let error of currentErrors; trackBy: trackByErrorType" 
+        class="error-alert">
+        ⚠️ {{ error.description }}
+      </div>
     </div>
     
   </div>
-</div>
+
+>

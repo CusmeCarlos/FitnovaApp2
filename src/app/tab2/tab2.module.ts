@@ -1,4 +1,5 @@
 // src/app/tab2/tab2.module.ts
+// ✅ MÓDULO CORREGIDO - INCREMENTO 2
 
 import { IonicModule } from '@ionic/angular';
 import { NgModule } from '@angular/core';
@@ -9,7 +10,7 @@ import { ExploreContainerComponentModule } from '../explore-container/explore-co
 
 import { Tab2PageRoutingModule } from './tab2-routing.module';
 
-// Importar el componente de cámara
+// ✅ Importar el componente de cámara standalone
 import { PoseCameraComponent } from '../features/training/components/pose-camera/pose-camera.component';
 
 @NgModule({
@@ -19,7 +20,7 @@ import { PoseCameraComponent } from '../features/training/components/pose-camera
     FormsModule,
     ExploreContainerComponentModule,
     Tab2PageRoutingModule,
-    // Importar el componente standalone
+    // ✅ Importar el componente standalone de cámara
     PoseCameraComponent
   ],
   declarations: [Tab2Page]

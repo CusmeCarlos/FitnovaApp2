@@ -1,9 +1,9 @@
 // src/app/core/pose-engine/pose-detection.engine.ts
-// ✅ VERSIÓN COMPLETA DEL ENGINE CON MEDIAPIPE REAL
+// ✅ ENGINE RECONSTRUIDO - INCREMENTO 2 CORREGIDO
 
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { PoseKeypoints, PoseLandmark, BiomechanicalAngles, ExerciseType } from '../../shared/models/pose.models';
+import { PoseKeypoints, PoseLandmark, BiomechanicalAngles } from '../../shared/models/pose.models';
 
 // Declaraciones globales para MediaPipe
 declare global {
@@ -26,37 +26,26 @@ export class PoseDetectionEngine {
   private isInitialized = false;
   private isRunning = false;
 
-  // Streams reactivos para la aplicación
+  // Streams reactivos
   private poseStream = new BehaviorSubject<PoseKeypoints | null>(null);
   private anglesStream = new BehaviorSubject<BiomechanicalAngles | null>(null);
   private fpsStream = new BehaviorSubject<number>(0);
-  private statusStream = new BehaviorSubject<'initializing' | 'ready' | 'running' | 'error' | 'loading'>('loading');
+  private statusStream = new BehaviorSubject<'loading' | 'ready' | 'running' | 'error'>('loading');
 
-  // Métricas de rendimiento
+  // Control de FPS
   private frameCount = 0;
   private lastFpsUpdate = Date.now();
-  private processingTimes: number[] = [];
 
-  // Control de carga de MediaPipe
+  // Control de carga
   private mediaPipeLoaded = false;
   private loadingPromise: Promise<void> | null = null;
 
-  // Configuración avanzada
-  private readonly config = {
-    modelComplexity: 1,
-    enableSegmentation: false,
-    smoothLandmarks: true,
-    smoothSegmentation: false,
-    minDetectionConfidence: 0.7,
-    minTrackingConfidence: 0.5,
-    selfieMode: true
-  };
-
   constructor() {
-    this.ensureMediaPipeLoaded();
+    console.log('🎬 PoseDetectionEngine constructor');
+    this.checkMediaPipeAvailability();
   }
 
-  // 🚀 GETTERS PARA STREAMS REACTIVOS
+  // 🎯 GETTERS PARA STREAMS
   get pose$(): Observable<PoseKeypoints | null> {
     return this.poseStream.asObservable();
   }
@@ -73,82 +62,53 @@ export class PoseDetectionEngine {
     return this.statusStream.asObservable();
   }
 
-  // 📦 CARGAR MEDIAPIPE DINÁMICAMENTE
-  private async ensureMediaPipeLoaded(): Promise<void> {
-    if (this.mediaPipeLoaded) return;
-    
-    if (this.loadingPromise) {
-      return this.loadingPromise;
-    }
-
-    this.loadingPromise = this.loadMediaPipeScripts();
-    return this.loadingPromise;
-  }
-
-  private async loadMediaPipeScripts(): Promise<void> {
-    try {
-      console.log('📦 Verificando MediaPipe scripts...');
-      this.statusStream.next('loading');
-
-      // Verificar si MediaPipe ya está disponible
-      if (window.Pose && window.Camera) {
-        console.log('✅ MediaPipe ya está disponible');
-        this.mediaPipeLoaded = true;
-        await this.initializePose();
-        return;
-      }
-
-      // Si no está disponible, los scripts deberían cargarse desde index.html
-      console.log('⏳ Esperando que MediaPipe se cargue...');
-      
-      // Esperar a que los scripts se carguen
-      await this.waitForMediaPipe();
-      
-      console.log('✅ MediaPipe detectado, inicializando...');
+  // 🔍 VERIFICAR DISPONIBILIDAD DE MEDIAPIPE
+  private checkMediaPipeAvailability(): void {
+    if (window.Pose && window.Camera) {
+      console.log('✅ MediaPipe ya disponible');
       this.mediaPipeLoaded = true;
-      await this.initializePose();
-
-    } catch (error) {
-      console.error('❌ Error cargando MediaPipe:', error);
-      this.statusStream.next('error');
-      throw error;
+      this.statusStream.next('ready');
+    } else {
+      console.log('⏳ Esperando MediaPipe...');
+      this.waitForMediaPipe();
     }
   }
 
-  private waitForMediaPipe(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      let attempts = 0;
-      const maxAttempts = 30; // 3 segundos máximo
+  // ⏳ ESPERAR A QUE MEDIAPIPE SE CARGUE
+  private waitForMediaPipe(): void {
+    let attempts = 0;
+    const maxAttempts = 50; // 5 segundos
+    
+    const checkInterval = setInterval(() => {
+      attempts++;
       
-      const checkMediaPipe = () => {
-        attempts++;
-        
-        if (window.Pose && window.Camera) {
-          console.log('✅ MediaPipe encontrado en intento', attempts);
-          resolve();
-        } else if (attempts >= maxAttempts) {
-          console.error('❌ MediaPipe no se cargó después de', maxAttempts, 'intentos');
-          reject(new Error('MediaPipe no disponible'));
-        } else {
-          console.log('⏳ Esperando MediaPipe... intento', attempts);
-          setTimeout(checkMediaPipe, 100);
-        }
-      };
-      
-      checkMediaPipe();
-    });
+      if (window.Pose && window.Camera && window.drawConnectors && window.POSE_CONNECTIONS) {
+        console.log('✅ MediaPipe cargado después de', attempts, 'intentos');
+        clearInterval(checkInterval);
+        this.mediaPipeLoaded = true;
+        this.statusStream.next('ready');
+      } else if (attempts >= maxAttempts) {
+        console.error('❌ MediaPipe no se cargó después de', maxAttempts, 'intentos');
+        clearInterval(checkInterval);
+        this.statusStream.next('error');
+      }
+    }, 100);
   }
 
-  // 🔧 INICIALIZACIÓN DEL MOTOR MEDIAPIPE
-  private async initializePose(): Promise<void> {
-    try {
-      console.log('🧠 Iniciando MediaPipe Pose Engine...');
-      this.statusStream.next('initializing');
+  // 🚀 INICIALIZAR MEDIAPIPE
+  async initializeMediaPipe(): Promise<void> {
+    if (this.isInitialized) {
+      console.log('✅ MediaPipe ya inicializado');
+      return;
+    }
 
-      // Verificar que MediaPipe esté disponible
-      if (!window.Pose) {
-        throw new Error('MediaPipe Pose no está disponible');
-      }
+    if (!this.mediaPipeLoaded) {
+      throw new Error('MediaPipe no está disponible');
+    }
+
+    try {
+      console.log('🔧 Inicializando MediaPipe Pose...');
+      this.statusStream.next('loading');
 
       // Crear instancia de Pose
       this.pose = new window.Pose({
@@ -157,17 +117,24 @@ export class PoseDetectionEngine {
         }
       });
 
-      console.log('⚙️ Configurando MediaPipe...');
-      await this.pose.setOptions(this.config);
+      // Configurar opciones
+      await this.pose.setOptions({
+        modelComplexity: 1,
+        enableSegmentation: false,
+        smoothLandmarks: true,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.5,
+        selfieMode: true
+      });
 
-      console.log('🎯 Configurando callback de resultados...');
+      // Configurar callback de resultados
       this.pose.onResults((results: any) => {
         this.processPoseResults(results);
       });
 
       this.isInitialized = true;
       this.statusStream.next('ready');
-      console.log('✅ MediaPipe Pose Engine inicializado correctamente');
+      console.log('✅ MediaPipe inicializado correctamente');
 
     } catch (error) {
       console.error('❌ Error inicializando MediaPipe:', error);
@@ -176,88 +143,59 @@ export class PoseDetectionEngine {
     }
   }
 
-  // 📹 INICIAR CÁMARA Y DETECCIÓN - VERSIÓN COMPLETA
+  // 📹 INICIAR CÁMARA
   async startCamera(videoElement: HTMLVideoElement, canvasElement: HTMLCanvasElement): Promise<void> {
     try {
-      console.log('📹 Iniciando cámara con MediaPipe...');
-      this.statusStream.next('initializing');
+      console.log('📹 === INICIANDO CÁMARA ===');
 
-      // Esperar a que MediaPipe esté listo
-      await this.ensureMediaPipeLoaded();
-
+      // 1. Asegurar que MediaPipe esté inicializado
       if (!this.isInitialized) {
-        throw new Error('MediaPipe no está inicializado');
+        await this.initializeMediaPipe();
       }
 
-      // ✅ OBTENER STREAM DE CÁMARA
+      // 2. Obtener stream de cámara
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 1280, min: 640, max: 1920 },
-          height: { ideal: 720, min: 480, max: 1080 },
-          facingMode: 'user',
-          frameRate: { ideal: 30, min: 15, max: 60 }
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
         }
       });
 
-      console.log('✅ Stream obtenido:', {
-        tracks: stream.getVideoTracks().length,
-        settings: stream.getVideoTracks()[0]?.getSettings()
-      });
+      console.log('✅ Stream de cámara obtenido');
 
-      // ✅ CONFIGURAR VIDEO
+      // 3. Configurar video element
       videoElement.srcObject = stream;
-      videoElement.playsInline = true;
-      videoElement.muted = true;
       videoElement.autoplay = true;
+      videoElement.muted = true;
+      videoElement.playsInline = true;
 
-      // ✅ ESPERAR A QUE EL VIDEO ESTÉ LISTO
-      await new Promise<void>((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-          reject(new Error('Timeout cargando video'));
-        }, 10000);
-
+      // 4. Esperar a que el video esté listo
+      await new Promise<void>((resolve) => {
         const onLoadedMetadata = () => {
-          clearTimeout(timeoutId);
           console.log('✅ Video metadata cargada:', {
             videoWidth: videoElement.videoWidth,
-            videoHeight: videoElement.videoHeight,
-            readyState: videoElement.readyState
+            videoHeight: videoElement.videoHeight
           });
           resolve();
         };
 
-        const onError = (error: any) => {
-          clearTimeout(timeoutId);
-          console.error('❌ Error cargando video:', error);
-          reject(error);
-        };
-
-        videoElement.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
-        videoElement.addEventListener('error', onError, { once: true });
-        
         if (videoElement.readyState >= 2) {
           onLoadedMetadata();
+        } else {
+          videoElement.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
         }
       });
 
-      // ✅ REPRODUCIR VIDEO
-      try {
-        await videoElement.play();
-        console.log('✅ Video reproduciendo');
-      } catch (playError) {
-        console.error('❌ Error reproduciendo:', playError);
-      }
+      // 5. Reproducir video
+      await videoElement.play();
+      console.log('✅ Video reproduciendo');
 
-      // ✅ CONFIGURAR CANVAS
+      // 6. Configurar canvas
       canvasElement.width = videoElement.videoWidth || 640;
       canvasElement.height = videoElement.videoHeight || 480;
 
-      console.log('✅ Canvas configurado:', {
-        width: canvasElement.width,
-        height: canvasElement.height
-      });
-
-      // 🚀 INICIALIZAR CAMERA DE MEDIAPIPE
+      // 7. Iniciar MediaPipe Camera
       if (window.Camera) {
         this.camera = new window.Camera(videoElement, {
           onFrame: async () => {
@@ -269,20 +207,19 @@ export class PoseDetectionEngine {
           height: canvasElement.height
         });
 
-        // ✅ INICIAR CÁMARA DE MEDIAPIPE
         await this.camera.start();
-        console.log('✅ Camera de MediaPipe iniciada');
+        console.log('✅ MediaPipe Camera iniciada');
       } else {
-        // Fallback: usar requestAnimationFrame si Camera no está disponible
+        // Fallback manual
         this.startManualProcessing(videoElement);
       }
 
-      // ✅ MARCAR COMO CORRIENDO
+      // 8. Marcar como corriendo
       this.isRunning = true;
       this.statusStream.next('running');
       this.startFpsTracking();
 
-      console.log('🎉 Cámara y MediaPipe iniciados exitosamente');
+      console.log('🎉 === CÁMARA INICIADA EXITOSAMENTE ===');
 
     } catch (error) {
       console.error('❌ Error iniciando cámara:', error);
@@ -291,7 +228,7 @@ export class PoseDetectionEngine {
     }
   }
 
-  // 🔄 PROCESAMIENTO MANUAL COMO FALLBACK
+  // 🔄 PROCESAMIENTO MANUAL (FALLBACK)
   private startManualProcessing(videoElement: HTMLVideoElement): void {
     console.log('🔄 Iniciando procesamiento manual...');
     
@@ -300,7 +237,7 @@ export class PoseDetectionEngine {
         try {
           await this.pose.send({ image: videoElement });
         } catch (error) {
-          console.error('❌ Error en procesamiento manual:', error);
+          console.error('❌ Error en frame manual:', error);
         }
       }
       
@@ -312,67 +249,45 @@ export class PoseDetectionEngine {
     requestAnimationFrame(processFrame);
   }
 
-  // 🛑 DETENER CÁMARA Y DETECCIÓN
-  async stopCamera(): Promise<void> {
-    try {
-      if (this.camera) {
-        this.camera.stop();
-        this.camera = null;
-      }
-      
-      this.isRunning = false;
-      this.statusStream.next('ready');
-      console.log('🛑 Cámara detenida');
-
-    } catch (error) {
-      console.error('❌ Error deteniendo cámara:', error);
-    }
-  }
-
-  // 🧠 PROCESAMIENTO PRINCIPAL DE RESULTADOS - VERSIÓN COMPLETA
+  // 🧠 PROCESAR RESULTADOS DE MEDIAPIPE
   private processPoseResults(results: any): void {
     const startTime = performance.now();
-  
-    // ✅ VERIFICAR SI HAY POSES VÁLIDAS
-    if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
-      console.log('⚠️ No se detectaron poses');
-      this.poseStream.next(null);
-      this.anglesStream.next(null);
-      return;
-    }
-  
+
     try {
-      console.log('🎯 Pose detectada con', results.poseLandmarks.length, 'landmarks');
-      
-      // Convertir landmarks de MediaPipe a nuestro formato
-      const poseKeypoints = this.convertToKeypoints(results.poseLandmarks);
-      
-      // Calcular ángulos biomecánicos
-      const angles = this.calculateBiomechanicalAngles(poseKeypoints);
-      
-      // ✅ SOLO EMITIR SI LAS POSES SON VÁLIDAS
-      if (this.isPoseValid(poseKeypoints)) {
-        this.poseStream.next(poseKeypoints);
-        this.anglesStream.next(angles);
-        console.log('✅ Pose válida emitida');
-      } else {
-        console.log('⚠️ Pose inválida, no emitiendo');
+      // Verificar si hay landmarks válidos
+      if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
         this.poseStream.next(null);
         this.anglesStream.next(null);
+        return;
       }
-  
-      // Actualizar métricas de rendimiento
-      const processingTime = performance.now() - startTime;
-      this.updatePerformanceMetrics(processingTime);
-  
+
+      // Convertir a nuestro formato
+      const poseKeypoints = this.convertToKeypoints(results.poseLandmarks);
+      
+      // Verificar que la pose sea válida
+      if (!this.isPoseValid(poseKeypoints)) {
+        this.poseStream.next(null);
+        this.anglesStream.next(null);
+        return;
+      }
+
+      // Calcular ángulos
+      const angles = this.calculateBiomechanicalAngles(poseKeypoints);
+
+      // Emitir resultados
+      this.poseStream.next(poseKeypoints);
+      this.anglesStream.next(angles);
+
+      // Actualizar FPS
+      this.updateFpsCounter();
+
     } catch (error) {
-      console.error('❌ Error procesando pose:', error);
+      console.error('❌ Error procesando resultados:', error);
     }
   }
-  
-  // ✅ AGREGAR ESTE MÉTODO NUEVO
+
+  // ✅ VALIDAR POSE
   private isPoseValid(pose: PoseKeypoints): boolean {
-    // Verificar que los landmarks principales tengan buena visibilidad
     const keyLandmarks = [
       pose.left_shoulder, pose.right_shoulder,
       pose.left_hip, pose.right_hip,
@@ -380,10 +295,10 @@ export class PoseDetectionEngine {
     ];
     
     const validLandmarks = keyLandmarks.filter(landmark => landmark.visibility > 0.5);
-    return validLandmarks.length >= 4; // Al menos 4 de 6 landmarks clave
+    return validLandmarks.length >= 4;
   }
 
-  // 🔄 CONVERSIÓN DE LANDMARKS MEDIAPIPE A NUESTRO FORMATO
+  // 🔄 CONVERTIR LANDMARKS
   private convertToKeypoints(landmarks: any[]): PoseKeypoints {
     const createLandmark = (index: number): PoseLandmark => ({
       x: landmarks[index]?.x || 0,
@@ -393,7 +308,7 @@ export class PoseDetectionEngine {
     });
 
     return {
-      // Cara y cabeza (0-10)
+      // Cara y cabeza
       nose: createLandmark(0),
       left_eye_inner: createLandmark(1),
       left_eye: createLandmark(2),
@@ -406,7 +321,7 @@ export class PoseDetectionEngine {
       mouth_left: createLandmark(9),
       mouth_right: createLandmark(10),
 
-      // Torso superior (11-16)
+      // Torso superior
       left_shoulder: createLandmark(11),
       right_shoulder: createLandmark(12),
       left_elbow: createLandmark(13),
@@ -414,7 +329,7 @@ export class PoseDetectionEngine {
       left_wrist: createLandmark(15),
       right_wrist: createLandmark(16),
 
-      // Manos (17-22)
+      // Manos
       left_pinky: createLandmark(17),
       right_pinky: createLandmark(18),
       left_index: createLandmark(19),
@@ -422,11 +337,11 @@ export class PoseDetectionEngine {
       left_thumb: createLandmark(21),
       right_thumb: createLandmark(22),
 
-      // Torso y cadera (23-24)
+      // Torso y cadera
       left_hip: createLandmark(23),
       right_hip: createLandmark(24),
 
-      // Piernas (25-32)
+      // Piernas
       left_knee: createLandmark(25),
       right_knee: createLandmark(26),
       left_ankle: createLandmark(27),
@@ -438,7 +353,7 @@ export class PoseDetectionEngine {
     };
   }
 
-  // 📐 CÁLCULO DE ÁNGULOS BIOMECÁNICOS - IMPLEMENTACIÓN COMPLETA
+  // 📐 CALCULAR ÁNGULOS BIOMECÁNICOS
   private calculateBiomechanicalAngles(pose: PoseKeypoints): BiomechanicalAngles {
     return {
       left_shoulder_angle: this.calculateAngle(
@@ -481,19 +396,16 @@ export class PoseDetectionEngine {
 
   // 📐 CALCULAR ÁNGULO ENTRE TRES PUNTOS
   private calculateAngle(pointA: PoseLandmark, pointB: PoseLandmark, pointC: PoseLandmark): number {
-    // Vector BA
     const vectorBA = {
       x: pointA.x - pointB.x,
       y: pointA.y - pointB.y
     };
 
-    // Vector BC
     const vectorBC = {
       x: pointC.x - pointB.x,
       y: pointC.y - pointB.y
     };
 
-    // Calcular ángulo usando producto punto
     const dotProduct = vectorBA.x * vectorBC.x + vectorBA.y * vectorBC.y;
     const magnitudeBA = Math.sqrt(vectorBA.x * vectorBA.x + vectorBA.y * vectorBA.y);
     const magnitudeBC = Math.sqrt(vectorBC.x * vectorBC.x + vectorBC.y * vectorBC.y);
@@ -503,13 +415,13 @@ export class PoseDetectionEngine {
     }
 
     const cosAngle = dotProduct / (magnitudeBA * magnitudeBC);
-    const clampedCos = Math.max(-1, Math.min(1, cosAngle)); // Clamp para evitar NaN
+    const clampedCos = Math.max(-1, Math.min(1, cosAngle));
     const angleRad = Math.acos(clampedCos);
     
     return (angleRad * 180) / Math.PI;
   }
 
-  // 🔧 CALCULAR ÁNGULO DE LA COLUMNA
+  // 🔧 CALCULAR ÁNGULO DE COLUMNA
   private calculateSpineAngle(pose: PoseKeypoints): number {
     const midShoulder = {
       x: (pose.left_shoulder.x + pose.right_shoulder.x) / 2,
@@ -528,7 +440,7 @@ export class PoseDetectionEngine {
     return 90 - (angleRad * 180) / Math.PI;
   }
 
-  // 🔧 CALCULAR ÁNGULO DEL CUELLO
+  // 🔧 CALCULAR ÁNGULO DE CUELLO
   private calculateNeckAngle(pose: PoseKeypoints): number {
     const midShoulder = {
       x: (pose.left_shoulder.x + pose.right_shoulder.x) / 2,
@@ -542,41 +454,49 @@ export class PoseDetectionEngine {
     return 90 - (angleRad * 180) / Math.PI;
   }
 
-  // ⚖️ CALCULAR SIMETRÍA ENTRE DOS PUNTOS
+  // ⚖️ CALCULAR SIMETRÍA
   private calculateSymmetry(leftValue: number, rightValue: number): number {
     return Math.abs(leftValue - rightValue) * 100;
   }
 
-  // 📊 SEGUIMIENTO DE FPS
-  private startFpsTracking(): void {
-    const updateFps = () => {
-      if (!this.isRunning) return;
-
-      const now = Date.now();
-      if (now - this.lastFpsUpdate >= 1000) {
-        const fps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate));
-        this.fpsStream.next(fps);
-        this.frameCount = 0;
-        this.lastFpsUpdate = now;
-      }
-
-      requestAnimationFrame(updateFps);
-    };
-
-    updateFps();
-  }
-
-  // 📊 ACTUALIZAR MÉTRICAS DE RENDIMIENTO
-  private updatePerformanceMetrics(processingTime: number): void {
+  // 📊 ACTUALIZAR CONTADOR FPS
+  private updateFpsCounter(): void {
     this.frameCount++;
-    this.processingTimes.push(processingTime);
-
-    if (this.processingTimes.length > 30) {
-      this.processingTimes.shift();
+    const now = Date.now();
+    
+    if (now - this.lastFpsUpdate >= 1000) {
+      const fps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate));
+      this.fpsStream.next(fps);
+      this.frameCount = 0;
+      this.lastFpsUpdate = now;
     }
   }
 
-  // 🧹 LIMPIAR RECURSOS
+  // 📊 INICIAR TRACKING DE FPS
+  private startFpsTracking(): void {
+    this.frameCount = 0;
+    this.lastFpsUpdate = Date.now();
+  }
+
+  // 🛑 DETENER CÁMARA
+  async stopCamera(): Promise<void> {
+    try {
+      this.isRunning = false;
+      
+      if (this.camera) {
+        this.camera.stop();
+        this.camera = null;
+      }
+      
+      this.statusStream.next('ready');
+      console.log('🛑 Cámara detenida');
+
+    } catch (error) {
+      console.error('❌ Error deteniendo cámara:', error);
+    }
+  }
+
+  // 🧹 LIMPIEZA
   ngOnDestroy(): void {
     this.stopCamera();
     if (this.pose) {
