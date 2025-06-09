@@ -131,16 +131,17 @@
     </div>
 
     <!-- Componente de cámara -->
-    <app-pose-camera
-      [exerciseType]="selectedExercise"
-      [showSkeleton]="true"
-      [showAngles]="false"
-      [enableErrorDetection]="true"
-      (poseDetected)="onPoseDetected($event)"
-      (errorDetected)="onErrorDetected($event)"
-      (repetitionComplete)="onRepetitionComplete($event)"
-      (qualityScore)="onQualityScore($event)">
-    </app-pose-camera>
+  <app-pose-camera
+    [exerciseType]="selectedExercise"
+    [showSkeleton]="true"
+    [showAngles]="false"
+    [enableErrorDetection]="true"
+    (poseDetected)="onPoseDetected($event)"
+    (errorDetected)="onErrorDetected($event)"
+    (repetitionComplete)="onRepetitionComplete($event)"
+    (qualityScore)="onQualityScore($event)"
+    (backToExercises)="onBackToExercises()">
+</app-pose-camera>
 
     <!-- Overlay de información en tiempo real -->
     <div class="realtime-info" *ngIf="sessionData.errors.length > 0">

@@ -1,5 +1,5 @@
 <!-- src/app/features/training/components/pose-camera/pose-camera.component.html -->
-<!-- ✅ TEMPLATE CON ESTRATEGIA STATIC:TRUE -->
+<!-- ✅ TEMPLATE PROFESIONAL COMPLETO -->
 
 <div class="camera-container">
   
@@ -49,35 +49,155 @@
     
   </div>
 
-  <!-- 📊 UI ELEMENTOS - SOLO CUANDO ESTÁ ACTIVO -->
+  <!-- 🎨 UI PROFESIONAL - SOLO CUANDO ESTÁ ACTIVO -->
   <div class="ui-overlay" *ngIf="!isLoading && !error && isInitialized">
     
-    <!-- DEBUG PANEL -->
-    <div class="debug-panel" *ngIf="fps > 0">
-      <div class="debug-row">FPS: {{ fps }}</div>
-      <div class="debug-row">Reps: {{ repetitionCount }}</div>
-      <div class="debug-row">Calidad: {{ currentQuality }}%</div>
-      <div class="debug-row">Errores: {{ currentErrors.length }}</div>
+    <!-- 📊 PANEL DE ESTADÍSTICAS COMPACTO -->
+    <div class="stats-panel" *ngIf="fps > 0">
+      <div class="stats-header">
+        <div class="stats-title">
+          <ion-icon name="analytics-outline"></ion-icon>
+          <span>Estadísticas en Vivo</span>
+        </div>
+        <div class="connection-indicator" [ngClass]="fps > 20 ? 'connected' : 'poor'">
+          <div class="pulse-dot"></div>
+          <span>{{ fps > 20 ? 'Excelente' : 'Conectando' }}</span>
+        </div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <ion-icon name="speedometer-outline"></ion-icon>
+          <div class="stat-value">{{ fps }}</div>
+          <div class="stat-label">FPS</div>
+        </div>
+        
+        <div class="stat-card">
+          <ion-icon name="fitness-outline"></ion-icon>
+          <div class="stat-value">{{ repetitionCount }}</div>
+          <div class="stat-label">REPS</div>
+        </div>
+        
+        <div class="stat-card">
+          <ion-icon name="trophy-outline"></ion-icon>
+          <div class="stat-value" [ngClass]="getQualityClass()">{{ currentQuality }}%</div>
+          <div class="stat-label">CALIDAD</div>
+        </div>
+        
+        <div class="stat-card">
+          <ion-icon name="pulse-outline"></ion-icon>
+          <div class="stat-value">{{ getPhaseText() }}</div>
+          <div class="stat-label">FASE</div>
+        </div>
+      </div>
+      
+      <div class="progress-bar" *ngIf="repetitionCount > 0">
+        <div class="progress-fill" [style.width.%]="Math.min(repetitionCount * 10, 100)"></div>
+      </div>
     </div>
     
-    <!-- CONTROLES -->
-    <div class="controls-panel">
-      <button class="control-btn" (click)="toggleSkeleton()">
-        {{ showSkeleton ? '🦴 ON' : '🦴 OFF' }}
-      </button>
-      <button class="control-btn" (click)="resetSession()">🔄</button>
-      <button class="control-btn" (click)="stopCamera()">⏹️</button>
+<!-- 🔙 BOTÓN DE RETROCESO EN ESQUINA SUPERIOR -->
+<div class="back-button-container">
+  <button class="back-btn-top" (click)="goBackToExercises()">
+    <div class="back-icon">
+      <ion-icon name="arrow-back"></ion-icon>
+    </div>
+    <span>Volver</span>
+  </button>
+</div>
+
+<!-- 🎮 CONTROLES PROFESIONALES -->
+<div class="professional-controls">
+  
+  <div class="control-group">
+    
+    <!-- Botón Esqueleto -->
+    <button class="pro-control-btn skeleton-btn" 
+            (click)="toggleSkeleton()"
+            [class.active]="showSkeleton">
+      <div class="btn-icon">
+        <ion-icon [name]="showSkeleton ? 'eye' : 'eye-off'"></ion-icon>
+      </div>
+      <div class="btn-label">Esqueleto</div>
+      <div class="btn-indicator" [class.on]="showSkeleton"></div>
+    </button>
+    
+    <!-- Botón Reset -->
+    <button class="pro-control-btn reset-btn" (click)="resetSession()">
+      <div class="btn-icon">
+        <ion-icon name="refresh-outline"></ion-icon>
+      </div>
+      <div class="btn-label">Reiniciar</div>
+    </button>
+    
+    <!-- Botón Pausa/Play -->
+    <button class="pro-control-btn pause-btn" (click)="togglePause()">
+      <div class="btn-icon">
+        <ion-icon [name]="isPaused ? 'play' : 'pause'"></ion-icon>
+      </div>
+      <div class="btn-label">{{ isPaused ? 'Continuar' : 'Pausar' }}</div>
+    </button>
+    
+    <!-- Botón Configuración -->
+    <button class="pro-control-btn settings-btn" (click)="showSettings()">
+      <div class="btn-icon">
+        <ion-icon name="settings-outline"></ion-icon>
+      </div>
+      <div class="btn-label">Ajustes</div>
+    </button>
+    
+  </div>
+  
+  <!-- Botón de Finalizar Sesión -->
+  <button class="exit-btn" (click)="stopCamera()">
+    <div class="exit-icon">
+      <ion-icon name="close"></ion-icon>
+    </div>
+    <span>Finalizar Sesión</span>
+  </button>
+</div>
+    <!-- ⚠️ ALERTAS DE ERRORES MEJORADAS -->
+    <div class="error-notifications" *ngIf="currentErrors.length > 0">
+      <div *ngFor="let error of currentErrors.slice(0, 2); trackBy: trackByErrorType" 
+           class="error-notification"
+           [ngClass]="'severity-' + error.severity">
+        <div class="error-icon">
+          <ion-icon name="warning"></ion-icon>
+        </div>
+        <div class="error-content">
+          <div class="error-title">Corrección de Postura</div>
+          <div class="error-message">{{ error.description }}</div>
+          <div class="error-recommendation">💡 {{ error.recommendation }}</div>
+        </div>
+        <div class="error-severity">
+          <div class="severity-indicator" [style.width.%]="error.severity * 10"></div>
+        </div>
+      </div>
     </div>
     
-    <!-- ALERTAS DE ERRORES -->
-    <div class="error-alerts" *ngIf="currentErrors.length > 0">
-      <div 
-        *ngFor="let error of currentErrors; trackBy: trackByErrorType" 
-        class="error-alert">
-        ⚠️ {{ error.description }}
+    <!-- 🎯 OBJETIVO DE REPETICIONES -->
+    <div class="rep-target" *ngIf="repetitionCount > 0">
+      <div class="target-circle">
+        <svg width="80" height="80" class="target-progress">
+          <circle cx="40" cy="40" r="35" 
+                  stroke="rgba(255,255,255,0.2)" 
+                  stroke-width="3" 
+                  fill="none"/>
+          <circle cx="40" cy="40" r="35" 
+                  stroke="#00d4ff" 
+                  stroke-width="3" 
+                  fill="none"
+                  stroke-linecap="round"
+                  [style.stroke-dasharray]="getCircleProgress()"
+                  style="transform: rotate(-90deg); transform-origin: center;"/>
+        </svg>
+        <div class="target-content">
+          <div class="target-number">{{ repetitionCount }}</div>
+          <div class="target-label">/ 10</div>
+        </div>
       </div>
     </div>
     
   </div>
 
->
+</div>

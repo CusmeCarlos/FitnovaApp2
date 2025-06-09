@@ -26,7 +26,7 @@ export class BiomechanicsAnalyzer {
   private angleHistory: BiomechanicalAngles[] = [];
   private phaseHistory: RepetitionPhase[] = [];
   private readonly SMOOTHING_WINDOW = 3;
-  private readonly ERROR_COOLDOWN = 2000; // 2 segundos entre detecciones del mismo error
+  private readonly ERROR_COOLDOWN = 3000; // 2 segundos entre detecciones del mismo error
 
   // Calidad de movimiento
   private qualityHistory: number[] = [];
@@ -241,44 +241,53 @@ export class BiomechanicsAnalyzer {
   }
 
   // ⚠️ DETECCIÓN DE ERRORES POSTURALES
-  private detectPostureErrors(pose: PoseKeypoints, angles: BiomechanicalAngles): PostureError[] {
-    if (!this.currentExercise) return [];
+  // ⚠️ DETECCIÓN DE ERRORES POSTURALES
+private detectPostureErrors(pose: PoseKeypoints, angles: BiomechanicalAngles): PostureError[] {
+  if (!this.currentExercise) return [];
 
-    const exerciseConfig = EXERCISE_DEFINITIONS[this.currentExercise];
-    const errors: PostureError[] = [];
-    const now = Date.now();
+  const exerciseConfig = EXERCISE_DEFINITIONS[this.currentExercise];
+  const errors: PostureError[] = [];
+  const now = Date.now();
 
-    // Evaluar solo algunos errores principales para evitar sobrecarga
-    const mainErrorRules = exerciseConfig.errorDetectionRules.slice(0, 3);
+  // ✅ EVALUAR SOLO 1 ERROR PRINCIPAL POR FRAME PARA EVITAR SPAM
+  const mainErrorRules = exerciseConfig.errorDetectionRules.slice(0, 2);
 
-    mainErrorRules.forEach(rule => {
-      // Verificar cooldown del error
-      const lastDetection = this.lastErrorTimestamps.get(rule.errorType) || 0;
-      if (now - lastDetection < this.ERROR_COOLDOWN) {
-        return;
-      }
+  for (const rule of mainErrorRules) {
+    // Verificar cooldown del error
+    const lastDetection = this.lastErrorTimestamps.get(rule.errorType) || 0;
+    if (now - lastDetection < this.ERROR_COOLDOWN) {
+      continue;
+    }
 
-      // Evaluar condición específica del error
-      const errorDetected = this.evaluateErrorCondition(rule, pose, angles);
+    // Evaluar condición específica del error
+    const errorDetected = this.evaluateErrorCondition(rule, pose, angles);
+    
+    if (errorDetected) {
+      // ✅ VERIFICAR CONFIANZA MÍNIMA ANTES DE AGREGAR ERROR
+      const confidence = this.calculateErrorConfidence(rule, pose);
       
-      if (errorDetected) {
+      if (confidence > 0.7) { // Solo errores con alta confianza
         errors.push({
           type: rule.errorType,
           severity: rule.severity,
           description: rule.message,
           recommendation: rule.recommendation,
           affectedJoints: this.getAffectedJoints(rule.errorType),
-          confidence: this.calculateErrorConfidence(rule, pose),
+          confidence: confidence,
           timestamp: now
         });
         
         this.lastErrorTimestamps.set(rule.errorType, now);
-        console.log(`⚠️ Error detectado: ${rule.errorType}`);
+        console.log(`⚠️ Error detectado: ${rule.errorType} (confianza: ${confidence.toFixed(2)})`);
+        
+        // ✅ SOLO DETECTAR 1 ERROR POR FRAME
+        break;
       }
-    });
-
-    return errors;
+    }
   }
+
+  return errors;
+}
 
   // 🔬 EVALUACIÓN DE CONDICIONES DE ERROR
   private evaluateErrorCondition(rule: any, pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {

@@ -210,6 +210,68 @@ export class Tab2Page implements OnInit, OnDestroy {
     }
   }
 
+  // ✅ NUEVO MÉTODO PARA MANEJAR EL RETROCESO
+async onBackToExercises() {
+  console.log('🔙 Evento de retroceso recibido');
+  
+  // Si hay repeticiones, preguntar antes de salir
+  if (this.sessionData.repetitions > 0) {
+    const alert = await this.alertController.create({
+      header: '🔙 Volver a Ejercicios',
+      message: `¿Quieres guardar tu progreso actual?\n\n• ${this.sessionData.repetitions} repeticiones\n• ${this.sessionData.avgQuality}% calidad promedio`,
+      buttons: [
+        {
+          text: 'Descartar y Volver',
+          role: 'destructive',
+          handler: () => {
+            this.discardAndGoBack();
+          }
+        },
+        {
+          text: 'Guardar y Volver',
+          handler: () => {
+            this.saveAndGoBack();
+          }
+        },
+        {
+          text: 'Cancelar',
+          role: 'cancel'
+        }
+      ]
+    });
+    await alert.present();
+  } else {
+    // Si no hay progreso, volver directamente
+    this.goBackDirectly();
+  }
+}
+
+// 🗑️ DESCARTAR Y VOLVER
+private discardAndGoBack(): void {
+  this.showCamera = false;
+  this.resetSessionData();
+  this.showToast('Sesión descartada', 'warning');
+}
+
+// 💾 GUARDAR Y VOLVER
+private async saveAndGoBack(): Promise<void> {
+  try {
+    await this.saveSession();
+    this.showCamera = false;
+    this.showToast('¡Progreso guardado correctamente!', 'success');
+  } catch (error) {
+    console.error('❌ Error guardando:', error);
+    this.showToast('Error al guardar. Volviendo sin guardar.', 'danger');
+    this.showCamera = false;
+  }
+}
+
+// 🔙 VOLVER DIRECTAMENTE
+private goBackDirectly(): void {
+  this.showCamera = false;
+  this.resetSessionData();
+}
+
   // 💾 GUARDAR SESIÓN
   private async saveSession() {
     try {
@@ -293,6 +355,7 @@ export class Tab2Page implements OnInit, OnDestroy {
     };
     this.qualityScores = [];
     
+
     // Iniciar timer de duración
     this.startSessionTimer();
   }

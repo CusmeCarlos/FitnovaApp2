@@ -1,5 +1,5 @@
 // src/app/features/training/components/pose-camera/pose-camera.component.ts
-// ✅ SOLUCIÓN VIEWCHILD - ESTRATEGIA ALTERNATIVA
+// ✅ COMPONENTE PROFESIONAL COMPLETO
 
 import { 
   Component, 
@@ -38,7 +38,7 @@ import {
 })
 export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   
-  // ✅ ViewChild con { static: true } - CAMBIO CLAVE
+  // ✅ ViewChild con { static: true }
   @ViewChild('videoElement', { static: true }) videoElementRef!: ElementRef<HTMLVideoElement>;
   @ViewChild('canvasElement', { static: true }) canvasElementRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('overlayElement', { static: true }) overlayElementRef!: ElementRef<HTMLCanvasElement>;
@@ -54,6 +54,8 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   @Output() errorDetected = new EventEmitter<PostureError[]>();
   @Output() repetitionComplete = new EventEmitter<number>();
   @Output() qualityScore = new EventEmitter<number>();
+  @Output() backToExercises = new EventEmitter<void>(); // ✅ NUEVO OUTPUT
+
 
   // Estado del componente
   isInitialized = false;
@@ -82,6 +84,16 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   public maxInitializationAttempts = 5;
   private initializationTimer: any = null;
 
+  // ✅ CONTROL DE CONSEJOS ESTABLES
+  private currentTip: string = '';
+  private tipStartTime: number = 0;
+  private readonly TIP_DURATION = 4000; // 4 segundos por consejo
+  private tipIndex: number = 0;
+
+  // ✅ NUEVAS PROPIEDADES PARA FUNCIONALIDAD PROFESIONAL
+  public isPaused = false;
+  public Math = Math; // Para usar Math en el template
+
   constructor(
     private poseEngine: PoseDetectionEngine,
     private biomechanicsAnalyzer: BiomechanicsAnalyzer,
@@ -97,10 +109,8 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     console.log('🔧 PoseCameraComponent ngAfterViewInit');
     
-    // ✅ FORZAR DETECCIÓN DE CAMBIOS ANTES DE CONTINUAR
     this.cdr.detectChanges();
     
-    // ✅ ESTRATEGIA ALTERNATIVA: usar querySelector como fallback
     this.initializationTimer = setTimeout(() => {
       this.attemptInitializationWithFallback();
     }, 100);
@@ -111,7 +121,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cleanup();
   }
 
-  // 🎯 NUEVA ESTRATEGIA DE INICIALIZACIÓN CON FALLBACK
+  // 🎯 INICIALIZACIÓN CON FALLBACK
   private attemptInitializationWithFallback(): void {
     this.initializationAttempts++;
     console.log(`🎯 Intento ${this.initializationAttempts}/${this.maxInitializationAttempts}`);
@@ -121,14 +131,12 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     
-    // ✅ ESTRATEGIA 1: Intentar con ViewChild
     if (this.areViewChildElementsReady()) {
       console.log('✅ ViewChild elementos listos');
       this.startCameraSequence();
       return;
     }
     
-    // ✅ ESTRATEGIA 2: Fallback con querySelector
     if (this.initializationAttempts >= 2) {
       console.log('🔄 Intentando fallback con querySelector...');
       if (this.setupElementsWithQuerySelector()) {
@@ -138,7 +146,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
     
-    // ✅ ESTRATEGIA 3: Reintentar si no ha alcanzado el máximo
     if (this.initializationAttempts < this.maxInitializationAttempts) {
       const delay = this.initializationAttempts * 300;
       console.log(`⏳ Reintentando en ${delay}ms...`);
@@ -202,7 +209,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       console.log('🔍 Configurando con querySelector...');
       
-      // Buscar elementos en el DOM
       const video = document.querySelector('app-pose-camera video') as HTMLVideoElement;
       const canvas = document.querySelector('app-pose-camera canvas:first-of-type') as HTMLCanvasElement;
       const overlay = document.querySelector('app-pose-camera canvas:last-of-type') as HTMLCanvasElement;
@@ -217,7 +223,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
         return false;
       }
       
-      // ✅ REEMPLAZAR LAS REFERENCIAS VIEWCHILD CON LOS ELEMENTOS ENCONTRADOS
       this.videoElementRef = new ElementRef(video);
       this.canvasElementRef = new ElementRef(canvas);
       this.overlayElementRef = new ElementRef(overlay);
@@ -239,16 +244,10 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       this.error = null;
       this.cdr.detectChanges();
 
-      // 1. Verificar MediaPipe
       await this.waitForMediaPipe();
-
-      // 2. Inicializar canvas
       this.initializeCanvas();
-
-      // 3. Iniciar cámara
       await this.startCameraWithMediaPipe();
 
-      // 4. Finalizar
       this.isLoading = false;
       this.isInitialized = true;
       this.cdr.detectChanges();
@@ -344,7 +343,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       z-index: 2; pointer-events: none; display: none;
     `;
 
-    // ✅ QUITAR TRANSFORM DEL OVERLAY PARA CORREGIR EL ESPEJO
     overlay.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       z-index: 3; pointer-events: none; background: transparent;
@@ -426,12 +424,11 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
 
-    // ✅ SIMPLE: APLICAR TRANSFORM AL CONTEXTO PARA CORREGIR EL ESPEJO
-    ctx.save(); // Guardar estado del contexto
-    ctx.scale(-1, 1); // Voltear horizontalmente
-    ctx.translate(-width, 0); // Reposicionar
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.translate(-width, 0);
 
-    // Ahora dibujar normalmente - el transform se encarga del espejo
+    // Conexiones principales
     this.drawConnection(pose.left_shoulder, pose.right_shoulder, width, height);
     this.drawConnection(pose.left_shoulder, pose.left_hip, width, height);
     this.drawConnection(pose.right_shoulder, pose.right_hip, width, height);
@@ -456,7 +453,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       this.drawLandmark(landmark, width, height);
     });
 
-    ctx.restore(); // Restaurar estado original del contexto
+    ctx.restore();
   }
 
   private drawConnection(start: any, end: any, width: number, height: number): void {
@@ -484,7 +481,10 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   private analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
     const analysis = this.biomechanicsAnalyzer.analyzeFrame(pose, angles);
     
-    this.currentErrors = analysis.errors;
+    // ✅ FILTRAR ERRORES DUPLICADOS
+    const newErrors = this.filterUniqueErrors(analysis.errors);
+    
+    this.currentErrors = newErrors;
     this.currentPhase = analysis.phase;
     this.currentQuality = analysis.qualityScore;
     
@@ -493,11 +493,33 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       this.repetitionComplete.emit(this.repetitionCount);
     }
 
-    if (analysis.errors.length > 0) {
-      this.errorDetected.emit(analysis.errors);
+    if (newErrors.length > 0) {
+      this.errorDetected.emit(newErrors);
     }
     
     this.qualityScore.emit(analysis.qualityScore);
+  }
+
+  // 🚫 FILTRAR ERRORES DUPLICADOS
+  private filterUniqueErrors(errors: PostureError[]): PostureError[] {
+    if (errors.length === 0) return [];
+    
+    const now = Date.now();
+    const ERROR_DISPLAY_DURATION = 2000; // 2 segundos
+    
+    // Limpiar errores antiguos
+    this.currentErrors = this.currentErrors.filter(error => 
+      (now - error.timestamp) < ERROR_DISPLAY_DURATION
+    );
+    
+    // Filtrar errores que ya están siendo mostrados
+    const newErrors = errors.filter(newError => {
+      return !this.currentErrors.some(existingError => 
+        existingError.type === newError.type
+      );
+    });
+    
+    return newErrors;
   }
 
   private drawOverlayInfo(): void {
@@ -507,60 +529,132 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
     
-    // ✅ APLICAR TRANSFORM PARA QUE LA INFORMACIÓN NO SE VEA ESPEJADA
     ctx.save();
     ctx.scale(-1, 1);
     ctx.translate(-width, 0);
-    
-    // Panel info (ahora en la esquina correcta)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.fillRect(10, 10, 200, 120);
-    
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'left';
-    
-    ctx.fillText(`Reps: ${this.repetitionCount}`, 25, 35);
-    ctx.fillText(`Calidad: ${this.currentQuality}%`, 25, 55);
-    ctx.fillText(`FPS: ${this.fps}`, 25, 75);
-    ctx.fillText(`Fase: ${this.getPhaseText()}`, 25, 95);
-    ctx.fillText(`Errores: ${this.currentErrors.length}`, 25, 115);
 
-    // Mostrar errores
+    // Mostrar solo errores activos (evitar duplicación con debug panel)
     if (this.currentErrors.length > 0) {
       const startY = 150;
       
       this.currentErrors.forEach((error, index) => {
-        const y = startY + (index * 30);
+        const y = startY + (index * 35);
         
         // Fondo del error
         ctx.fillStyle = 'rgba(255, 48, 48, 0.9)';
-        ctx.fillRect(10, y - 20, width - 20, 25);
+        ctx.fillRect(10, y - 25, width - 20, 30);
         
         // Texto del error
         ctx.fillStyle = '#FFFFFF';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(`⚠️ ${error.description}`, width / 2, y - 5);
+        ctx.fillText(`⚠️ ${error.description}`, width / 2, y - 8);
       });
     }
 
-    // Mostrar consejo si no hay errores
-    if (this.currentErrors.length === 0 && this.isRunning) {
-      const tipY = height - 50;
+    // ✅ MOSTRAR CONSEJO ESTABLE SI NO HAY ERRORES
+    if (this.currentErrors.length === 0 && this.isRunning && this.repetitionCount > 0) {
+      const stableTip = this.getStableCoachingTip();
       
-      // Fondo del consejo
-      ctx.fillStyle = 'rgba(16, 220, 96, 0.9)';
-      ctx.fillRect(10, tipY - 20, width - 20, 35);
-      
-      // Texto del consejo
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`💡 ${this.getCurrentCoachingTip()}`, width / 2, tipY);
+      if (stableTip) {
+        const tipY = height - 50;
+        
+        // Fondo del consejo con bordes redondeados
+        ctx.fillStyle = 'rgba(16, 220, 96, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(15, tipY - 30, width - 30, 35, 8);
+        ctx.fill();
+        
+        // Borde sutil
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        // Texto del consejo
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`💡 ${stableTip}`, width / 2, tipY - 10);
+      }
     }
 
-    ctx.restore(); // Restaurar estado
+    ctx.restore();
+  }
+
+  // ✅ OBTENER CONSEJO ESTABLE (NO CAMBIA EN CADA FRAME)
+  private getStableCoachingTip(): string {
+    const now = Date.now();
+    
+    // Si es el primer consejo o ha pasado el tiempo, cambiar consejo
+    if (!this.currentTip || (now - this.tipStartTime) > this.TIP_DURATION) {
+      const tips = this.getTipsForCurrentExercise();
+      
+      // Rotar consejos en orden, no aleatoriamente
+      this.tipIndex = (this.tipIndex + 1) % tips.length;
+      this.currentTip = tips[this.tipIndex];
+      this.tipStartTime = now;
+    }
+    
+    return this.currentTip;
+  }
+
+  // ✅ OBTENER CONSEJOS PARA EL EJERCICIO ACTUAL
+  private getTipsForCurrentExercise(): string[] {
+    const tips: { [key in ExerciseType]: string[] } = {
+      [ExerciseType.SQUATS]: [
+        'Mantén el pecho erguido y la mirada al frente',
+        'Baja como si te fueras a sentar en una silla',
+        'Mantén los talones siempre en el suelo',
+        'Las rodillas deben seguir la dirección de los pies',
+        'Inicia empujando las caderas hacia atrás'
+      ],
+      [ExerciseType.PUSHUPS]: [
+        'Forma una línea recta desde cabeza hasta talones',
+        'Mantén los codos a 45° del cuerpo',
+        'Baja hasta que el pecho casi toque el suelo',
+        'Mantén el core contraído todo el tiempo',
+        'Respira: inhala al bajar, exhala al subir'
+      ],
+      [ExerciseType.PLANK]: [
+        'Mantén una línea recta perfecta',
+        'Contrae el core como si te fueran a golpear',
+        'Respira normalmente, no contengas el aire',
+        'Los codos directamente bajo los hombros',
+        'Aprieta los glúteos para mantener posición'
+      ],
+      [ExerciseType.LUNGES]: [
+        'Da un paso lo suficientemente largo',
+        'Baja la rodilla trasera hacia el suelo',
+        'Mantén el torso completamente erguido',
+        'El peso debe estar en el talón delantero'
+      ],
+      [ExerciseType.BICEP_CURLS]: [
+        'Mantén los codos pegados al cuerpo',
+        'Controla el movimiento al subir y bajar',
+        'No uses impulso, solo la fuerza del bíceps',
+        'Mantén las muñecas rectas y firmes'
+      ],
+      [ExerciseType.DEADLIFT]: [
+        'Mantén la espalda recta siempre',
+        'Empuja las caderas hacia atrás',
+        'La barra debe estar cerca del cuerpo',
+        'Sube usando la fuerza de las piernas'
+      ],
+      [ExerciseType.BENCH_PRESS]: [
+        'Retrae los hombros hacia atrás',
+        'Mantén un arco natural en la espalda',
+        'Baja la barra al pecho medio',
+        'Movimiento controlado arriba y abajo'
+      ],
+      [ExerciseType.SHOULDER_PRESS]: [
+        'Mantén el core bien activado',
+        'Los codos ligeramente hacia adelante',
+        'Press vertical directo hacia arriba',
+        'No arquees excesivamente la espalda'
+      ]
+    };
+
+    return tips[this.exerciseType] || ['¡Excelente trabajo! Sigue así.'];
   }
 
   private getErrorMessage(error: unknown): string {
@@ -569,7 +663,27 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     return 'Error desconocido';
   }
 
-  // MÉTODOS PÚBLICOS
+  // ✅ NUEVOS MÉTODOS PROFESIONALES
+
+  public showSettings(): void {
+    console.log('⚙️ Mostrando configuración');
+  }
+
+  
+  // ✅ NUEVO MÉTODO PARA RETROCEDER
+  public goBackToExercises(): void {
+    console.log('🔙 Volviendo a ejercicios...');
+    this.backToExercises.emit();
+  }
+
+  public getCircleProgress(): string {
+    const circumference = 2 * Math.PI * 35; // radio de 35
+    const progress = Math.min(this.repetitionCount / 10, 1);
+    const strokeDasharray = progress * circumference;
+    return `${strokeDasharray} ${circumference}`;
+  }
+
+  // MÉTODOS PÚBLICOS EXISTENTES
   public async startCamera(): Promise<void> {
     if (!this.isInitialized && !this.isLoading) {
       this.isLoading = true;
@@ -597,6 +711,12 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     this.repetitionCount = 0;
     this.currentErrors = [];
     this.currentQuality = 0;
+    
+    // ✅ RESETEAR CONSEJOS
+    this.currentTip = '';
+    this.tipStartTime = 0;
+    this.tipIndex = 0;
+    
     this.biomechanicsAnalyzer.setCurrentExercise(this.exerciseType);
   }
 
@@ -630,61 +750,15 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     return error.type;
   }
 
+  // ✅ MANTENER EL MÉTODO PÚBLICO PARA COMPATIBILIDAD
   public getCurrentCoachingTip(): string {
-    const tips: { [key in ExerciseType]: string[] } = {
-      [ExerciseType.SQUATS]: [
-        'Mantén el pecho erguido',
-        'Baja como si te sentaras',
-        'Talones en el suelo',
-        'Rodillas siguiendo los pies'
-      ],
-      [ExerciseType.PUSHUPS]: [
-        'Línea recta del cuerpo',
-        'Codos a 45 grados',
-        'Pecho casi al suelo',
-        'Core contraído'
-      ],
-      [ExerciseType.LUNGES]: [
-        'Paso largo y estable',
-        'Rodilla trasera hacia el suelo',
-        'Torso erguido',
-        'Peso en el talón delantero'
-      ],
-      [ExerciseType.PLANK]: [
-        'Línea recta completa',
-        'Core bien contraído',
-        'Respiración normal',
-        'Codos bajo hombros'
-      ],
-      [ExerciseType.BICEP_CURLS]: [
-        'Codos pegados al cuerpo',
-        'Movimiento controlado',
-        'Sin usar impulso',
-        'Muñecas rectas'
-      ],
-      [ExerciseType.DEADLIFT]: [
-        'Espalda recta siempre',
-        'Caderas hacia atrás',
-        'Barra cerca del cuerpo',
-        'Subir con las piernas'
-      ],
-      [ExerciseType.BENCH_PRESS]: [
-        'Hombros hacia atrás',
-        'Arco natural en espalda',
-        'Barra al pecho medio',
-        'Movimiento controlado'
-      ],
-      [ExerciseType.SHOULDER_PRESS]: [
-        'Core bien activado',
-        'Codos hacia adelante',
-        'Press vertical directo',
-        'No arquear la espalda'
-      ]
-    };
-
-    const exerciseTips = tips[this.exerciseType];
-    return exerciseTips[Math.floor(Math.random() * exerciseTips.length)];
+    return this.getStableCoachingTip();
   }
+  // ✅ NUEVOS MÉTODOS PROFESIONALES
+  public togglePause(): void {
+  this.isPaused = !this.isPaused;
+  console.log('🎮 Pausa toggled:', this.isPaused);
+}
 
   private cleanup(): void {
     if (this.initializationTimer) {
