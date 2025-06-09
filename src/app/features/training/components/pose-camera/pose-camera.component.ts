@@ -1,5 +1,5 @@
 // src/app/features/training/components/pose-camera/pose-camera.component.ts
-// ✅ COMPONENTE PROFESIONAL COMPLETO
+// ✅ COMPONENTE ACTUALIZADO CON MÉTRICAS CIENTÍFICAS
 
 import { 
   Component, 
@@ -20,6 +20,8 @@ import { Subscription } from 'rxjs';
 
 import { PoseDetectionEngine } from '../../../../core/pose-engine/pose-detection.engine';
 import { BiomechanicsAnalyzer } from '../../../../core/pose-engine/biomechanics.analyzer';
+import { EnhancedBiomechanicsAnalyzer } from '../../../../core/pose-engine/biomechanics.analyzer.enhanced';
+import { PrecisionValidator, PrecisionMetrics, PerformanceMetrics } from '../../../../core/pose-engine/precision-validator';
 import { 
   PoseKeypoints, 
   BiomechanicalAngles, 
@@ -38,7 +40,6 @@ import {
 })
 export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   
-  // ✅ ViewChild con { static: true }
   @ViewChild('videoElement', { static: true }) videoElementRef!: ElementRef<HTMLVideoElement>;
   @ViewChild('canvasElement', { static: true }) canvasElementRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('overlayElement', { static: true }) overlayElementRef!: ElementRef<HTMLCanvasElement>;
@@ -48,14 +49,15 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() showSkeleton: boolean = true;
   @Input() showAngles: boolean = false;
   @Input() enableErrorDetection: boolean = true;
+  @Input() useEnhancedAnalysis: boolean = true; // ✅ NUEVO: Usar análisis mejorado
 
   // Outputs
   @Output() poseDetected = new EventEmitter<PoseKeypoints>();
   @Output() errorDetected = new EventEmitter<PostureError[]>();
   @Output() repetitionComplete = new EventEmitter<number>();
   @Output() qualityScore = new EventEmitter<number>();
-  @Output() backToExercises = new EventEmitter<void>(); // ✅ NUEVO OUTPUT
-
+  @Output() backToExercises = new EventEmitter<void>();
+  @Output() precisionUpdate = new EventEmitter<PrecisionMetrics>(); // ✅ NUEVO
 
   // Estado del componente
   isInitialized = false;
@@ -72,6 +74,12 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   currentQuality = 0;
   fps = 0;
 
+  // ✅ NUEVAS PROPIEDADES: Métricas científicas
+  precisionMetrics: PrecisionMetrics | null = null;
+  performanceMetrics: PerformanceMetrics | null = null;
+  showScientificMetrics = false;
+  scientificValidation: any = null;
+
   // Canvas contexts
   private canvasCtx!: CanvasRenderingContext2D;
   private overlayCtx!: CanvasRenderingContext2D;
@@ -84,31 +92,45 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   public maxInitializationAttempts = 5;
   private initializationTimer: any = null;
 
-  // ✅ CONTROL DE CONSEJOS ESTABLES
+  // Control de consejos estables
   private currentTip: string = '';
   private tipStartTime: number = 0;
-  private readonly TIP_DURATION = 4000; // 4 segundos por consejo
+  private readonly TIP_DURATION = 4000;
   private tipIndex: number = 0;
 
-  // ✅ NUEVAS PROPIEDADES PARA FUNCIONALIDAD PROFESIONAL
+  // Nuevas propiedades para funcionalidad profesional
   public isPaused = false;
-  public Math = Math; // Para usar Math en el template
+  public Math = Math;
+
+  // ✅ NUEVO: Analizador mejorado y validador de precisión
+  private enhancedAnalyzer: EnhancedBiomechanicsAnalyzer;
+  private precisionValidator: PrecisionValidator;
 
   constructor(
     private poseEngine: PoseDetectionEngine,
     private biomechanicsAnalyzer: BiomechanicsAnalyzer,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) {
+    // ✅ NUEVO: Inicializar componentes científicos
+    this.enhancedAnalyzer = new EnhancedBiomechanicsAnalyzer();
+    this.precisionValidator = new PrecisionValidator();
+  }
 
   ngOnInit(): void {
     console.log('🎬 PoseCameraComponent ngOnInit');
-    this.biomechanicsAnalyzer.setCurrentExercise(this.exerciseType);
+    
+    // Configurar analizadores
+    if (this.useEnhancedAnalysis) {
+      this.enhancedAnalyzer.setCurrentExercise(this.exerciseType);
+    } else {
+      this.biomechanicsAnalyzer.setCurrentExercise(this.exerciseType);
+    }
+    
     this.setupSubscriptions();
   }
 
   ngAfterViewInit(): void {
     console.log('🔧 PoseCameraComponent ngAfterViewInit');
-    
     this.cdr.detectChanges();
     
     this.initializationTimer = setTimeout(() => {
@@ -121,7 +143,331 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cleanup();
   }
 
-  // 🎯 INICIALIZACIÓN CON FALLBACK
+  // ✅ NUEVA CONFIGURACIÓN DE SUSCRIPCIONES CON MÉTRICAS
+  private setupSubscriptions(): void {
+    // Suscripciones existentes
+    this.subscriptions.push(
+      this.poseEngine.pose$.subscribe(pose => {
+        this.currentPose = pose;
+        if (pose) this.poseDetected.emit(pose);
+        this.cdr.detectChanges();
+      })
+    );
+
+    this.subscriptions.push(
+      this.poseEngine.angles$.subscribe(angles => {
+        this.currentAngles = angles;
+        if (angles && this.currentPose && this.enableErrorDetection) {
+          this.analyzeMovement(this.currentPose, angles);
+        }
+        this.cdr.detectChanges();
+      })
+    );
+
+    this.subscriptions.push(
+      this.poseEngine.fps$.subscribe(fps => {
+        this.fps = fps;
+        this.cdr.detectChanges();
+      })
+    );
+
+    this.subscriptions.push(
+      this.poseEngine.status$.subscribe(status => {
+        if (status === 'error') {
+          this.error = 'Error en detección';
+          this.isLoading = false;
+          this.cdr.detectChanges();
+        }
+      })
+    );
+
+    // ✅ NUEVAS SUSCRIPCIONES: Métricas científicas
+    if (this.useEnhancedAnalysis) {
+      this.subscriptions.push(
+        this.precisionValidator.precision$.subscribe(metrics => {
+          this.precisionMetrics = metrics;
+          this.precisionUpdate.emit(metrics);
+          this.cdr.detectChanges();
+        })
+      );
+
+      this.subscriptions.push(
+        this.precisionValidator.performance$.subscribe(metrics => {
+          this.performanceMetrics = metrics;
+          this.cdr.detectChanges();
+        })
+      );
+    }
+  }
+
+  // ✅ ANÁLISIS MEJORADO CON MÉTRICAS CIENTÍFICAS
+  private analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
+    const startTime = performance.now();
+
+    let analysis: any;
+
+    if (this.useEnhancedAnalysis) {
+      // Usar analizador científico mejorado
+      analysis = this.enhancedAnalyzer.analyzeFrame(pose, angles);
+      
+      // Validar precisión si están disponibles las métricas
+      if (analysis.precisionMetrics) {
+        this.precisionMetrics = analysis.precisionMetrics;
+      }
+      
+      if (analysis.scientificValidation) {
+        this.scientificValidation = analysis.scientificValidation;
+      }
+    } else {
+      // Usar analizador básico
+      analysis = this.biomechanicsAnalyzer.analyzeFrame(pose, angles);
+    }
+
+    // Filtrar errores duplicados
+    const newErrors = this.filterUniqueErrors(analysis.errors);
+    
+    this.currentErrors = newErrors;
+    this.currentPhase = analysis.phase;
+    this.currentQuality = analysis.qualityScore;
+    
+    if (analysis.repetitionCount > this.repetitionCount) {
+      this.repetitionCount = analysis.repetitionCount;
+      this.repetitionComplete.emit(this.repetitionCount);
+    }
+
+    if (newErrors.length > 0) {
+      this.errorDetected.emit(newErrors);
+    }
+    
+    this.qualityScore.emit(analysis.qualityScore);
+
+    // ✅ VALIDAR PRECISIÓN EN TIEMPO REAL
+    if (this.useEnhancedAnalysis) {
+      this.precisionValidator.validateFrame(pose, angles, startTime);
+    }
+  }
+
+  // ✅ NUEVOS MÉTODOS PARA MÉTRICAS CIENTÍFICAS
+
+  public toggleScientificMetrics(): void {
+    this.showScientificMetrics = !this.showScientificMetrics;
+    console.log('🔬 Métricas científicas:', this.showScientificMetrics ? 'mostradas' : 'ocultas');
+  }
+
+  public getPrecisionStatus(): 'excellent' | 'good' | 'fair' | 'poor' {
+    if (!this.precisionMetrics) return 'poor';
+    
+    const precision = this.precisionMetrics.overallPrecision;
+    if (precision >= 90) return 'excellent';
+    if (precision >= 75) return 'good';
+    if (precision >= 60) return 'fair';
+    return 'poor';
+  }
+
+  public getPerformanceStatus(): 'excellent' | 'good' | 'fair' | 'poor' {
+    if (!this.performanceMetrics) return 'poor';
+    
+    const fps = this.performanceMetrics.fps;
+    if (fps >= 28) return 'excellent';
+    if (fps >= 24) return 'good';
+    if (fps >= 18) return 'fair';
+    return 'poor';
+  }
+
+  public isScientificallyValidated(): boolean {
+    return this.scientificValidation?.isWithinTargets || false;
+  }
+
+  public getValidationDetails(): string {
+    if (!this.scientificValidation) return 'No disponible';
+    
+    return `Precisión Angular: ${this.scientificValidation.angularAccuracy?.toFixed(1)}° | ` +
+           `Correlación: ${(this.scientificValidation.correlationCoefficient * 100)?.toFixed(1)}%`;
+  }
+
+  // ✅ MÉTODO PARA EXPORTAR DATOS DE SESIÓN
+  public exportSessionData(): any {
+    const sessionReport = {
+      timestamp: new Date().toISOString(),
+      exercise: this.exerciseType,
+      duration: this.calculateSessionDuration(),
+      repetitions: this.repetitionCount,
+      averageQuality: this.currentQuality,
+      errors: this.currentErrors.length,
+      precisionMetrics: this.precisionMetrics,
+      performanceMetrics: this.performanceMetrics,
+      scientificValidation: this.scientificValidation,
+      enhancedAnalysis: this.useEnhancedAnalysis
+    };
+
+    console.log('📊 Datos de sesión exportados:', sessionReport);
+    
+    // Descargar como JSON
+    const blob = new Blob([JSON.stringify(sessionReport, null, 2)], {
+      type: 'application/json'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fitnova-session-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    return sessionReport;
+  }
+
+  private calculateSessionDuration(): number {
+    // Calcular duración de la sesión en minutos
+    return Math.round(performance.now() / (1000 * 60) * 10) / 10;
+  }
+
+  // ✅ MÉTODO PARA CALIBRACIÓN AUTOMÁTICA
+  public async performCalibration(): Promise<void> {
+    console.log('🎯 Iniciando calibración automática...');
+    
+    if (!this.precisionValidator) {
+      console.warn('⚠️ Precision validator no disponible');
+      return;
+    }
+
+    try {
+      // Reiniciar validación para calibración
+      this.precisionValidator.startValidation();
+      
+      // Mostrar mensaje de calibración
+      this.showToast('Calibrando... Mantén una postura estable por 5 segundos', 'primary');
+      
+      // Esperar 5 segundos para calibración
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Obtener reporte de calibración
+      const report = this.precisionValidator.getValidationReport();
+      
+      if (report.isWithinTargets) {
+        this.showToast('✅ Calibración exitosa - Precisión óptima', 'success');
+      } else {
+        this.showToast('⚠️ Calibración completada - Ajusta tu posición', 'warning');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en calibración:', error);
+      this.showToast('❌ Error en calibración', 'danger');
+    }
+  }
+
+  private async showToast(message: string, color: string): Promise<void> {
+    // Implementación básica - en producción usar ToastController
+    console.log(`🍞 Toast [${color}]: ${message}`);
+  }
+
+  // ✅ MÉTODOS EXISTENTES ACTUALIZADOS
+
+  public async startCamera(): Promise<void> {
+    if (!this.isInitialized && !this.isLoading) {
+      this.isLoading = true;
+      this.error = null;
+      this.initializationAttempts = 0;
+      
+      // ✅ INICIAR VALIDACIÓN DE PRECISIÓN
+      if (this.useEnhancedAnalysis) {
+        this.precisionValidator.startValidation();
+      }
+      
+      this.cdr.detectChanges();
+      
+      this.initializationTimer = setTimeout(() => {
+        this.attemptInitializationWithFallback();
+      }, 200);
+    }
+  }
+
+  public resetSession(): void {
+    this.repetitionCount = 0;
+    this.currentErrors = [];
+    this.currentQuality = 0;
+    
+    // Resetear consejos
+    this.currentTip = '';
+    this.tipStartTime = 0;
+    this.tipIndex = 0;
+
+    // ✅ RESETEAR MÉTRICAS CIENTÍFICAS
+    this.precisionMetrics = null;
+    this.performanceMetrics = null;
+    this.scientificValidation = null;
+    
+    // Reiniciar analizadores
+    if (this.useEnhancedAnalysis) {
+      this.enhancedAnalyzer.setCurrentExercise(this.exerciseType);
+      this.precisionValidator.startValidation();
+    } else {
+      this.biomechanicsAnalyzer.setCurrentExercise(this.exerciseType);
+    }
+  }
+
+  // ✅ MÉTODOS PARA OPTIMIZACIÓN DE RENDIMIENTO
+
+  public optimizeForDevice(): void {
+    const deviceCapability = this.detectDeviceCapability();
+    
+    console.log('🔧 Optimizando para dispositivo:', deviceCapability);
+    
+    switch (deviceCapability) {
+      case 'low':
+        this.applyLowPerformanceSettings();
+        break;
+      case 'medium':
+        this.applyMediumPerformanceSettings();
+        break;
+      case 'high':
+        this.applyHighPerformanceSettings();
+        break;
+    }
+  }
+
+  private detectDeviceCapability(): 'low' | 'medium' | 'high' {
+    // Detectar capacidad basada en FPS y memoria disponible
+    if (this.fps < 20 || (navigator as any).deviceMemory < 4) {
+      return 'low';
+    } else if (this.fps < 28 || (navigator as any).deviceMemory < 8) {
+      return 'medium';
+    }
+    return 'high';
+  }
+
+  private applyLowPerformanceSettings(): void {
+    // Configuración para dispositivos de gama baja
+    this.showSkeleton = false;
+    this.showAngles = false;
+    this.useEnhancedAnalysis = false;
+    this.showScientificMetrics = false;
+    
+    console.log('⚡ Aplicada configuración de bajo rendimiento');
+  }
+
+  private applyMediumPerformanceSettings(): void {
+    // Configuración balanceada
+    this.showSkeleton = true;
+    this.showAngles = false;
+    this.useEnhancedAnalysis = true;
+    this.showScientificMetrics = false;
+    
+    console.log('⚡ Aplicada configuración de rendimiento medio');
+  }
+
+  private applyHighPerformanceSettings(): void {
+    // Configuración completa
+    this.showSkeleton = true;
+    this.showAngles = true;
+    this.useEnhancedAnalysis = true;
+    this.showScientificMetrics = true;
+    
+    console.log('⚡ Aplicada configuración de alto rendimiento');
+  }
+
+  // ... [RESTO DE MÉTODOS EXISTENTES SIN CAMBIOS] ...
+
+  // Métodos existentes que se mantienen igual
   private attemptInitializationWithFallback(): void {
     this.initializationAttempts++;
     console.log(`🎯 Intento ${this.initializationAttempts}/${this.maxInitializationAttempts}`);
@@ -160,7 +506,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // ✅ VERIFICAR VIEWCHILD ELEMENTOS
   private areViewChildElementsReady(): boolean {
     try {
       console.log('🔍 Verificando ViewChild...');
@@ -204,7 +549,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // 🔍 CONFIGURAR ELEMENTOS CON QUERYSELECTOR (FALLBACK)
   private setupElementsWithQuerySelector(): boolean {
     try {
       console.log('🔍 Configurando con querySelector...');
@@ -236,7 +580,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // 🚀 INICIAR SECUENCIA DE CÁMARA
   private async startCameraSequence(): Promise<void> {
     try {
       console.log('🚀 === INICIANDO SECUENCIA DE CÁMARA ===');
@@ -250,6 +593,12 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
 
       this.isLoading = false;
       this.isInitialized = true;
+      
+      // ✅ OPTIMIZAR AUTOMÁTICAMENTE
+      setTimeout(() => {
+        this.optimizeForDevice();
+      }, 2000);
+      
       this.cdr.detectChanges();
       
       console.log('✅ === SECUENCIA COMPLETADA ===');
@@ -262,7 +611,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // ⏳ ESPERAR MEDIAPIPE
   private async waitForMediaPipe(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.isMediaPipeReady()) {
@@ -295,7 +643,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     return !!(window.Pose && window.Camera && window.drawConnectors && window.POSE_CONNECTIONS);
   }
 
-  // 📹 INICIAR CÁMARA CON MEDIAPIPE
   private async startCameraWithMediaPipe(): Promise<void> {
     try {
       console.log('📹 Iniciando cámara...');
@@ -357,44 +704,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     canvas.height = 480;
     overlay.width = 640;
     overlay.height = 480;
-  }
-
-  // 🔗 CONFIGURAR SUSCRIPCIONES
-  private setupSubscriptions(): void {
-    this.subscriptions.push(
-      this.poseEngine.pose$.subscribe(pose => {
-        this.currentPose = pose;
-        if (pose) this.poseDetected.emit(pose);
-        this.cdr.detectChanges();
-      })
-    );
-
-    this.subscriptions.push(
-      this.poseEngine.angles$.subscribe(angles => {
-        this.currentAngles = angles;
-        if (angles && this.currentPose && this.enableErrorDetection) {
-          this.analyzeMovement(this.currentPose, angles);
-        }
-        this.cdr.detectChanges();
-      })
-    );
-
-    this.subscriptions.push(
-      this.poseEngine.fps$.subscribe(fps => {
-        this.fps = fps;
-        this.cdr.detectChanges();
-      })
-    );
-
-    this.subscriptions.push(
-      this.poseEngine.status$.subscribe(status => {
-        if (status === 'error') {
-          this.error = 'Error en detección';
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        }
-      })
-    );
   }
 
   private startRenderLoop(): void {
@@ -478,50 +787,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
-    const analysis = this.biomechanicsAnalyzer.analyzeFrame(pose, angles);
-    
-    // ✅ FILTRAR ERRORES DUPLICADOS
-    const newErrors = this.filterUniqueErrors(analysis.errors);
-    
-    this.currentErrors = newErrors;
-    this.currentPhase = analysis.phase;
-    this.currentQuality = analysis.qualityScore;
-    
-    if (analysis.repetitionCount > this.repetitionCount) {
-      this.repetitionCount = analysis.repetitionCount;
-      this.repetitionComplete.emit(this.repetitionCount);
-    }
-
-    if (newErrors.length > 0) {
-      this.errorDetected.emit(newErrors);
-    }
-    
-    this.qualityScore.emit(analysis.qualityScore);
-  }
-
-  // 🚫 FILTRAR ERRORES DUPLICADOS
-  private filterUniqueErrors(errors: PostureError[]): PostureError[] {
-    if (errors.length === 0) return [];
-    
-    const now = Date.now();
-    const ERROR_DISPLAY_DURATION = 2000; // 2 segundos
-    
-    // Limpiar errores antiguos
-    this.currentErrors = this.currentErrors.filter(error => 
-      (now - error.timestamp) < ERROR_DISPLAY_DURATION
-    );
-    
-    // Filtrar errores que ya están siendo mostrados
-    const newErrors = errors.filter(newError => {
-      return !this.currentErrors.some(existingError => 
-        existingError.type === newError.type
-      );
-    });
-    
-    return newErrors;
-  }
-
   private drawOverlayInfo(): void {
     if (!this.overlayCtx) return;
     
@@ -552,7 +817,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // ✅ MOSTRAR CONSEJO ESTABLE SI NO HAY ERRORES
+    // Mostrar consejo estable si no hay errores
     if (this.currentErrors.length === 0 && this.isRunning && this.repetitionCount > 0) {
       const stableTip = this.getStableCoachingTip();
       
@@ -581,7 +846,27 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     ctx.restore();
   }
 
-  // ✅ OBTENER CONSEJO ESTABLE (NO CAMBIA EN CADA FRAME)
+  private filterUniqueErrors(errors: PostureError[]): PostureError[] {
+    if (errors.length === 0) return [];
+    
+    const now = Date.now();
+    const ERROR_DISPLAY_DURATION = 2000; // 2 segundos
+    
+    // Limpiar errores antiguos
+    this.currentErrors = this.currentErrors.filter(error => 
+      (now - error.timestamp) < ERROR_DISPLAY_DURATION
+    );
+    
+    // Filtrar errores que ya están siendo mostrados
+    const newErrors = errors.filter(newError => {
+      return !this.currentErrors.some(existingError => 
+        existingError.type === newError.type
+      );
+    });
+    
+    return newErrors;
+  }
+
   private getStableCoachingTip(): string {
     const now = Date.now();
     
@@ -598,7 +883,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.currentTip;
   }
 
-  // ✅ OBTENER CONSEJOS PARA EL EJERCICIO ACTUAL
   private getTipsForCurrentExercise(): string[] {
     const tips: { [key in ExerciseType]: string[] } = {
       [ExerciseType.SQUATS]: [
@@ -663,14 +947,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     return 'Error desconocido';
   }
 
-  // ✅ NUEVOS MÉTODOS PROFESIONALES
-
-  public showSettings(): void {
-    console.log('⚙️ Mostrando configuración');
-  }
-
-  
-  // ✅ NUEVO MÉTODO PARA RETROCEDER
+  // Métodos públicos para compatibilidad
   public goBackToExercises(): void {
     console.log('🔙 Volviendo a ejercicios...');
     this.backToExercises.emit();
@@ -683,20 +960,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     return `${strokeDasharray} ${circumference}`;
   }
 
-  // MÉTODOS PÚBLICOS EXISTENTES
-  public async startCamera(): Promise<void> {
-    if (!this.isInitialized && !this.isLoading) {
-      this.isLoading = true;
-      this.error = null;
-      this.initializationAttempts = 0;
-      this.cdr.detectChanges();
-      
-      this.initializationTimer = setTimeout(() => {
-        this.attemptInitializationWithFallback();
-      }, 200);
-    }
-  }
-
   public async stopCamera(): Promise<void> {
     try {
       await this.poseEngine.stopCamera();
@@ -705,19 +968,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     } catch (error) {
       console.error('❌ Error deteniendo:', error);
     }
-  }
-
-  public resetSession(): void {
-    this.repetitionCount = 0;
-    this.currentErrors = [];
-    this.currentQuality = 0;
-    
-    // ✅ RESETEAR CONSEJOS
-    this.currentTip = '';
-    this.tipStartTime = 0;
-    this.tipIndex = 0;
-    
-    this.biomechanicsAnalyzer.setCurrentExercise(this.exerciseType);
   }
 
   public toggleSkeleton(): void {
@@ -750,15 +1000,30 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     return error.type;
   }
 
-  // ✅ MANTENER EL MÉTODO PÚBLICO PARA COMPATIBILIDAD
   public getCurrentCoachingTip(): string {
     return this.getStableCoachingTip();
   }
-  // ✅ NUEVOS MÉTODOS PROFESIONALES
+
   public togglePause(): void {
-  this.isPaused = !this.isPaused;
-  console.log('🎮 Pausa toggled:', this.isPaused);
-}
+    this.isPaused = !this.isPaused;
+    console.log('🎮 Pausa toggled:', this.isPaused);
+  }
+
+  public showSettings(): void {
+    console.log('⚙️ Mostrando configuración');
+  }
+
+  public async onBackToExercises() {
+    console.log('🔙 Evento de retroceso recibido');
+    
+    // Si hay repeticiones, preguntar antes de salir
+    if (this.repetitionCount > 0) {
+      // Implementar lógica de confirmación aquí
+      console.log('Confirmando salida con progreso...');
+    }
+    
+    this.backToExercises.emit();
+  }
 
   private cleanup(): void {
     if (this.initializationTimer) {
@@ -767,6 +1032,13 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     
     this.subscriptions.forEach(sub => sub.unsubscribe());
+    
+    // ✅ CLEANUP MEJORADO
+    if (this.useEnhancedAnalysis) {
+      this.enhancedAnalyzer.cleanup();
+      this.precisionValidator.cleanup();
+    }
+    
     this.stopCamera();
   }
 }

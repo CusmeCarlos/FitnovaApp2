@@ -1,4 +1,4 @@
-/* 🎨 DISEÑO PROFESIONAL FITNOVA - VERSIÓN COMPACTA */
+/* 🎨 DISEÑO PROFESIONAL FITNOVA - VERSIÓN CON MÉTRICAS CIENTÍFICAS */
 
 .camera-container {
   position: fixed;
@@ -68,11 +68,10 @@
 }
 
 /* 📊 PANEL DE ESTADÍSTICAS COMPACTO */
-/* 📊 PANEL DE ESTADÍSTICAS COMPACTO */
 .stats-panel {
   position: absolute;
   top: 15px;
-  left: 120px; /* ✅ MOVER A LA DERECHA PARA DAR ESPACIO AL BOTÓN */
+  left: 120px;
   right: 15px;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(15px);
@@ -82,7 +81,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   pointer-events: auto;
   animation: slideInFromTop 0.6s ease-out;
-  max-width: 350px; /* ✅ REDUCIR UN POCO EL ANCHO */
+  max-width: 350px;
   margin: 0 auto;
 }
 
@@ -185,41 +184,357 @@
   transition: width 0.3s ease;
 }
 
-/* 🎮 CONTROLES COMPACTOS */
+/* ✅ NUEVO: PANEL DE MÉTRICAS CIENTÍFICAS */
+.scientific-panel {
+  position: absolute;
+  top: 80px;
+  left: 15px;
+  width: 300px;
+  background: rgba(16, 20, 31, 0.85);
+  backdrop-filter: blur(15px);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  box-shadow: 0 6px 25px rgba(0, 212, 255, 0.15);
+  pointer-events: auto;
+  animation: slideInFromLeft 0.6s ease-out;
+}
+
+.scientific-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.scientific-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #00d4ff;
+  font-weight: 600;
+  font-size: 13px;
+  
+  ion-icon {
+    font-size: 16px;
+  }
+}
+
+.validation-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  
+  &.validated {
+    color: #10dc60;
+    background: rgba(16, 220, 96, 0.15);
+    border: 1px solid rgba(16, 220, 96, 0.3);
+  }
+  
+  &.pending {
+    color: #ffce00;
+    background: rgba(255, 206, 0, 0.15);
+    border: 1px solid rgba(255, 206, 0, 0.3);
+  }
+  
+  ion-icon {
+    font-size: 12px;
+  }
+}
+
+.scientific-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.metric-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px 8px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  
+  &.excellent {
+    border-color: rgba(16, 220, 96, 0.4);
+    background: rgba(16, 220, 96, 0.1);
+    
+    .metric-value {
+      color: #10dc60;
+    }
+  }
+  
+  &.good {
+    border-color: rgba(255, 206, 0, 0.4);
+    background: rgba(255, 206, 0, 0.1);
+    
+    .metric-value {
+      color: #ffce00;
+    }
+  }
+  
+  &.fair {
+    border-color: rgba(255, 149, 0, 0.4);
+    background: rgba(255, 149, 0, 0.1);
+    
+    .metric-value {
+      color: #ff9500;
+    }
+  }
+  
+  &.poor {
+    border-color: rgba(240, 65, 65, 0.4);
+    background: rgba(240, 65, 65, 0.1);
+    
+    .metric-value {
+      color: #f04141;
+    }
+  }
+  
+  ion-icon {
+    font-size: 14px;
+    color: currentColor;
+    margin-bottom: 4px;
+    opacity: 0.8;
+  }
+}
+
+.metric-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 2px;
+}
+
+.metric-label {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.validation-details {
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 6px;
+  padding: 8px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.validation-text {
+  font-size: 10px;
+  color: #00d4ff;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ✅ NUEVO: PANEL DE RENDIMIENTO */
+.performance-panel {
+  position: absolute;
+  top: 80px;
+  right: 15px;
+  width: 250px;
+  background: rgba(20, 16, 31, 0.85);
+  backdrop-filter: blur(15px);
+  border-radius: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 149, 0, 0.3);
+  box-shadow: 0 6px 25px rgba(255, 149, 0, 0.15);
+  pointer-events: auto;
+  animation: slideInFromRight 0.6s ease-out;
+}
+
+.performance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.performance-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ff9500;
+  font-weight: 600;
+  font-size: 12px;
+  
+  ion-icon {
+    font-size: 14px;
+  }
+}
+
+.performance-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 500;
+  
+  &.excellent {
+    color: #10dc60;
+  }
+  
+  &.good {
+    color: #ffce00;
+  }
+  
+  &.fair {
+    color: #ff9500;
+  }
+  
+  &.poor {
+    color: #f04141;
+  }
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s infinite;
+}
+
+.performance-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.performance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.perf-label {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+}
+
+.perf-value {
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+}
+
+/* ✅ NUEVO: ESTADO CIENTÍFICO */
+.scientific-status {
+  position: absolute;
+  bottom: 120px;
+  left: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+  animation: slideInFromLeft 0.8s ease-out;
+}
+
+.status-indicator {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &.excellent {
+    background: rgba(16, 220, 96, 0.2);
+    border: 2px solid #10dc60;
+    color: #10dc60;
+  }
+  
+  &.good {
+    background: rgba(255, 206, 0, 0.2);
+    border: 2px solid #ffce00;
+    color: #ffce00;
+  }
+  
+  &.fair {
+    background: rgba(255, 149, 0, 0.2);
+    border: 2px solid #ff9500;
+    color: #ff9500;
+  }
+  
+  &.poor {
+    background: rgba(240, 65, 65, 0.2);
+    border: 2px solid #f04141;
+    color: #f04141;
+  }
+  
+  ion-icon {
+    font-size: 14px;
+  }
+}
+
+.status-text {
+  color: white;
+}
+
+.status-label {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+
+.status-value {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 🎮 CONTROLES COMPACTOS EXPANDIDOS */
 .professional-controls {
   position: absolute;
-  bottom: 80px; /* ✅ MÁS CERCA DEL BORDE */
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px; /* ✅ GAP REDUCIDO */
+  gap: 12px;
   pointer-events: auto;
   animation: slideInFromBottom 0.6s ease-out;
 }
 
 .control-group {
   display: flex;
-  gap: 6px; /* ✅ ESPACIADO MÍNIMO */
+  gap: 4px; /* ✅ Reducido para acomodar más botones */
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(15px);
-  padding: 8px 10px; /* ✅ PADDING REDUCIDO */
+  padding: 8px 10px;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  flex-wrap: wrap; /* ✅ Permitir wrap en pantallas pequeñas */
+  justify-content: center;
 }
 
 .pro-control-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px; /* ✅ GAP MÍNIMO */
+  gap: 3px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
-  padding: 8px 6px; /* ✅ PADDING COMPACTO */
-  min-width: 45px; /* ✅ ANCHO MÍNIMO */
+  padding: 8px 5px; /* ✅ Padding más compacto */
+  min-width: 40px; /* ✅ Ancho reducido */
   color: white;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -229,7 +544,7 @@
   &:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px); /* ✅ MOVIMIENTO SUTIL */
+    transform: translateY(-1px);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   }
   
@@ -245,10 +560,38 @@
       color: #00d4ff;
     }
   }
+  
+  /* ✅ Estilos específicos para nuevos botones */
+  &.metrics-btn.active {
+    background: rgba(16, 220, 96, 0.15);
+    border-color: #10dc60;
+    
+    .btn-icon {
+      color: #10dc60;
+    }
+  }
+  
+  &.calibration-btn:hover {
+    background: rgba(255, 206, 0, 0.15);
+    border-color: #ffce00;
+    
+    .btn-icon {
+      color: #ffce00;
+    }
+  }
+  
+  &.export-btn:hover {
+    background: rgba(147, 51, 234, 0.15);
+    border-color: #9333ea;
+    
+    .btn-icon {
+      color: #9333ea;
+    }
+  }
 }
 
 .btn-icon {
-  font-size: 16px; /* ✅ ICONO MÁS PEQUEÑO */
+  font-size: 14px; /* ✅ Reducido */
   transition: all 0.3s ease;
   
   ion-icon {
@@ -257,7 +600,7 @@
 }
 
 .btn-label {
-  font-size: 8px; /* ✅ TEXTO MÁS PEQUEÑO */
+  font-size: 7px; /* ✅ Muy pequeño para acomodar más botones */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -267,9 +610,9 @@
 
 .btn-indicator {
   position: absolute;
-  top: 2px; /* ✅ POSICIÓN AJUSTADA */
+  top: 2px;
   right: 2px;
-  width: 6px; /* ✅ INDICADOR MÁS PEQUEÑO */
+  width: 6px;
   height: 6px;
   border-radius: 50%;
   background: #666;
@@ -281,34 +624,7 @@
   }
 }
 
-/* 🚪 BOTÓN DE SALIDA COMPACTO */
-.exit-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px; /* ✅ GAP REDUCIDO */
-  background: linear-gradient(135deg, #ff3b30, #ff6b6b);
-  border: none;
-  border-radius: 16px; /* ✅ BORDES MÁS PEQUEÑOS */
-  padding: 10px 16px; /* ✅ PADDING COMPACTO */
-  color: white;
-  font-weight: 600;
-  font-size: 12px; /* ✅ TEXTO MÁS PEQUEÑO */
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(255, 59, 48, 0.3);
-  
-  &:hover {
-    transform: translateY(-1px); /* ✅ MOVIMIENTO SUTIL */
-    box-shadow: 0 6px 20px rgba(255, 59, 48, 0.4);
-  }
-  
-  &:active {
-    transform: translateY(0) scale(0.98);
-  }
-}
-
 /* 🔙 BOTÓN DE RETROCESO PROFESIONAL */
-/* 🔙 BOTÓN DE RETROCESO EN ESQUINA SUPERIOR */
 .back-button-container {
   position: absolute;
   top: 15px;
@@ -361,7 +677,7 @@
   }
 }
 
-/* 🚪 BOTÓN DE SALIDA COMPACTO */
+/* 🚪 BOTÓN DE SALIDA */
 .exit-btn {
   display: flex;
   align-items: center;
@@ -388,7 +704,7 @@
 }
 
 .exit-icon {
-  width: 16px; /* ✅ ICONO MÁS PEQUEÑO */
+  width: 16px;
   height: 16px;
   display: flex;
   align-items: center;
@@ -397,7 +713,7 @@
   border-radius: 50%;
   
   ion-icon {
-    font-size: 12px; /* ✅ ICONO REDUCIDO */
+    font-size: 12px;
   }
 }
 
@@ -479,6 +795,14 @@
   font-size: 12px;
   opacity: 0.8;
   line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+/* ✅ NUEVO: Indicador de confianza del error */
+.error-confidence {
+  font-size: 10px;
+  opacity: 0.7;
+  font-style: italic;
 }
 
 .error-severity {
@@ -636,193 +960,72 @@
 
 /* 📱 RESPONSIVE MEJORADO */
 @media (max-width: 768px) {
-  .back-button-container {
-    top: 10px;
+  .scientific-panel {
+    width: 250px;
     left: 10px;
+    top: 70px;
   }
   
-  .back-btn-top {
-    padding: 8px 10px;
-    font-size: 11px;
-    border-radius: 16px;
-    gap: 4px;
-  }
-  
-  .back-icon {
-    width: 16px;
-    height: 16px;
-    
-    ion-icon {
-      font-size: 11px;
-    }
-  }
-  
-  .stats-panel {
-    top: 10px;
-    left: 90px; /* ✅ AJUSTE PARA MÓVILES */
+  .performance-panel {
+    width: 200px;
     right: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    max-width: none; /* ✅ ANCHO COMPLETO EN MÓVILES */
-  }
-}
-
-@media (max-width: 480px) {
-  .back-button-container {
-    top: 8px;
-    left: 8px;
-  }
-  
-  .back-btn-top {
-    padding: 6px 8px;
-    font-size: 10px;
-    border-radius: 14px;
-    gap: 3px;
-  }
-  
-  .back-icon {
-    width: 14px;
-    height: 14px;
-    
-    ion-icon {
-      font-size: 10px;
-    }
-  }
-  
-  .stats-panel {
-    top: 8px;
-    left: 75px; /* ✅ AJUSTE PARA PANTALLAS PEQUEÑAS */
-    right: 8px;
-    padding: 8px 10px;
-    border-radius: 8px;
-  }
-}
-
-/* 🎯 AJUSTE PARA PANTALLAS MUY PEQUEÑAS */
-@media (max-width: 375px) {
-  .back-btn-top {
-    padding: 6px;
-    
-    span {
-      display: none; /* ✅ OCULTAR TEXTO EN PANTALLAS MUY PEQUEÑAS */
-    }
-  }
-  
-  .back-icon {
-    width: 16px;
-    height: 16px;
-    
-    ion-icon {
-      font-size: 12px;
-    }
-  }
-  
-  .stats-panel {
-    left: 55px; /* ✅ MENOS ESPACIO CUANDO NO HAY TEXTO */
-  }
-}
-
-@media (max-width: 480px) {
-  .professional-controls {
-    bottom: 120px; /* ✅ MÁS ESPACIO EN PANTALLAS PEQUEÑAS */
+    top: 70px;
   }
   
   .control-group {
     gap: 3px;
-    padding: 5px 6px;
-    border-radius: 14px;
-  }
-  
-  .pro-control-btn {
-    min-width: 36px; /* ✅ ULTRA COMPACTO */
-    padding: 5px 3px;
-    border-radius: 8px;
-    gap: 1px;
-  }
-  
-  .btn-icon {
-    font-size: 13px;
-  }
-  
-  .btn-label {
-    font-size: 6px; /* ✅ TEXTO SÚPER PEQUEÑO PERO LEGIBLE */
-    font-weight: 700;
-  }
-  
-  .exit-btn {
-    padding: 7px 10px;
-    font-size: 10px;
-    border-radius: 12px;
-  }
-  
-  .exit-icon {
-    width: 12px;
-    height: 12px;
-    
-    ion-icon {
-      font-size: 9px;
-    }
-  }
-}
-
-/* 🎯 MODO ULTRA COMPACTO PARA PANTALLAS MUY PEQUEÑAS */
-@media (max-width: 375px) {
-  .professional-controls {
-    bottom: 100px;
-    gap: 8px;
-  }
-  
-  .control-group {
-    gap: 2px;
-    padding: 4px 5px;
-    border-radius: 12px;
-  }
-  
-  .pro-control-btn {
-    min-width: 32px; /* ✅ MÍNIMO ABSOLUTO */
-    padding: 4px 2px;
-    border-radius: 6px;
-  }
-  
-  .btn-icon {
-    font-size: 12px;
-  }
-  
-  .btn-label {
-    font-size: 5px; /* ✅ MÍNIMO LEGIBLE */
-    font-weight: 800;
-  }
-  
-  .exit-btn {
     padding: 6px 8px;
-    font-size: 9px;
-    border-radius: 10px;
-  }
-}
-
-/* 🔧 AJUSTES ADICIONALES PARA MODO HORIZONTAL */
-@media (max-height: 500px) and (orientation: landscape) {
-  .professional-controls {
-    bottom: 60px; /* ✅ MUY CERCA DEL BORDE EN HORIZONTAL */
-    gap: 8px;
-  }
-  
-  .control-group {
-    padding: 4px 6px;
   }
   
   .pro-control-btn {
-    padding: 4px 3px;
     min-width: 35px;
+    padding: 6px 4px;
   }
   
-  .exit-btn {
-    padding: 6px 10px;
-    font-size: 10px;
+  .btn-label {
+    font-size: 6px;
   }
 }
 
-/* 🎬 ANIMACIONES */
+@media (max-width: 480px) {
+  .scientific-panel,
+  .performance-panel {
+    width: calc(100vw - 20px);
+    left: 10px;
+    right: 10px;
+    top: 60px;
+    margin-bottom: 10px;
+  }
+  
+  .performance-panel {
+    top: 200px; /* Stack below scientific panel */
+  }
+  
+  .control-group {
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 5px 6px;
+    max-width: calc(100vw - 40px);
+  }
+  
+  .pro-control-btn {
+    min-width: 32px;
+    padding: 5px 3px;
+    
+    .btn-label {
+      font-size: 5px;
+      font-weight: 800;
+    }
+  }
+  
+  .scientific-status {
+    bottom: 140px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+/* 🎬 ANIMACIONES MEJORADAS */
 @keyframes slideInFromTop {
   from {
     opacity: 0;
@@ -831,6 +1034,28 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
@@ -884,4 +1109,4 @@
   -webkit-touch-callout: none !important;
   -webkit-user-select: none !important;
   user-select: none !important;
- }
+}
