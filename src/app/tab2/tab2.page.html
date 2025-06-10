@@ -136,10 +136,12 @@
     [showSkeleton]="true"
     [showAngles]="false"
     [enableErrorDetection]="true"
+    [useEnhancedAnalysis]="true"
     (poseDetected)="onPoseDetected($event)"
     (errorDetected)="onErrorDetected($event)"
     (repetitionComplete)="onRepetitionComplete($event)"
     (qualityScore)="onQualityScore($event)"
+    (coachingTip)="onCoachingTip($event)"
     (backToExercises)="onBackToExercises()">
 </app-pose-camera>
 

@@ -249,38 +249,47 @@ export class PoseDetectionEngine {
     requestAnimationFrame(processFrame);
   }
 
-  // 🧠 PROCESAR RESULTADOS DE MEDIAPIPE
   private processPoseResults(results: any): void {
+    console.log('🧠 === PROCESANDO RESULTADOS MEDIAPIPE ===', results);
     const startTime = performance.now();
-
+  
     try {
       // Verificar si hay landmarks válidos
       if (!results.poseLandmarks || results.poseLandmarks.length === 0) {
+        console.log('❌ No hay landmarks válidos');
         this.poseStream.next(null);
         this.anglesStream.next(null);
         return;
       }
-
+  
+      console.log('✅ Landmarks válidos:', results.poseLandmarks.length);
+  
       // Convertir a nuestro formato
       const poseKeypoints = this.convertToKeypoints(results.poseLandmarks);
+      console.log('✅ Keypoints convertidos:', !!poseKeypoints);
       
       // Verificar que la pose sea válida
       if (!this.isPoseValid(poseKeypoints)) {
+        console.log('❌ Pose no válida');
         this.poseStream.next(null);
         this.anglesStream.next(null);
         return;
       }
-
+  
+      console.log('✅ Pose válida - Emitiendo datos');
+  
       // Calcular ángulos
       const angles = this.calculateBiomechanicalAngles(poseKeypoints);
-
+  
       // Emitir resultados
       this.poseStream.next(poseKeypoints);
       this.anglesStream.next(angles);
-
+  
+      console.log('📤 Datos emitidos a streams');
+  
       // Actualizar FPS
       this.updateFpsCounter();
-
+  
     } catch (error) {
       console.error('❌ Error procesando resultados:', error);
     }
@@ -288,14 +297,26 @@ export class PoseDetectionEngine {
 
   // ✅ VALIDAR POSE
   private isPoseValid(pose: PoseKeypoints): boolean {
+    console.log('🔍 Validando pose...', pose);
+    
     const keyLandmarks = [
       pose.left_shoulder, pose.right_shoulder,
       pose.left_hip, pose.right_hip,
       pose.left_knee, pose.right_knee
     ];
+  
+    console.log('🔍 Key landmarks:', keyLandmarks);
+  
+    const validLandmarks = keyLandmarks.filter(landmark => 
+      landmark && landmark.visibility > 0.5
+    );
+  
+    console.log('✅ Landmarks válidos:', validLandmarks.length, 'de', keyLandmarks.length);
     
-    const validLandmarks = keyLandmarks.filter(landmark => landmark.visibility > 0.5);
-    return validLandmarks.length >= 4;
+    const isValid = validLandmarks.length >= 4; // Al menos 4 puntos clave visibles
+    console.log('🎯 Pose válida?', isValid);
+    
+    return isValid;
   }
 
   // 🔄 CONVERTIR LANDMARKS

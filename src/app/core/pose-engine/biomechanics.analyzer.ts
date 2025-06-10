@@ -42,6 +42,7 @@ export class BiomechanicsAnalyzer {
     console.log(`🎯 Ejercicio configurado: ${exerciseType}`);
   }
 
+
   // 🔄 ANÁLISIS PRINCIPAL
   analyzeFrame(
     pose: PoseKeypoints, 
@@ -52,8 +53,11 @@ export class BiomechanicsAnalyzer {
     repetitionCount: number;
     qualityScore: number;
   } {
+    console.log('🔬 === ANÁLISIS BIOMECÁNICO ===');
+    console.log('🎯 Ejercicio actual:', this.currentExercise);
     
     if (!this.currentExercise) {
+      console.log('❌ No hay ejercicio configurado');
       return {
         errors: [],
         phase: RepetitionPhase.IDLE,
@@ -61,9 +65,15 @@ export class BiomechanicsAnalyzer {
         qualityScore: 0
       };
     }
-
+  
+    console.log('✅ Ejercicio configurado correctamente');
+  
     // Verificar visibilidad mínima de landmarks clave
-    if (!this.isPoseValid(pose)) {
+    const poseValid = this.isPoseValid(pose);
+    console.log('🔍 Pose válida para análisis:', poseValid);
+    
+    if (!poseValid) {
+      console.log('❌ Pose no válida para análisis');
       return {
         errors: [],
         phase: RepetitionPhase.IDLE,
@@ -71,27 +81,46 @@ export class BiomechanicsAnalyzer {
         qualityScore: 0
       };
     }
-
+  
+    console.log('🎯 Continuando con análisis...');
+    console.log('📐 Ángulos originales:', angles);
+  
     // Suavizar ángulos
     const smoothedAngles = this.smoothAngles(angles);
+    console.log('📐 Ángulos suavizados:', smoothedAngles);
     
     // Detectar fase actual del ejercicio
     const newPhase = this.detectExercisePhase(smoothedAngles);
+    console.log('🔄 Nueva fase detectada:', newPhase);
+    
     const smoothedPhase = this.smoothPhase(newPhase);
+    console.log('🔄 Fase suavizada:', smoothedPhase);
     
     // Detectar errores posturales
     const errors = this.detectPostureErrors(pose, smoothedAngles);
+    console.log('⚠️ Errores detectados:', errors);
     
     // Contar repeticiones
-    if (this.isRepetitionComplete(smoothedPhase)) {
+    const repComplete = this.isRepetitionComplete(smoothedPhase);
+    console.log('🔢 Repetición completa?', repComplete);
+    
+    if (repComplete) {
       this.repetitionCounter++;
       console.log(`🔢 Repetición completada: ${this.repetitionCounter}`);
     }
     
     // Calcular puntuación de calidad
     const qualityScore = this.calculateQualityScore(errors, smoothedAngles);
+    console.log('📊 Puntuación de calidad:', qualityScore);
     
     this.currentPhase = smoothedPhase;
+    
+    console.log('✅ Resultado final:', {
+      errors: errors.length,
+      phase: smoothedPhase,
+      repetitionCount: this.repetitionCounter,
+      qualityScore: qualityScore
+    });
     
     return {
       errors: errors,

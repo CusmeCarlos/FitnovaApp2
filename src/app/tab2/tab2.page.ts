@@ -209,6 +209,9 @@ export class Tab2Page implements OnInit, OnDestroy {
       this.sessionData.avgQuality = Math.round(sum / this.qualityScores.length);
     }
   }
+  onCoachingTip(tip: string) {
+    this.showToast(`💡 ${tip}`, 'success');
+  }
 
   // ✅ NUEVO MÉTODO PARA MANEJAR EL RETROCESO
 async onBackToExercises() {
