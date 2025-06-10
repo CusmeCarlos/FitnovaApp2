@@ -1,29 +1,280 @@
-<ion-header>
-  <ion-toolbar color="primary">
-    <ion-title>Mi Perfil</ion-title>
+<!-- HTML Template - tab3.page.html -->
+<ion-header [translucent]="true">
+  <ion-toolbar color="dark" class="custom-toolbar">
+    <ion-title class="custom-title">Mi Perfil</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" class="settings-btn">
+        <ion-icon name="settings-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
-<ion-content>
-  <ion-card *ngIf="user">
-    <ion-card-header>
-      <ion-card-subtitle>{{ user.email }}</ion-card-subtitle>
-      <ion-card-title>{{ user.displayName }}</ion-card-title>
-    </ion-card-header>
+<ion-content [fullscreen]="true" class="profile-content">
+  <!-- Background overlay -->
+  <div class="background-overlay"></div>
+  
+  <div class="profile-container">
+    
+    <!-- Profile Header -->
+    <div class="profile-header" *ngIf="user">
+      <div class="avatar-section">
+        <div class="avatar-wrapper">
+          <img [src]="user.photoURL || 'assets/default-avatar.png'" 
+               [alt]="user.displayName" 
+               class="user-avatar">
+          <div class="status-indicator online"></div>
+        </div>
+        <ion-button fill="clear" class="edit-avatar-btn" (click)="changeAvatar()">
+          <ion-icon name="camera-outline"></ion-icon>
+        </ion-button>
+      </div>
+      
+      <div class="user-info">
+        <h2 class="user-name">{{ user.displayName || 'Usuario FitNova' }}</h2>
+        <p class="user-email">{{ user.email }}</p>
+        <div class="verification-badge">
+          <ion-chip [color]="user.emailVerified ? 'success' : 'warning'" 
+                   class="verification-chip"
+                   (click)="!user.emailVerified && verifyEmail()">
+            <ion-icon [name]="user.emailVerified ? 'checkmark-circle' : 'warning'"></ion-icon>
+            <ion-label>{{ user.emailVerified ? 'Verificado' : 'Verificar Email' }}</ion-label>
+          </ion-chip>
+        </div>
+      </div>
+    </div>
 
-    <ion-card-content>
-      <p><strong>Rol:</strong> {{ user.role }}</p>
-      <p><strong>UID:</strong> {{ user.uid }}</p>
-      <p>
-        <strong>Email verificado:</strong>
-        <ion-badge color="{{ user.emailVerified ? 'success' : 'warning' }}">
-          {{ user.emailVerified ? 'Sí' : 'No' }}
-        </ion-badge>
+    <!-- Quick Stats -->
+    <div class="quick-stats">
+      <div class="stat-item">
+        <div class="stat-icon">
+          <ion-icon name="fitness-outline"></ion-icon>
+        </div>
+        <div class="stat-info">
+          <span class="stat-number">{{ formattedStats.totalWorkouts }}</span>
+          <span class="stat-label">Entrenamientos</span>
+        </div>
+      </div>
+      
+      <div class="stat-item">
+        <div class="stat-icon">
+          <ion-icon name="trophy-outline"></ion-icon>
+        </div>
+        <div class="stat-info">
+          <span class="stat-number">{{ formattedStats.achievements }}</span>
+          <span class="stat-label">Logros</span>
+        </div>
+      </div>
+      
+      <div class="stat-item">
+        <div class="stat-icon">
+          <ion-icon name="calendar-outline"></ion-icon>
+        </div>
+        <div class="stat-info">
+          <span class="stat-number">{{ formattedStats.activeDays }}</span>
+          <span class="stat-label">Días activo</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Personal Information -->
+    <div class="section">
+      <h3 class="section-title">
+        <ion-icon name="person-outline"></ion-icon>
+        Información Personal
+      </h3>
+      
+      <div class="info-card">
+        <div class="info-item">
+          <ion-label class="info-label">Nombre completo</ion-label>
+          <ion-input 
+            value="{{ user?.displayName || 'No especificado' }}" 
+            readonly 
+            class="info-input">
+          </ion-input>
+        </div>
+        
+        <div class="info-item">
+          <ion-label class="info-label">Correo electrónico</ion-label>
+          <ion-input 
+            value="{{ user?.email }}" 
+            readonly 
+            class="info-input">
+          </ion-input>
+        </div>
+        
+        <div class="info-item">
+          <ion-label class="info-label">Rol en el sistema</ion-label>
+          <ion-input 
+            value="{{ user?.role || 'Usuario' }}" 
+            readonly 
+            class="info-input">
+          </ion-input>
+        </div>
+        
+        <div class="info-item">
+          <ion-label class="info-label">ID de usuario</ion-label>
+          <ion-input 
+            value="{{ user?.uid }}" 
+            readonly 
+            class="info-input uid-input">
+          </ion-input>
+        </div>
+      </div>
+    </div>
+
+    <!-- Medical History -->
+    <div class="section">
+      <h3 class="section-title">
+        <ion-icon name="medical-outline"></ion-icon>
+        Historial Médico
+        <ion-chip color="primary" class="required-chip">
+          <ion-label>Requerido</ion-label>
+        </ion-chip>
+      </h3>
+      
+      <div class="medical-card">
+        <div class="medical-item">
+          <ion-label class="medical-label">Condiciones médicas</ion-label>
+          <ion-textarea 
+            [(ngModel)]="medicalHistory.conditions"
+            placeholder="Especifica cualquier condición médica relevante..."
+            rows="3"
+            class="medical-input">
+          </ion-textarea>
+        </div>
+        
+        <div class="medical-item">
+          <ion-label class="medical-label">Lesiones previas</ion-label>
+          <ion-textarea 
+            [(ngModel)]="medicalHistory.injuries"
+            placeholder="Describe lesiones anteriores que puedan afectar el entrenamiento..."
+            rows="3"
+            class="medical-input">
+          </ion-textarea>
+        </div>
+        
+        <div class="medical-item">
+          <ion-label class="medical-label">Medicamentos actuales</ion-label>
+          <ion-textarea 
+            [(ngModel)]="medicalHistory.medications"
+            placeholder="Lista medicamentos que tomas regularmente..."
+            rows="2"
+            class="medical-input">
+          </ion-textarea>
+        </div>
+        
+        <div class="medical-update-info" *ngIf="medicalHistory.lastUpdated">
+          <span class="update-text">Última actualización: {{ lastMedicalUpdate }}</span>
+        </div>
+        
+        <ion-button 
+          expand="block" 
+          fill="outline" 
+          class="save-medical-btn"
+          (click)="saveMedicalHistory()"
+          [disabled]="isSavingMedical">
+          <ion-spinner *ngIf="isSavingMedical" name="crescent" slot="start"></ion-spinner>
+          <ion-icon *ngIf="!isSavingMedical" name="save-outline" slot="start"></ion-icon>
+          <span>{{ isSavingMedical ? 'Guardando...' : 'Guardar Historial Médico' }}</span>
+        </ion-button>
+      </div>
+    </div>
+
+    <!-- App Settings -->
+    <div class="section">
+      <h3 class="section-title">
+        <ion-icon name="settings-outline"></ion-icon>
+        Configuraciones
+      </h3>
+      
+      <div class="settings-card">
+        <div class="setting-item">
+          <div class="setting-info">
+            <ion-label class="setting-label">Notificaciones push</ion-label>
+            <p class="setting-description">Recibe alertas de entrenamientos y correcciones</p>
+          </div>
+          <ion-toggle 
+            [checked]="appSettings.pushNotifications" 
+            (ionChange)="onSettingChange('pushNotifications', $event.detail.checked)"
+            class="setting-toggle">
+          </ion-toggle>
+        </div>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <ion-label class="setting-label">Detección automática</ion-label>
+            <p class="setting-description">IA detecta errores posturales automáticamente</p>
+          </div>
+          <ion-toggle 
+            [checked]="appSettings.autoDetection" 
+            (ionChange)="onSettingChange('autoDetection', $event.detail.checked)"
+            class="setting-toggle">
+          </ion-toggle>
+        </div>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <ion-label class="setting-label">Sonidos de feedback</ion-label>
+            <p class="setting-description">Alertas sonoras durante el entrenamiento</p>
+          </div>
+          <ion-toggle 
+            [checked]="appSettings.soundFeedback" 
+            (ionChange)="onSettingChange('soundFeedback', $event.detail.checked)"
+            class="setting-toggle">
+          </ion-toggle>
+        </div>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <ion-label class="setting-label">Modo oscuro</ion-label>
+            <p class="setting-description">Interfaz optimizada para poca luz</p>
+          </div>
+          <ion-toggle 
+            [checked]="appSettings.darkMode" 
+            (ionChange)="onSettingChange('darkMode', $event.detail.checked)"
+            class="setting-toggle">
+          </ion-toggle>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gymshark Research -->
+    <div class="research-section">
+      <div class="research-header">
+        <img src="assets/gymshark-logo.png" alt="Gymshark" class="research-logo">
+        <div class="research-info">
+          <h4>Investigación GYMSHARK x UPSE</h4>
+          <p>Participante del estudio de detección postural con IA</p>
+        </div>
+      </div>
+      <div class="research-stats">
+        <div class="research-stat">
+          <span class="research-number">{{ formattedStats.aiAccuracy }}</span>
+          <span class="research-label">Precisión IA</span>
+        </div>
+        <div class="research-stat">
+          <span class="research-number">{{ formattedStats.errorsDetected }}</span>
+          <span class="research-label">Errores detectados</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logout Section -->
+    <div class="logout-section">
+      <ion-button 
+        expand="block" 
+        color="danger" 
+        (click)="logout()"
+        class="logout-btn">
+        <ion-icon name="log-out-outline" slot="start"></ion-icon>
+        <span>Cerrar Sesión</span>
+      </ion-button>
+      
+      <p class="logout-info">
+        ¿Necesitas ayuda? Contacta a tu entrenador de Gymshark
       </p>
-    </ion-card-content>
-  </ion-card>
+    </div>
 
-  <ion-button expand="block" color="danger" (click)="logout()">
-    Cerrar sesión
-  </ion-button>
+  </div>
 </ion-content>

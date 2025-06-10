@@ -1,7 +1,7 @@
 // src/app/tab2/tab2.page.scss
 
 ion-content {
-  --background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --background: linear-gradient(135deg, #1f1f1f 0%, #3a3a3a 100%);
 }
 
 // 🏠 DASHBOARD PRINCIPAL
@@ -446,15 +446,15 @@ ion-content {
 // Estado de calidad específico para tab2
 .quality-indicator {
   &.excellent {
-    color: #10dc60;
+    color: #577362;
   }
   &.good {
-    color: #ffce00;
+    color: #d8d6cd;
   }
   &.fair {
-    color: #ff9500;
+    color: #23190b;
   }
   &.poor {
-    color: #f04141;
+    color: #090909;
   }
 }

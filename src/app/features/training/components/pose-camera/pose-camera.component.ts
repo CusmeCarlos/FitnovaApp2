@@ -122,7 +122,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   private precisionValidator: PrecisionValidator;
 
   private lastTipTime = 0;
-  private readonly TIP_INTERVAL = 8000; // 8 segundos entre tips
+  private readonly TIP_INTERVAL = 15000; // 8 segundos entre tips
 
   constructor(
     private poseEngine: PoseDetectionEngine,
@@ -137,7 +137,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   private shouldShowTip(): boolean {
     const now = Date.now();
     if (now - this.lastTipTime > this.TIP_INTERVAL) {
-      this.lastTipTime = now;
       return true;
     }
     return false;
@@ -309,6 +308,16 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     // ✅ VALIDAR PRECISIÓN EN TIEMPO REAL
     if (this.useEnhancedAnalysis) {
       this.precisionValidator.validateFrame(pose, angles, startTime);
+    }
+    if (this.currentErrors.length === 0 && this.repetitionCount > 0) {
+      this.showCoachingToast('¡Excelente!');
+    }
+    if (this.currentErrors.length === 0 && this.repetitionCount > 0 && this.shouldShowTip()) {
+      const tip = this.getTipsForCurrentExercise();
+      if (tip) {
+        this.showCoachingToast(tip[0]);
+        this.lastTipTime = Date.now()
+      }
     }
   }
 

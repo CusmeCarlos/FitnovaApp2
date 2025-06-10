@@ -1,18 +1,39 @@
+
+<!-- HTML Template - tabs.page.html -->
 <ion-tabs>
-  <ion-tab-bar slot="bottom">
-    <ion-tab-button tab="tab1">
-      <ion-icon name="home"></ion-icon>
-      <ion-label>Inicio</ion-label>
+  <ion-tab-bar slot="bottom" class="custom-tab-bar">
+    <ion-tab-button tab="tab1" class="custom-tab-button">
+      <div class="tab-content">
+        <div class="tab-icon-wrapper">
+          <ion-icon name="home-outline" class="tab-icon"></ion-icon>
+          <ion-icon name="home" class="tab-icon-filled"></ion-icon>
+        </div>
+        <ion-label class="tab-label">Inicio</ion-label>
+      </div>
+      <div class="tab-indicator"></div>
     </ion-tab-button>
     
-    <ion-tab-button tab="tab2">
-      <ion-icon name="camera"></ion-icon>
-      <ion-label>Entrenar</ion-label>
+    <ion-tab-button tab="tab2" class="custom-tab-button primary">
+      <div class="tab-content">
+        <div class="tab-icon-wrapper">
+          <ion-icon name="camera-outline" class="tab-icon"></ion-icon>
+          <ion-icon name="camera" class="tab-icon-filled"></ion-icon>
+        </div>
+        <ion-label class="tab-label">Entrenar</ion-label>
+      </div>
+      <div class="tab-indicator"></div>
+      <div class="primary-glow"></div>
     </ion-tab-button>
     
-    <ion-tab-button tab="tab3">
-      <ion-icon name="person"></ion-icon>
-      <ion-label>Perfil</ion-label>
+    <ion-tab-button tab="tab3" class="custom-tab-button">
+      <div class="tab-content">
+        <div class="tab-icon-wrapper">
+          <ion-icon name="person-outline" class="tab-icon"></ion-icon>
+          <ion-icon name="person" class="tab-icon-filled"></ion-icon>
+        </div>
+        <ion-label class="tab-label">Perfil</ion-label>
+      </div>
+      <div class="tab-indicator"></div>
     </ion-tab-button>
   </ion-tab-bar>
 </ion-tabs>

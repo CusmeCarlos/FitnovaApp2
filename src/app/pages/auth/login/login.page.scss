@@ -1,61 +1,317 @@
-.logo-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 2rem;
+/* SCSS Styles */
+.login-content {
+  --background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #000000 100%);
+  position: relative;
+  overflow: hidden;
+  
+  .background-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 50%, rgba(255, 193, 7, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255, 87, 34, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 40% 80%, rgba(33, 150, 243, 0.05) 0%, transparent 50%);
+    z-index: 1;
+  }
+}
+
+.custom-toolbar {
+  --background: rgba(0, 0, 0, 0.95);
+  --border-color: transparent;
+  backdrop-filter: blur(20px);
+  
+  .custom-title {
+    font-weight: 800;
+    font-size: 1.2rem;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+  }
+}
+
+.login-container {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 2rem 1.5rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.logo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 3rem;
+  margin-top: 2rem;
+  
+  .gymshark-logo {
+    position: relative;
+    margin-bottom: 1.5rem;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.1);  // Cambia por esto
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     
-    .logo {
-      width: 120px;
-      height: 120px;
-      margin-bottom: 1rem;
-    }
-    
-    h1 {
-      margin: 0;
-      font-size: 2rem;
-      font-weight: bold;
-      color: var(--ion-color-primary);
-    }
-    
-    p {
-      margin: 0.5rem 0 0;
-      font-size: 1rem;
-      color: var(--ion-color-medium);
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      background: linear-gradient(45deg, #ff5722, #ffc107, #2196f3, #ff5722);
+      border-radius: 18px;
+      filter: blur(8px);
+      opacity: 0.2;
+      z-index: -1;
     }
   }
   
-  .error-message {
-    color: var(--ion-color-danger);
+  .gymshark-img {
+    height: 200px;
+    width: auto;
+    max-width: 200px;
+    filter: contrast(1.1) brightness(0.9);
+  }
+  
+  .brand-title {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: -1px;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  }
+  
+  .brand-subtitle {
     font-size: 0.8rem;
-    margin-left: 1rem;
-    margin-top: 0.2rem;
+    font-weight: 600;
+    color: #ff5722;
+    margin: 0.5rem 0 0;
+    letter-spacing: 2px;
+    text-transform: uppercase;
   }
+}
+
+.form-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group {
+  margin-bottom: 1.2rem;
   
-  .divider {
-    display: flex;
-    align-items: center;
-    margin: 1.5rem 0;
+  .custom-input {
+    --background: rgba(255, 255, 255, 0.05);
+    --border-radius: 10px;
+    --padding-start: 10px;
+    --padding-end: 10px;
+    --padding-top: 8px;
+    --padding-bottom: 8px;
+    --min-height: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s ease;
     
-    &:before, &:after {
-      content: "";
-      flex: 1;
-      border-bottom: 1px solid var(--ion-color-light-shade);
+    &:hover {
+      --background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 87, 34, 0.3);
     }
     
-    span {
-      margin: 0 1rem;
-      color: var(--ion-color-medium);
+    &.item-has-focus {
+      --background: rgba(255, 255, 255, 0.08);
+      border-color: #ff5722;
+      box-shadow: 0 0 0 2px rgba(255, 87, 34, 0.2);
+    }
+  }
+  
+  .input-label {
+    --color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    font-size: 0.85rem;
+  }
+  
+  .custom-input-field {
+    --color: #ffffff;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+  
+  .password-toggle {
+    --color: rgba(255, 255, 255, 0.6);
+    --padding-start: 6px;
+    --padding-end: 6px;
+    
+    ion-icon {
+      font-size: 18px;
+    }
+    
+    &:hover {
+      --color: #ff5722;
+    }
+  }
+}
+
+.error-text {
+  color: #ff5252;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  margin-left: 1rem;
+}
+
+.login-btn {
+  --background: linear-gradient(135deg, #ff5722 0%, #ff8a50 100%);
+  --border-radius: 12px;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 8px 24px rgba(255, 87, 34, 0.3);
+  margin: 1rem 0 2rem;
+  position: relative;
+  overflow: hidden;
+  
+  &:not([disabled]):hover {
+    --background: linear-gradient(135deg, #e64a19 0%, #ff7043 100%);
+    box-shadow: 0 12px 32px rgba(255, 87, 34, 0.4);
+    transform: translateY(-2px);
+  }
+  
+  &:not([disabled]):active {
+    transform: translateY(0);
+    box-shadow: 0 4px 16px rgba(255, 87, 34, 0.3);
+  }
+  
+  &[disabled] {
+    --background: rgba(255, 255, 255, 0.1);
+    --color: rgba(255, 255, 255, 0.5);
+    box-shadow: none;
+  }
+  
+  .btn-text {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  
+  .login-spinner {
+    --color: #ffffff;
+  }
+}
+
+.divider-section {
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0;
+  
+  .divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  }
+  
+  .divider-text {
+    margin: 0 1rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+}
+
+.google-btn {
+  --border-color: rgba(255, 255, 255, 0.2);
+  --border-radius: 12px;
+  --color: #ffffff;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+  font-weight: 600;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 2rem;
+  
+  &:hover {
+    --background: rgba(255, 255, 255, 0.05);
+    --border-color: rgba(255, 255, 255, 0.3);
+  }
+  
+  .google-icon {
+    margin-right: 0.5rem;
+  }
+  
+  .btn-text {
+    font-size: 0.95rem;
+  }
+}
+
+.links-section {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  
+  .link-btn {
+    --color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    font-size: 0.9rem;
+    text-transform: none;
+    
+    &:hover {
+      --color: #ff5722;
+    }
+  }
+  
+  .forgot-password {
+    margin-bottom: 0.5rem;
+  }
+  
+  .signup-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    
+    .signup-text {
+      color: rgba(255, 255, 255, 0.6);
       font-size: 0.9rem;
     }
+    
+    .signup-btn {
+      --color: #ff5722;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-height: 700px) {
+  .login-container {
+    padding: 1rem 1.5rem;
   }
   
-  .links-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  .logo-section {
+    margin-bottom: 2rem;
     margin-top: 1rem;
     
-    ion-button {
-      font-size: 0.9rem;
+    .app-logo {
+      width: 80px;
+      height: 80px;
+    }
+    
+    .brand-title {
+      font-size: 2rem;
     }
   }
+}
+
+@media (max-width: 360px) {
+  .login-container {
+    padding: 1rem;
+  }
+}

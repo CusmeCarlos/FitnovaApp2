@@ -1,5 +1,5 @@
 // src/app/tab2/tab2.page.ts
-// ✅ PÁGINA PRINCIPAL CORREGIDA - INCREMENTO 2
+// ✅ PÁGINA PRINCIPAL CORREGIDA CON SISTEMA TOAST INTELIGENTE
 
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
@@ -12,6 +12,14 @@ import {
   PoseKeypoints, 
   PostureError 
 } from '../shared/models/pose.models';
+
+interface ToastMessage {
+  id: string;
+  message: string;
+  color: string;
+  lastShown: number;
+  cooldown: number;
+}
 
 @Component({
   selector: 'app-tab2',
@@ -49,6 +57,14 @@ export class Tab2Page implements OnInit, OnDestroy {
   private qualityScores: number[] = [];
   private sessionTimer: any = null;
 
+  // 🍞 SISTEMA DE TOAST INTELIGENTE
+  private toastHistory: Map<string, ToastMessage> = new Map();
+  private activeToasts: Set<string> = new Set();
+  private lastErrorTime: number = 0;
+  private lastRepetitionToast: number = 0;
+  private currentErrorType: string = '';
+  private lastQualityFeedback: number = 0;
+
   constructor(
     private router: Router,
     private alertController: AlertController,
@@ -66,10 +82,124 @@ export class Tab2Page implements OnInit, OnDestroy {
     
     // Cargar estadísticas del día
     this.loadTodayStats();
+
+    // Limpiar historial de toasts cada 5 minutos
+    setInterval(() => {
+      this.clearOldToastHistory();
+    }, 300000);
   }
 
   ngOnDestroy() {
     this.clearSessionTimer();
+  }
+
+  // 🍞 MÉTODOS DEL SISTEMA DE TOAST INTELIGENTE
+
+  private async showSmartToast(
+    message: string, 
+    color: string = 'primary', 
+    cooldown: number = 3000, 
+    category: string = 'general'
+  ): Promise<boolean> {
+    const toastId = this.generateToastId(message, category);
+    const now = Date.now();
+    
+    // Verificar si el toast está en cooldown
+    if (this.isToastInCooldown(toastId, now)) {
+      console.log(`🚫 Toast "${message}" está en cooldown`);
+      return false;
+    }
+    
+    // Verificar si ya hay un toast activo del mismo tipo
+    if (this.activeToasts.has(toastId)) {
+      console.log(`🚫 Toast "${message}" ya está activo`);
+      return false;
+    }
+    
+    // Registrar el toast
+    this.toastHistory.set(toastId, {
+      id: toastId,
+      message,
+      color,
+      lastShown: now,
+      cooldown
+    });
+    
+    this.activeToasts.add(toastId);
+    
+    // Crear y mostrar el toast
+    const toast = await this.toastController.create({
+      message,
+      duration: this.calculateToastDuration(color),
+      position: 'bottom',
+      color,
+      buttons: color === 'danger' ? [
+        {
+          text: 'Cerrar',
+          role: 'cancel'
+        }
+      ] : undefined
+    });
+    
+    // Remover de activos cuando se cierre
+    toast.onDidDismiss().then(() => {
+      this.activeToasts.delete(toastId);
+    });
+    
+    await toast.present();
+    console.log(`✅ Toast mostrado: "${message}"`);
+    return true;
+  }
+  
+  private generateToastId(message: string, category: string): string {
+    const messageHash = message.toLowerCase().replace(/[^\w\s]/g, '').slice(0, 20);
+    return `${category}_${messageHash}`;
+  }
+  
+  private isToastInCooldown(toastId: string, currentTime: number): boolean {
+    const lastToast = this.toastHistory.get(toastId);
+    if (!lastToast) return false;
+    
+    return (currentTime - lastToast.lastShown) < lastToast.cooldown;
+  }
+  
+  private calculateToastDuration(color: string): number {
+    switch (color) {
+      case 'danger': return 4000;
+      case 'warning': return 3500;
+      case 'success': return 2500;
+      default: return 3000;
+    }
+  }
+  
+  private clearOldToastHistory(maxAge: number = 300000): void {
+    const now = Date.now();
+    for (const [id, toast] of this.toastHistory.entries()) {
+      if (now - toast.lastShown > maxAge) {
+        this.toastHistory.delete(id);
+      }
+    }
+  }
+
+  // Métodos específicos de toast
+  private async showErrorToast(message: string): Promise<boolean> {
+    return this.showSmartToast(message, 'danger', 5000, 'error');
+  }
+  
+  private async showSuccessToast(message: string): Promise<boolean> {
+    return this.showSmartToast(message, 'success', 3000, 'success');
+  }
+  
+  private async showWarningToast(message: string): Promise<boolean> {
+    return this.showSmartToast(message, 'warning', 4000, 'warning');
+  }
+  
+  private async showCoachingToast(message: string): Promise<boolean> {
+    return this.showSmartToast(`💡 ${message}`, 'primary', 8000, 'coaching');
+  }
+  
+  private async showProgressToast(message: string): Promise<boolean> {
+    return this.showSmartToast(message, 'success', 2000, 'progress');
   }
 
   // 🏋️ INICIAR EJERCICIO CON CÁMARA
@@ -82,63 +212,88 @@ export class Tab2Page implements OnInit, OnDestroy {
       'pushups': ExerciseType.PUSHUPS,
       'plank': ExerciseType.PLANK,
       'lunges': ExerciseType.LUNGES,
-      'bicep_curls': ExerciseType.BICEP_CURLS
+      'bicep_curls': ExerciseType.BICEP_CURLS,
+      'deadlift': ExerciseType.DEADLIFT,
+      'bench_press': ExerciseType.BENCH_PRESS,
+      'shoulder_press': ExerciseType.SHOULDER_PRESS
     };
 
     const exercise = exerciseMap[exerciseType];
     
     if (!exercise) {
-      console.log('❌ Ejercicio no disponible:', exerciseType);
-      await this.showToast('Ejercicio no disponible aún', 'warning');
+      console.log('❌ Ejercicio no encontrado:', exerciseType);
+      await this.showErrorToast('Ejercicio no disponible');
       return;
     }
 
-    try {
-      console.log('📷 Verificando permisos de cámara...');
-      
-      // Verificar permisos de cámara
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: {
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        }
-      });
-      
-      // Detener inmediatamente, solo verificamos permisos
-      stream.getTracks().forEach(track => track.stop());
-      
-      console.log('✅ Permisos concedidos');
-      
-      // Configurar ejercicio
-      this.selectedExercise = exercise;
-      this.resetSessionData();
-      this.showCamera = true;
-      
-      console.log('🎬 Mostrando vista de cámara');
-      console.log('📊 Estado final:', {
-        selectedExercise: this.selectedExercise,
-        showCamera: this.showCamera
-      });
-      
-      await this.showToast(`Iniciando ${this.getExerciseName(exercise)}`, 'success');
-      
-    } catch (error) {
-      console.error('❌ Error accediendo a la cámara:', error);
-      await this.showCameraPermissionAlert();
+    this.selectedExercise = exercise;
+    this.showCamera = true;
+    this.resetSessionData();
+    this.startSessionTimer();
+    
+    await this.showSuccessToast(`¡Ejercicio ${this.getExerciseName(exercise)} iniciado!`);
+  }
+
+  // ⏱️ TEMPORIZADOR DE SESIÓN
+  private startSessionTimer() {
+    this.sessionData.startTime = new Date();
+    
+    this.sessionTimer = setInterval(() => {
+      if (this.sessionData.startTime) {
+        const duration = (Date.now() - this.sessionData.startTime.getTime()) / (1000 * 60);
+        this.sessionData.duration = Math.round(duration * 10) / 10;
+      }
+    }, 1000);
+  }
+
+  private clearSessionTimer() {
+    if (this.sessionTimer) {
+      clearInterval(this.sessionTimer);
+      this.sessionTimer = null;
     }
   }
 
-  // 🚪 SALIR DE LA CÁMARA
-  async exitCamera() {
-    console.log('🚪 Saliendo de cámara...');
+  // 🔄 REINICIAR DATOS DE SESIÓN
+  private resetSessionData() {
+    this.sessionData = {
+      repetitions: 0,
+      totalErrors: 0,
+      avgQuality: 0,
+      startTime: new Date(),
+      errors: [],
+      duration: 0
+    };
+    this.qualityScores = [];
+    
+    // Reiniciar contadores de toast
+    this.lastErrorTime = 0;
+    this.lastRepetitionToast = 0;
+    this.currentErrorType = '';
+    this.lastQualityFeedback = 0;
+  }
+
+  // 📊 CARGAR ESTADÍSTICAS DEL DÍA
+  private loadTodayStats() {
+    // TODO: Implementar carga desde Firestore
+    // Por ahora usar datos por defecto
+    this.todayStats = {
+      duration: 0,
+      repetitions: 0,
+      avgQuality: 0
+    };
+  }
+
+  // 🛑 DETENER EJERCICIO
+  async stopExercise() {
+    console.log('🛑 === DETENIENDO EJERCICIO ===');
     
     this.clearSessionTimer();
     
+    // Si hay progreso, preguntar antes de salir
     if (this.sessionData.repetitions > 0) {
       const alert = await this.alertController.create({
-        header: 'Finalizar Sesión',
-        message: `¿Quieres guardar tu progreso?\n\nHas completado:\n• ${this.sessionData.repetitions} repeticiones\n• ${this.sessionData.duration} minutos\n• ${this.sessionData.avgQuality}% calidad promedio`,
+        header: '🛑 Finalizar Ejercicio',
+        message: `¿Quieres guardar tu progreso?\n\n• ${this.sessionData.repetitions} repeticiones\n• ${this.sessionData.duration} minutos\n• ${this.sessionData.avgQuality}% calidad promedio`,
         buttons: [
           {
             text: 'Descartar',
@@ -168,11 +323,10 @@ export class Tab2Page implements OnInit, OnDestroy {
     console.log('🗑️ Sesión descartada');
   }
 
-  // 📊 EVENTOS DE LA CÁMARA
+  // 📊 EVENTOS DE LA CÁMARA CON TOAST INTELIGENTE
 
   onPoseDetected(pose: PoseKeypoints) {
     // Pose detectada - se podría usar para analytics futuro
-    // console.log('🎯 Pose detectada');
   }
 
   onErrorDetected(errors: PostureError[]) {
@@ -182,7 +336,15 @@ export class Tab2Page implements OnInit, OnDestroy {
     // Mostrar toast para errores críticos (severidad >= 8)
     const criticalErrors = errors.filter(error => error.severity >= 8);
     if (criticalErrors.length > 0) {
-      this.showToast(criticalErrors[0].description, 'danger');
+      const error = criticalErrors[0];
+      const now = Date.now();
+      
+      // Solo mostrar si es un error diferente o han pasado 5 segundos
+      if (this.currentErrorType !== error.type || (now - this.lastErrorTime) > 5000) {
+        this.showErrorToast(error.description);
+        this.currentErrorType = error.type;
+        this.lastErrorTime = now;
+      }
     }
   }
 
@@ -194,9 +356,32 @@ export class Tab2Page implements OnInit, OnDestroy {
       navigator.vibrate(100);
     }
     
-    // Mensaje de aliento cada 5 repeticiones
+    // Mensajes de aliento más inteligentes
     if (repetitionCount % 5 === 0 && repetitionCount > 0) {
-      this.showToast(`¡${repetitionCount} repeticiones! ¡Excelente trabajo!`, 'success');
+      const now = Date.now();
+      
+      // Evitar repetir el mismo mensaje si no han pasado 3 segundos
+      if ((now - this.lastRepetitionToast) > 3000) {
+        const messages = [
+          `¡${repetitionCount} repeticiones! ¡Excelente trabajo!`,
+          `¡Vas muy bien! ${repetitionCount} repeticiones completadas`,
+          `¡Increíble! Ya llevas ${repetitionCount} repeticiones`,
+          `¡Sigue así! ${repetitionCount} repeticiones perfectas`
+        ];
+        
+        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+        this.showProgressToast(randomMessage);
+        this.lastRepetitionToast = now;
+      }
+    }
+    
+    // Hitos especiales
+    if (repetitionCount === 10) {
+      this.showSuccessToast('🎉 ¡10 repeticiones! ¡Estás en fuego!');
+    } else if (repetitionCount === 25) {
+      this.showSuccessToast('🔥 ¡25 repeticiones! ¡Eres una máquina!');
+    } else if (repetitionCount === 50) {
+      this.showSuccessToast('⭐ ¡50 repeticiones! ¡Nivel experto!');
     }
   }
 
@@ -207,73 +392,92 @@ export class Tab2Page implements OnInit, OnDestroy {
     if (this.qualityScores.length > 0) {
       const sum = this.qualityScores.reduce((a, b) => a + b, 0);
       this.sessionData.avgQuality = Math.round(sum / this.qualityScores.length);
+      
+      // Mostrar feedback de calidad solo en momentos específicos
+      if (this.qualityScores.length % 10 === 0) { // Cada 10 mediciones
+        const now = Date.now();
+        
+        // Evitar spam de feedback de calidad
+        if ((now - this.lastQualityFeedback) > 15000) { // 15 segundos
+          if (this.sessionData.avgQuality >= 90) {
+            this.showSuccessToast('⭐ Técnica excelente mantenida');
+          } else if (this.sessionData.avgQuality >= 75) {
+            this.showSuccessToast('👍 Buena técnica general');
+          } else if (this.sessionData.avgQuality < 60) {
+            this.showWarningToast('⚠️ Revisa tu postura');
+          }
+          this.lastQualityFeedback = now;
+        }
+      }
     }
   }
+
   onCoachingTip(tip: string) {
-    this.showToast(`💡 ${tip}`, 'success');
+    // Los tips tienen un cooldown más largo para no saturar
+    this.showCoachingToast(tip);
   }
 
   // ✅ NUEVO MÉTODO PARA MANEJAR EL RETROCESO
-async onBackToExercises() {
-  console.log('🔙 Evento de retroceso recibido');
-  
-  // Si hay repeticiones, preguntar antes de salir
-  if (this.sessionData.repetitions > 0) {
-    const alert = await this.alertController.create({
-      header: '🔙 Volver a Ejercicios',
-      message: `¿Quieres guardar tu progreso actual?\n\n• ${this.sessionData.repetitions} repeticiones\n• ${this.sessionData.avgQuality}% calidad promedio`,
-      buttons: [
-        {
-          text: 'Descartar y Volver',
-          role: 'destructive',
-          handler: () => {
-            this.discardAndGoBack();
+  async onBackToExercises() {
+    console.log('🔙 Evento de retroceso recibido');
+    
+    // Si hay repeticiones, preguntar antes de salir
+    if (this.sessionData.repetitions > 0) {
+      const alert = await this.alertController.create({
+        header: '🔙 Volver a Ejercicios',
+        message: `¿Quieres guardar tu progreso actual?\n\n• ${this.sessionData.repetitions} repeticiones\n• ${this.sessionData.avgQuality}% calidad promedio`,
+        buttons: [
+          {
+            text: 'Descartar y Volver',
+            role: 'destructive',
+            handler: () => {
+              this.discardAndGoBack();
+            }
+          },
+          {
+            text: 'Guardar y Volver',
+            handler: () => {
+              this.saveAndGoBack();
+            }
+          },
+          {
+            text: 'Cancelar',
+            role: 'cancel'
           }
-        },
-        {
-          text: 'Guardar y Volver',
-          handler: () => {
-            this.saveAndGoBack();
-          }
-        },
-        {
-          text: 'Cancelar',
-          role: 'cancel'
-        }
-      ]
-    });
-    await alert.present();
-  } else {
-    // Si no hay progreso, volver directamente
-    this.goBackDirectly();
+        ]
+      });
+      await alert.present();
+    } else {
+      // Si no hay progreso, volver directamente
+      this.goBackDirectly();
+    }
   }
-}
 
-// 🗑️ DESCARTAR Y VOLVER
-private discardAndGoBack(): void {
-  this.showCamera = false;
-  this.resetSessionData();
-  this.showToast('Sesión descartada', 'warning');
-}
-
-// 💾 GUARDAR Y VOLVER
-private async saveAndGoBack(): Promise<void> {
-  try {
-    await this.saveSession();
+  // 🗑️ DESCARTAR Y VOLVER
+  private discardAndGoBack(): void {
     this.showCamera = false;
-    this.showToast('¡Progreso guardado correctamente!', 'success');
-  } catch (error) {
-    console.error('❌ Error guardando:', error);
-    this.showToast('Error al guardar. Volviendo sin guardar.', 'danger');
-    this.showCamera = false;
+    this.resetSessionData();
+    this.showWarningToast('Sesión descartada');
   }
-}
 
-// 🔙 VOLVER DIRECTAMENTE
-private goBackDirectly(): void {
-  this.showCamera = false;
-  this.resetSessionData();
-}
+  // 💾 GUARDAR Y VOLVER
+  private async saveAndGoBack(): Promise<void> {
+    try {
+      await this.saveSession();
+      this.showCamera = false;
+      this.showSuccessToast('¡Progreso guardado correctamente!');
+    } catch (error) {
+      console.error('❌ Error guardando:', error);
+      this.showErrorToast('Error al guardar. Volviendo sin guardar.');
+      this.showCamera = false;
+    }
+  }
+
+  // 🔙 VOLVER DIRECTAMENTE
+  private goBackDirectly(): void {
+    this.showCamera = false;
+    this.resetSessionData();
+  }
 
   // 💾 GUARDAR SESIÓN
   private async saveSession() {
@@ -298,7 +502,7 @@ private goBackDirectly(): void {
       // TODO: Aquí se implementaría el guardado en Firestore
       // await this.saveSessionToFirebase(this.sessionData);
       
-      await this.showToast('¡Sesión guardada correctamente!', 'success');
+      await this.showSuccessToast('¡Sesión guardada correctamente!');
       
       // Mostrar resumen
       await this.showSessionSummary();
@@ -307,7 +511,7 @@ private goBackDirectly(): void {
       
     } catch (error) {
       console.error('❌ Error guardando sesión:', error);
-      await this.showToast('Error al guardar la sesión', 'danger');
+      await this.showErrorToast('Error al guardar la sesión');
     }
   }
 
@@ -316,113 +520,70 @@ private goBackDirectly(): void {
     const alert = await this.alertController.create({
       header: '🎉 ¡Sesión Completada!',
       message: `
-        <div style="text-align: left; line-height: 1.6;">
-          <strong>📊 Resumen:</strong><br>
-          • Ejercicio: ${this.getExerciseName(this.selectedExercise)}<br>
-          • Repeticiones: ${this.sessionData.repetitions}<br>
-          • Duración: ${this.sessionData.duration} min<br>
-          • Calidad promedio: ${this.sessionData.avgQuality}%<br>
-          • Errores detectados: ${this.sessionData.totalErrors}<br><br>
-          
-          <strong>🏆 Estadísticas de hoy:</strong><br>
-          • Total repeticiones: ${this.todayStats.repetitions}<br>
-          • Tiempo total: ${this.todayStats.duration} min<br>
-          • Calidad promedio: ${this.todayStats.avgQuality}%
-        </div>
+        📊 Resumen de tu entrenamiento:
+        
+        ⏱️ Duración: ${this.sessionData.duration} minutos
+        🔢 Repeticiones: ${this.sessionData.repetitions}
+        ⭐ Calidad promedio: ${this.sessionData.avgQuality}%
+        ⚠️ Errores totales: ${this.sessionData.totalErrors}
+        
+        ¡Excelente trabajo! 💪
       `,
       buttons: [
         {
           text: 'Continuar',
           role: 'cancel'
-        },
-        {
-          text: 'Entrenar de nuevo',
-          handler: () => {
-            this.startExercise(this.selectedExercise);
-          }
         }
       ]
     });
     await alert.present();
   }
 
-  // 🔄 RESETEAR DATOS DE SESIÓN
-  private resetSessionData() {
-    this.sessionData = {
-      repetitions: 0,
-      totalErrors: 0,
-      avgQuality: 0,
-      startTime: new Date(),
-      errors: [],
-      duration: 0
-    };
-    this.qualityScores = [];
-    
-
-    // Iniciar timer de duración
-    this.startSessionTimer();
+  // 🍞 MÉTODO LEGACY PARA COMPATIBILIDAD
+  private async showToast(message: string, color: string): Promise<void> {
+    // Usar el nuevo sistema inteligente
+    await this.showSmartToast(message, color);
   }
 
-  // ⏱️ INICIAR TIMER DE SESIÓN
-  private startSessionTimer() {
-    this.clearSessionTimer();
-    
-    this.sessionTimer = setInterval(() => {
-      if (this.sessionData.startTime) {
-        const duration = (Date.now() - this.sessionData.startTime.getTime()) / (1000 * 60);
-        this.sessionData.duration = Math.round(duration * 10) / 10;
-      }
-    }, 1000);
+  // 🔧 UTILIDADES
+
+  // Método para trackBy en ngFor (optimización)
+  trackByExercise(index: number, exercise: any): string {
+    return exercise.id || exercise.name || index;
   }
 
-  // 🛑 LIMPIAR TIMER
-  private clearSessionTimer() {
-    if (this.sessionTimer) {
-      clearInterval(this.sessionTimer);
-      this.sessionTimer = null;
-    }
+  // TrackBy para errores
+  trackByErrorType(index: number, error: PostureError): string {
+    return `${error.type}_${error.severity}_${index}`;
   }
 
-  // 📈 CARGAR ESTADÍSTICAS DEL DÍA
-  private loadTodayStats() {
-    // TODO: Cargar desde Firebase/localStorage
-    // Por ahora usar datos de ejemplo o valores por defecto
-    const savedStats = localStorage.getItem('fitnova_today_stats');
-    
-    if (savedStats) {
-      try {
-        this.todayStats = JSON.parse(savedStats);
-      } catch (error) {
-        console.error('Error cargando estadísticas:', error);
-        this.resetTodayStats();
-      }
-    } else {
-      this.resetTodayStats();
-    }
+  // Formatear tiempo
+  formatTime(minutes: number): string {
+    if (minutes < 1) return '< 1 min';
+    return `${Math.floor(minutes)} min`;
   }
 
-  // 🔄 RESETEAR ESTADÍSTICAS DEL DÍA
-  private resetTodayStats() {
-    this.todayStats = {
-      duration: 0,
-      repetitions: 0,
-      avgQuality: 0
-    };
-    this.saveTodayStats();
+  // Obtener color según calidad
+  getQualityColor(quality: number): string {
+    if (quality >= 90) return 'success';
+    if (quality >= 75) return 'warning';
+    if (quality >= 60) return 'medium';
+    return 'danger';
   }
 
-  // 💾 GUARDAR ESTADÍSTICAS DEL DÍA
-  private saveTodayStats() {
-    try {
-      localStorage.setItem('fitnova_today_stats', JSON.stringify(this.todayStats));
-    } catch (error) {
-      console.error('Error guardando estadísticas:', error);
-    }
+  // Obtener emoji según calidad
+  getQualityEmoji(quality: number): string {
+    if (quality >= 90) return '⭐';
+    if (quality >= 75) return '👍';
+    if (quality >= 60) return '👌';
+    return '⚠️';
   }
 
-  // 🏷️ OBTENER NOMBRE DEL EJERCICIO
-  public getExerciseName(exercise: ExerciseType): string {
-    const names = {
+  // 📊 MÉTODOS FALTANTES DEL TEMPLATE
+
+  // Obtener nombre del ejercicio
+  getExerciseName(exerciseType: ExerciseType): string {
+    const exerciseNames: { [key in ExerciseType]: string } = {
       [ExerciseType.SQUATS]: 'Sentadillas',
       [ExerciseType.PUSHUPS]: 'Flexiones',
       [ExerciseType.PLANK]: 'Plancha',
@@ -432,145 +593,74 @@ private goBackDirectly(): void {
       [ExerciseType.BENCH_PRESS]: 'Press de Banca',
       [ExerciseType.SHOULDER_PRESS]: 'Press de Hombros'
     };
-    return names[exercise] || 'Ejercicio';
+    
+    return exerciseNames[exerciseType] || 'Ejercicio';
   }
 
-  // 🔍 TRACK BY PARA ERRORES
-  public trackByErrorType(index: number, error: PostureError): string {
-    return error.type;
-  }
-
-  // 📱 MOSTRAR TOAST
-  private async showToast(message: string, color: 'success' | 'warning' | 'danger' | 'primary' = 'primary') {
-    const toast = await this.toastController.create({
-      message,
-      duration: 2500,
-      color,
-      position: 'bottom',
+  // Mostrar estadísticas detalladas
+  async showDetailedStats(): Promise<void> {
+    const alert = await this.alertController.create({
+      header: '📊 Estadísticas Detalladas',
+      message: `
+        <div style="text-align: left;">
+          <h4>Hoy:</h4>
+          <p>⏱️ Tiempo total: ${this.todayStats.duration} min</p>
+          <p>🔢 Repeticiones: ${this.todayStats.repetitions}</p>
+          <p>⭐ Calidad promedio: ${this.todayStats.avgQuality}%</p>
+          
+          <h4>Sesión actual:</h4>
+          <p>⏱️ Duración: ${this.sessionData.duration} min</p>
+          <p>🔢 Repeticiones: ${this.sessionData.repetitions}</p>
+          <p>⭐ Calidad: ${this.sessionData.avgQuality}%</p>
+          <p>⚠️ Errores: ${this.sessionData.totalErrors}</p>
+        </div>
+      `,
       buttons: [
+        {
+          text: 'Ver Historial',
+          handler: () => {
+            this.showHistoryStats();
+          }
+        },
         {
           text: 'Cerrar',
           role: 'cancel'
         }
       ]
     });
-    await toast.present();
-  }
-
-  // 📷 ALERTA DE PERMISOS DE CÁMARA
-  private async showCameraPermissionAlert() {
-    const alert = await this.alertController.create({
-      header: 'Permisos de Cámara Requeridos',
-      subHeader: 'Acceso necesario para la detección de postura',
-      message: 'FitNova necesita acceso a tu cámara para analizar tu postura en tiempo real y brindarte retroalimentación inmediata.',
-      buttons: [
-        {
-          text: 'Cancelar',
-          role: 'cancel'
-        },
-        {
-          text: 'Configuración',
-          handler: () => {
-            // En algunos navegadores se puede abrir la configuración
-            if (navigator.userAgent.includes('Chrome')) {
-              window.open('chrome://settings/content/camera', '_blank');
-            }
-          }
-        },
-        {
-          text: 'Reintentar',
-          handler: () => {
-            // Intentar de nuevo después de un momento
-            setTimeout(() => {
-              this.startExercise(this.selectedExercise);
-            }, 1000);
-          }
-        }
-      ]
-    });
+    
     await alert.present();
   }
 
-  // 📊 MOSTRAR ESTADÍSTICAS DETALLADAS
-  async showDetailedStats() {
+  // Mostrar historial de estadísticas
+  private async showHistoryStats(): Promise<void> {
+    // TODO: Implementar carga de historial desde Firestore
     const alert = await this.alertController.create({
-      header: '📊 Estadísticas Detalladas',
+      header: '📈 Historial',
       message: `
-        <div style="text-align: left; line-height: 1.6;">
-          <strong>🏃 Sesión Actual:</strong><br>
-          • Ejercicio: ${this.showCamera ? this.getExerciseName(this.selectedExercise) : 'Ninguno'}<br>
-          • Repeticiones: ${this.sessionData.repetitions}<br>
-          • Duración: ${this.sessionData.duration} min<br>
-          • Calidad promedio: ${this.sessionData.avgQuality}%<br>
-          • Errores detectados: ${this.sessionData.totalErrors}<br><br>
+        <div style="text-align: left;">
+          <h4>Esta semana:</h4>
+          <p>🗓️ Días entrenados: 0</p>
+          <p>⏱️ Tiempo total: 0 min</p>
+          <p>🔢 Repeticiones totales: 0</p>
           
-          <strong>📅 Estadísticas de hoy:</strong><br>
-          • Tiempo total: ${this.todayStats.duration} min<br>
-          • Repeticiones totales: ${this.todayStats.repetitions}<br>
-          • Calidad promedio: ${this.todayStats.avgQuality}%<br><br>
+          <h4>Este mes:</h4>
+          <p>🗓️ Días entrenados: 0</p>
+          <p>⏱️ Tiempo total: 0 min</p>
+          <p>🔢 Repeticiones totales: 0</p>
           
-          <strong>🎯 Consejos:</strong><br>
-          • Mantén una postura correcta<br>
-          • Respira de forma controlada<br>
-          • Enfócate en la calidad sobre cantidad
+          <p><em>Conecta tu cuenta para ver estadísticas detalladas</em></p>
         </div>
       `,
-      buttons: [
-        {
-          text: 'Cerrar'
-        },
-        {
-          text: 'Resetear día',
-          handler: () => {
-            this.resetTodayStats();
-            this.showToast('Estadísticas del día reseteadas', 'success');
-          }
-        }
-      ]
+      buttons: ['Cerrar']
     });
+    
     await alert.present();
   }
 
-  // 🎯 OBTENER CONSEJO ALEATORIO PARA EL EJERCICIO ACTUAL
-  public getCurrentCoachingTip(): string {
-    const tips: { [key in ExerciseType]?: string[] } = {
-      [ExerciseType.SQUATS]: [
-        'Mantén el pecho erguido y la mirada al frente',
-        'Baja como si te fueras a sentar en una silla',
-        'Los talones siempre en el suelo',
-        'Las rodillas deben seguir la dirección de los pies',
-        'Inicia el movimiento empujando las caderas hacia atrás'
-      ],
-      [ExerciseType.PUSHUPS]: [
-        'Forma una línea recta desde cabeza hasta talones',
-        'Los codos a 45° del cuerpo, no muy abiertos',
-        'Baja hasta que el pecho casi toque el suelo',
-        'Mantén el core contraído durante todo el movimiento',
-        'Respira: inhala al bajar, exhala al subir'
-      ],
-      [ExerciseType.PLANK]: [
-        'Mantén una línea recta desde cabeza hasta talones',
-        'Contrae el core como si fueras a recibir un golpe',
-        'Respira normalmente, no contengas la respiración',
-        'Los codos directamente bajo los hombros',
-        'Aprieta los glúteos para mantener la posición'
-      ],
-      [ExerciseType.LUNGES]: [
-        'Da un paso lo suficientemente largo',
-        'Baja la rodilla trasera hacia el suelo',
-        'Mantén el torso erguido',
-        'El peso debe estar en el talón del pie delantero'
-      ],
-      [ExerciseType.BICEP_CURLS]: [
-        'Mantén los codos pegados al cuerpo',
-        'Controla el movimiento tanto al subir como al bajar',
-        'No uses impulso, usa solo los bíceps',
-        'Mantén las muñecas rectas'
-      ]
-    };
-
-    const exerciseTips = tips[this.selectedExercise] || ['¡Sigue así! Estás haciendo un gran trabajo.'];
-    const randomIndex = Math.floor(Math.random() * exerciseTips.length);
-    return exerciseTips[randomIndex];
+  // Salir de la cámara
+  exitCamera(): void {
+    console.log('🚪 Saliendo de la cámara...');
+    this.stopExercise();
   }
 }
