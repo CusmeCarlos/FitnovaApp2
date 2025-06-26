@@ -5,7 +5,7 @@ import { IonicModule } from '@ionic/angular';
 import { PoseCameraComponent } from './pose-camera.component';
 import { PoseDetectionEngine } from '../../../../core/pose-engine/pose-detection.engine';
 import { BiomechanicsAnalyzer } from '../../../../core/pose-engine/biomechanics.analyzer';
-import { EnhancedBiomechanicsAnalyzer } from '../../../../core/pose-engine/biomechanics.analyzer.enhanced';
+import { EnhancedBiomechanicsAnalyzer } from '../../../../core/pose-engine/biomechanics.analyzer.enhanced.ts.backup';
 import { ChangeDetectorRef } from '@angular/core';
 import { ExerciseType } from '../../../../shared/models/pose.models';
 

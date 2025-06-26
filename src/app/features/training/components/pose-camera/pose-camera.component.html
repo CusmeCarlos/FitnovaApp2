@@ -1,12 +1,14 @@
 <!-- src/app/features/training/components/pose-camera/pose-camera.component.html -->
-<!-- ✅ TEMPLATE ACTUALIZADO CON MÉTRICAS CIENTÍFICAS -->
+<!-- ✅ TEMPLATE CORREGIDO Y OPTIMIZADO -->
 
 <div class="camera-container">
   
   <!-- 🔄 ESTADO DE CARGA -->
   <div class="loading-overlay" *ngIf="isLoading">
-    <div class="loading-spinner"></div>
-    <div class="loading-text">Iniciando cámara...</div>
+    <div class="loading-spinner">
+      <ion-spinner name="crescent" color="primary"></ion-spinner>
+    </div>
+    <div class="loading-text">{{ getStatusMessage() }}</div>
     <div class="loading-subtitle" *ngIf="initializationAttempts > 0">
       Intento {{ initializationAttempts }} de {{ maxInitializationAttempts }}
     </div>
@@ -14,19 +16,26 @@
 
   <!-- ❌ ESTADO DE ERROR -->
   <div class="error-overlay" *ngIf="error && !isLoading">
-    <div class="error-icon">📷</div>
-    <div class="error-title">Error de Inicialización</div>
-    <div class="error-message">{{ error }}</div>
-    <button class="retry-button" (click)="startCamera()">
-      REINTENTAR
-    </button>
+    <div class="error-content">
+      <ion-icon name="camera-outline" class="error-icon"></ion-icon>
+      <div class="error-title">Error de Inicialización</div>
+      <div class="error-message">{{ error }}</div>
+      <ion-button 
+        class="retry-button" 
+        fill="solid" 
+        color="primary"
+        (click)="startCamera()">
+        <ion-icon name="refresh-outline" slot="start"></ion-icon>
+        REINTENTAR
+      </ion-button>
+    </div>
   </div>
 
-  <!-- ✅ ELEMENTOS DE CÁMARA - SIEMPRE PRESENTES PARA VIEWCHILD STATIC -->
+  <!-- ✅ ELEMENTOS DE CÁMARA -->
   <div class="camera-content" 
-       [style.display]="(!isLoading && !error && isInitialized) ? 'block' : 'none'">
+       [class.hidden]="isLoading || !!error">
     
-    <!-- 📹 VIDEO - SIEMPRE EN DOM -->
+    <!-- 📹 VIDEO - SIEMPRE EN DOM PARA VIEWCHILD -->
     <video 
       #videoElement 
       class="video-element"
@@ -35,13 +44,14 @@
       playsinline>
     </video>
     
-    <!-- 🎨 CANVAS - SIEMPRE EN DOM -->
+    <!-- 🎨 CANVAS ESQUELETO -->
     <canvas 
       #canvasElement 
-      class="canvas-element">
+      class="canvas-element"
+      [class.hidden]="!showSkeleton">
     </canvas>
     
-    <!-- 🎯 OVERLAY - SIEMPRE EN DOM -->
+    <!-- 🚨 CANVAS OVERLAY ERRORES -->
     <canvas 
       #overlayElement 
       class="overlay-element">
@@ -49,270 +59,207 @@
     
   </div>
 
-  <!-- 🎨 UI PROFESIONAL - SOLO CUANDO ESTÁ ACTIVO -->
+  <!-- 🎨 INTERFAZ DE USUARIO -->
   <div class="ui-overlay" *ngIf="!isLoading && !error && isInitialized">
     
-    <!-- 📊 PANEL DE ESTADÍSTICAS COMPACTO -->
-    <div class="stats-panel" *ngIf="fps > 0">
+    <!-- 📊 PANEL DE ESTADÍSTICAS -->
+    <div class="stats-panel">
       <div class="stats-header">
-        <div class="stats-title">
-          <ion-icon name="analytics-outline"></ion-icon>
-          <span>Estadísticas en Vivo</span>
-        </div>
-        <div class="connection-indicator" [ngClass]="fps > 20 ? 'connected' : 'poor'">
+        <ion-icon name="analytics-outline"></ion-icon>
+        <span class="stats-title">Estadísticas</span>
+        <div class="connection-indicator" [ngClass]="getStatusColor()">
           <div class="pulse-dot"></div>
-          <span>{{ fps > 20 ? 'Excelente' : 'Conectando' }}</span>
+          <span class="connection-text">{{ getStatusMessage() }}</span>
         </div>
       </div>
       
-      <div class="stats-grid">
-        <div class="stat-card">
-          <ion-icon name="speedometer-outline"></ion-icon>
-          <div class="stat-value">{{ fps }}</div>
-          <div class="stat-label">FPS</div>
+      <div class="stats-content">
+        <div class="stat-item">
+          <span class="stat-label">FPS:</span>
+          <span class="stat-value" [ngClass]="{'stat-warning': fps < 20}">{{ fps }}</span>
         </div>
         
-        <div class="stat-card">
-          <ion-icon name="fitness-outline"></ion-icon>
-          <div class="stat-value">{{ repetitionCount }}</div>
-          <div class="stat-label">REPS</div>
+        <div class="stat-item">
+          <span class="stat-label">Repeticiones:</span>
+          <span class="stat-value stat-primary">{{ repetitionCount }}</span>
         </div>
         
-        <div class="stat-card">
-          <ion-icon name="trophy-outline"></ion-icon>
-          <div class="stat-value" [ngClass]="getQualityClass()">{{ currentQuality }}%</div>
-          <div class="stat-label">CALIDAD</div>
+        <div class="stat-item">
+          <span class="stat-label">Fase:</span>
+          <span class="stat-value">{{ getCurrentPhaseText() }}</span>
         </div>
         
-        <div class="stat-card">
-          <ion-icon name="pulse-outline"></ion-icon>
-          <div class="stat-value">{{ getPhaseText() }}</div>
-          <div class="stat-label">FASE</div>
-        </div>
-      </div>
-      
-      <div class="progress-bar" *ngIf="repetitionCount > 0">
-        <div class="progress-fill" [style.width.%]="Math.min(repetitionCount * 10, 100)"></div>
-      </div>
-    </div>
-
-    <!-- ✅ NUEVO: PANEL DE MÉTRICAS CIENTÍFICAS -->
-    <div class="scientific-panel" *ngIf="showScientificMetrics && precisionMetrics">
-      <div class="scientific-header">
-        <div class="scientific-title">
-          <ion-icon name="flask-outline"></ion-icon>
-          <span>Métricas Científicas</span>
-        </div>
-        <div class="validation-status" [ngClass]="isScientificallyValidated() ? 'validated' : 'pending'">
-          <ion-icon [name]="isScientificallyValidated() ? 'checkmark-circle' : 'time'"></ion-icon>
-          <span>{{ isScientificallyValidated() ? 'Validado' : 'Validando' }}</span>
-        </div>
-      </div>
-      
-      <div class="scientific-grid">
-        <div class="metric-card precision" [ngClass]="getPrecisionStatus()">
-          <ion-icon name="target-outline"></ion-icon>
-          <div class="metric-value">{{ precisionMetrics.overallPrecision.toFixed(1) }}%</div>
-          <div class="metric-label">Precisión</div>
-        </div>
-        
-        <div class="metric-card angular" [ngClass]="precisionMetrics.angularAccuracy > 90 ? 'excellent' : 'good'">
-          <ion-icon name="git-compare-outline"></ion-icon>
-          <div class="metric-value">{{ precisionMetrics.angularAccuracy.toFixed(1) }}°</div>
-          <div class="metric-label">Angular</div>
-        </div>
-        
-        <div class="metric-card stability" [ngClass]="precisionMetrics.frameStability > 80 ? 'excellent' : 'good'">
-          <ion-icon name="trending-up-outline"></ion-icon>
-          <div class="metric-value">{{ precisionMetrics.frameStability.toFixed(0) }}%</div>
-          <div class="metric-label">Estabilidad</div>
-        </div>
-        
-        <div class="metric-card correlation" [ngClass]="precisionMetrics.correlationCoefficient > 85 ? 'excellent' : 'good'">
-          <ion-icon name="stats-chart-outline"></ion-icon>
-          <div class="metric-value">{{ precisionMetrics.correlationCoefficient.toFixed(0) }}%</div>
-          <div class="metric-label">Correlación</div>
-        </div>
-      </div>
-      
-      <!-- Validación científica detallada -->
-      <div class="validation-details" *ngIf="scientificValidation">
-        <div class="validation-text">{{ getValidationDetails() }}</div>
-      </div>
-    </div>
-
-    <!-- ✅ NUEVO: PANEL DE RENDIMIENTO -->
-    <div class="performance-panel" *ngIf="showScientificMetrics && performanceMetrics">
-      <div class="performance-header">
-        <div class="performance-title">
-          <ion-icon name="speedometer-outline"></ion-icon>
-          <span>Rendimiento</span>
-        </div>
-        <div class="performance-status" [ngClass]="getPerformanceStatus()">
-          <div class="status-dot"></div>
-          <span>{{ getPerformanceStatus() | titlecase }}</span>
-        </div>
-      </div>
-      
-      <div class="performance-metrics">
-        <div class="performance-item">
-          <span class="perf-label">Latencia</span>
-          <span class="perf-value">{{ performanceMetrics.latency }}ms</span>
-        </div>
-        <div class="performance-item">
-          <span class="perf-label">CPU</span>
-          <span class="perf-value">{{ performanceMetrics.cpuUsage }}%</span>
-        </div>
-        <div class="performance-item">
-          <span class="perf-label">Memoria</span>
-          <span class="perf-value">{{ performanceMetrics.memoryUsage }}MB</span>
-        </div>
-        <div class="performance-item">
-          <span class="perf-label">Frames perdidos</span>
-          <span class="perf-value">{{ performanceMetrics.frameDrops }}</span>
+        <div class="stat-item" *ngIf="hasActiveErrors()">
+          <span class="stat-label">Errores:</span>
+          <span class="stat-value stat-danger">{{ currentErrors.length }}</span>
         </div>
       </div>
     </div>
 
-    <!-- 🔙 BOTÓN DE RETROCESO EN ESQUINA SUPERIOR -->
-    <div class="back-button-container">
-      <button class="back-btn-top" (click)="goBackToExercises()">
-        <div class="back-icon">
-          <ion-icon name="arrow-back"></ion-icon>
-        </div>
-        <span>Volver</span>
-      </button>
-    </div>
-
-    <!-- 🎮 CONTROLES PROFESIONALES EXPANDIDOS -->
-    <div class="professional-controls">
-      
-      <div class="control-group">
-        
-        <!-- Botón Esqueleto -->
-        <button class="pro-control-btn skeleton-btn" 
-                (click)="toggleSkeleton()"
-                [class.active]="showSkeleton">
-          <div class="btn-icon">
-            <ion-icon [name]="showSkeleton ? 'eye' : 'eye-off'"></ion-icon>
-          </div>
-          <div class="btn-label">Esqueleto</div>
-          <div class="btn-indicator" [class.on]="showSkeleton"></div>
-        </button>
-        
-        <!-- ✅ NUEVO: Botón Métricas Científicas -->
-        <button class="pro-control-btn metrics-btn" 
-                (click)="toggleScientificMetrics()"
-                [class.active]="showScientificMetrics">
-          <div class="btn-icon">
-            <ion-icon name="flask-outline"></ion-icon>
-          </div>
-          <div class="btn-label">Científico</div>
-          <div class="btn-indicator" [class.on]="showScientificMetrics"></div>
-        </button>
-        
-        <!-- ✅ NUEVO: Botón Calibración -->
-        <button class="pro-control-btn calibration-btn" 
-                (click)="performCalibration()">
-          <div class="btn-icon">
-            <ion-icon name="compass-outline"></ion-icon>
-          </div>
-          <div class="btn-label">Calibrar</div>
-        </button>
-        
-        <!-- Botón Reset -->
-        <button class="pro-control-btn reset-btn" (click)="resetSession()">
-          <div class="btn-icon">
-            <ion-icon name="refresh-outline"></ion-icon>
-          </div>
-          <div class="btn-label">Reiniciar</div>
-        </button>
-        
-        <!-- Botón Pausa/Play -->
-        <button class="pro-control-btn pause-btn" (click)="togglePause()">
-          <div class="btn-icon">
-            <ion-icon [name]="isPaused ? 'play' : 'pause'"></ion-icon>
-          </div>
-          <div class="btn-label">{{ isPaused ? 'Continuar' : 'Pausar' }}</div>
-        </button>
-        
-        <!-- ✅ NUEVO: Botón Exportar -->
-        <button class="pro-control-btn export-btn" 
-                (click)="exportSessionData()">
-          <div class="btn-icon">
-            <ion-icon name="download-outline"></ion-icon>
-          </div>
-          <div class="btn-label">Exportar</div>
-        </button>
-        
+    <!-- 🎮 CONTROLES PRINCIPALES -->
+    <div class="controls-panel">
+      <div class="controls-header">
+        <ion-icon name="settings-outline"></ion-icon>
+        <span>Controles</span>
       </div>
       
-      <!-- Botón de Finalizar Sesión -->
-      <button class="exit-btn" (click)="stopCamera()">
-        <div class="exit-icon">
-          <ion-icon name="close"></ion-icon>
+      <div class="controls-content">
+        <!-- Control de Ejercicio -->
+        <div class="control-group">
+          <label class="control-label">Ejercicio:</label>
+          <ion-select 
+            [value]="exerciseType" 
+            (ionChange)="setExerciseType($event.detail.value)"
+            interface="popover"
+            placeholder="Seleccionar ejercicio">
+            <ion-select-option value="squats">Sentadillas</ion-select-option>
+            <ion-select-option value="pushups">Flexiones</ion-select-option>
+            <ion-select-option value="plank">Plancha</ion-select-option>
+            <ion-select-option value="lunges">Estocadas</ion-select-option>
+          </ion-select>
         </div>
-        <span>Finalizar Sesión</span>
-      </button>
+
+        <!-- Botones de Toggle -->
+        <div class="toggle-buttons">
+          <ion-button 
+            fill="clear" 
+            size="small"
+            [color]="enableErrorDetection ? 'success' : 'medium'"
+            (click)="toggleErrorDetection()">
+            <ion-icon 
+              [name]="enableErrorDetection ? 'eye-outline' : 'eye-off-outline'" 
+              slot="start">
+            </ion-icon>
+            <span>{{ enableErrorDetection ? 'Detección ON' : 'Detección OFF' }}</span>
+          </ion-button>
+
+          <ion-button 
+            fill="clear" 
+            size="small"
+            [color]="showSkeleton ? 'success' : 'medium'"
+            (click)="toggleSkeleton()">
+            <ion-icon 
+              [name]="showSkeleton ? 'person-outline' : 'person-remove-outline'" 
+              slot="start">
+            </ion-icon>
+            <span>{{ showSkeleton ? 'Esqueleto ON' : 'Esqueleto OFF' }}</span>
+          </ion-button>
+
+          <ion-button 
+            fill="clear" 
+            size="small"
+            [color]="enableAudio ? 'success' : 'medium'"
+            (click)="toggleAudio()">
+            <ion-icon 
+              [name]="enableAudio ? 'volume-high-outline' : 'volume-mute-outline'" 
+              slot="start">
+            </ion-icon>
+            <span>{{ enableAudio ? 'Audio ON' : 'Audio OFF' }}</span>
+          </ion-button>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="action-buttons">
+          <ion-button 
+            fill="outline" 
+            size="small" 
+            color="warning"
+            (click)="resetRepetitions()">
+            <ion-icon name="refresh-outline" slot="start"></ion-icon>
+            Reset
+          </ion-button>
+
+          <ion-button 
+            fill="outline" 
+            size="small" 
+            color="secondary"
+            (click)="testAudio()"
+            [disabled]="!enableAudio">
+            <ion-icon name="volume-high-outline" slot="start"></ion-icon>
+            Test Audio
+          </ion-button>
+
+          <ion-button 
+            fill="solid" 
+            size="small" 
+            color="danger"
+            (click)="stopCamera()">
+            <ion-icon name="stop-outline" slot="start"></ion-icon>
+            Parar
+          </ion-button>
+        </div>
+      </div>
     </div>
 
-    <!-- ⚠️ ALERTAS DE ERRORES MEJORADAS -->
-    <div class="error-notifications" *ngIf="currentErrors.length > 0">
-      <div *ngFor="let error of currentErrors.slice(0, 2); trackBy: trackByErrorType" 
-           class="error-notification"
-           [ngClass]="'severity-' + error.severity">
-        <div class="error-icon">
-          <ion-icon name="warning"></ion-icon>
-        </div>
-        <div class="error-content">
-          <div class="error-title">Corrección de Postura</div>
-          <div class="error-message">{{ error.description }}</div>
-          <div class="error-recommendation">💡 {{ error.recommendation }}</div>
-          <div class="error-confidence" *ngIf="error.confidence">
-            Confianza: {{ (error.confidence * 100).toFixed(0) }}%
-          </div>
-        </div>
-        <div class="error-severity">
-          <div class="severity-indicator" [style.width.%]="error.severity * 10"></div>
-        </div>
+    <!-- 💬 PANEL DE MOTIVACIÓN -->
+    <div class="motivation-panel" *ngIf="repetitionCount > 0">
+      <div class="motivation-content">
+        <ion-icon name="fitness-outline" class="motivation-icon"></ion-icon>
+        <span class="motivation-text">{{ getMotivationText() }}</span>
+      </div>
+    </div>
+
+    <!-- 🚨 ALERTAS DE ERRORES EN TIEMPO REAL CON COLORES -->
+<div class="error-alerts" *ngIf="hasActiveErrors() && enableErrorDetection">
+  <div 
+    class="error-alert" 
+    *ngFor="let error of getActiveErrors(); trackBy: trackErrorById"
+    [ngClass]="getAlertClass(error.severity)">
+    
+    <div class="error-content">
+      <div class="error-header">
+        <ion-icon [name]="getAlertIcon(error.severity)" class="error-icon"></ion-icon>
+        <span class="error-title">{{ getAlertTitle(error.severity) }}</span>
+        <ion-icon 
+          [name]="enableAudio ? 'volume-high-outline' : 'volume-mute-outline'" 
+          class="audio-indicator">
+        </ion-icon>
+      </div>
+      
+      <div class="error-description">{{ error.description }}</div>
+      <div class="error-recommendation">
+        <ion-icon name="bulb-outline" class="recommendation-icon"></ion-icon>
+        {{ error.recommendation }}
       </div>
     </div>
     
-    <!-- 🎯 OBJETIVO DE REPETICIONES -->
-    <div class="rep-target" *ngIf="repetitionCount > 0">
-      <div class="target-circle">
-        <svg width="80" height="80" class="target-progress">
-          <circle cx="40" cy="40" r="35" 
-                  stroke="rgba(255,255,255,0.2)" 
-                  stroke-width="3" 
-                  fill="none"/>
-          <circle cx="40" cy="40" r="35" 
-                  stroke="#00d4ff" 
-                  stroke-width="3" 
-                  fill="none"
-                  stroke-linecap="round"
-                  [style.stroke-dasharray]="getCircleProgress()"
-                  style="transform: rotate(-90deg); transform-origin: center;"/>
-        </svg>
-        <div class="target-content">
-          <div class="target-number">{{ repetitionCount }}</div>
-          <div class="target-label">/ 10</div>
+    <div class="error-severity">
+      <div class="severity-bar">
+        <div 
+          class="severity-fill" 
+          [style.width]="(error.severity * 10) + '%'"
+          [ngClass]="getSeverityBarClass(error.severity)">
         </div>
       </div>
+      <span class="severity-text">{{ getSeverityText(error.severity) }}</span>
+    </div>
+  </div>
+</div>
+
+    <!-- 🔧 PANEL DE DEBUG (SOLO EN DESARROLLO) -->
+    <div class="debug-panel" *ngIf="false">
+      <details>
+        <summary>Debug Info</summary>
+        <div class="debug-content">
+          <div class="debug-item">
+            <strong>Current Pose:</strong> {{ !!currentPose }}
+          </div>
+          <div class="debug-item">
+            <strong>Current Angles:</strong> {{ !!currentAngles }}
+          </div>
+          <div class="debug-item">
+            <strong>Audio Playing:</strong> {{ isPlayingAudio }}
+          </div>
+          <div class="debug-item">
+            <strong>Exercise:</strong> {{ exerciseType }}
+          </div>
+          <div class="debug-item">
+            <strong>Phase:</strong> {{ currentPhase }}
+          </div>
+        </div>
+      </details>
     </div>
 
-    <!-- ✅ NUEVO: INDICADOR DE ESTADO CIENTÍFICO -->
-    <div class="scientific-status" *ngIf="useEnhancedAnalysis && precisionMetrics">
-      <div class="status-indicator" [ngClass]="getPrecisionStatus()">
-        <ion-icon name="checkmark-circle" *ngIf="isScientificallyValidated()"></ion-icon>
-        <ion-icon name="time" *ngIf="!isScientificallyValidated()"></ion-icon>
-      </div>
-      <div class="status-text">
-        <div class="status-label">Validación Científica</div>
-        <div class="status-value">{{ precisionMetrics.overallPrecision.toFixed(1) }}% precisión</div>
-      </div>
-    </div>
-    
   </div>
 
 </div>

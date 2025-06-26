@@ -131,30 +131,16 @@
     </div>
 
     <!-- Componente de cámara -->
-  <app-pose-camera
+    <app-pose-camera
     [exerciseType]="selectedExercise"
-    [showSkeleton]="true"
-    [showAngles]="false"
     [enableErrorDetection]="true"
+    [showSkeleton]="true"
+    [enableAudio]="true"
     (poseDetected)="onPoseDetected($event)"
     (errorDetected)="onErrorDetected($event)"
-    (repetitionComplete)="onRepetitionComplete($event)"
-    (qualityScore)="onQualityScore($event)"
-    (backToExercises)="onBackToExercises()">
-</app-pose-camera>
+    (repetitionCounted)="onRepetitionCounted($event)">
+    </app-pose-camera>
 
-    <!-- Overlay de información en tiempo real -->
-    <div class="realtime-info" *ngIf="sessionData.errors.length > 0">
-      <div class="error-alerts">
-        <div 
-          *ngFor="let error of sessionData.errors; trackBy: trackByErrorType" 
-          class="error-alert"
-          [ngClass]="'severity-' + error.severity">
-          <ion-icon name="warning" color="warning"></ion-icon>
-          <span>{{ error.description }}</span>
-        </div>
-      </div>
-    </div>
 
   </div>
 

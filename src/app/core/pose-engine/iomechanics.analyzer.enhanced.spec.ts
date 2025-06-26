@@ -1,6 +1,6 @@
 // src/app/core/pose-engine/biomechanics.analyzer.enhanced.spec.ts
 import { TestBed } from '@angular/core/testing';
-import { EnhancedBiomechanicsAnalyzer } from './biomechanics.analyzer.enhanced';
+import { EnhancedBiomechanicsAnalyzer } from './biomechanics.analyzer.enhanced.ts.backup';
 import { ExerciseType, PoseKeypoints, BiomechanicalAngles, PostureErrorType } from '../../shared/models/pose.models';
 
 describe('EnhancedBiomechanicsAnalyzer', () => {

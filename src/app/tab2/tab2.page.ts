@@ -1,5 +1,5 @@
 // src/app/tab2/tab2.page.ts
-// ✅ PÁGINA PRINCIPAL CORREGIDA CON SISTEMA TOAST INTELIGENTE
+// ✅ PÁGINA PRINCIPAL CORREGIDA PARA EXAMEN
 
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
@@ -13,14 +13,6 @@ import {
   PostureError 
 } from '../shared/models/pose.models';
 
-interface ToastMessage {
-  id: string;
-  message: string;
-  color: string;
-  lastShown: number;
-  cooldown: number;
-}
-
 @Component({
   selector: 'app-tab2',
   templateUrl: 'tab2.page.html',
@@ -29,638 +21,431 @@ interface ToastMessage {
 })
 export class Tab2Page implements OnInit, OnDestroy {
   @ViewChild(PoseCameraComponent) cameraComponent!: PoseCameraComponent;
-  
+
+  // ✅ ESTADO DEL COMPONENTE
   user: User | null = null;
-  
-  // Estado de la vista
-  showCamera = false;
-  selectedExercise: ExerciseType = ExerciseType.SQUATS;
-  
-  // Datos de la sesión actual
-  sessionData = {
-    repetitions: 0,
-    totalErrors: 0,
-    avgQuality: 0,
-    startTime: null as Date | null,
-    errors: [] as PostureError[],
-    duration: 0
-  };
+  currentExercise: ExerciseType = ExerciseType.SQUATS;
+  isTrainingActive = false;
+  totalRepetitions = 0;
+  sessionStartTime: number | null = null;
 
-  // Estadísticas del día
-  todayStats = {
+  // ✅ CONFIGURACIONES PARA EXAMEN
+  audioEnabled = true;
+  detectionEnabled = true;
+  skeletonVisible = true;
+
+  // ✅ EJERCICIOS DISPONIBLES
+  availableExercises = [
+    { 
+      type: ExerciseType.SQUATS, 
+      name: 'Sentadillas', 
+      icon: 'fitness-outline',
+      description: 'Ejercicio fundamental para piernas y glúteos'
+    },
+    { 
+      type: ExerciseType.PUSHUPS, 
+      name: 'Flexiones', 
+      icon: 'body-outline',
+      description: 'Fortalecimiento del tren superior'
+    },
+    { 
+      type: ExerciseType.PLANK, 
+      name: 'Plancha', 
+      icon: 'remove-outline',
+      description: 'Ejercicio isométrico para el core'
+    },
+    { 
+      type: ExerciseType.LUNGES, 
+      name: 'Estocadas', 
+      icon: 'walk-outline',
+      description: 'Trabajo unilateral de piernas'
+    }
+  ];
+
+  // ✅ ESTADÍSTICAS DE SESIÓN
+  sessionStats = {
     duration: 0,
-    repetitions: 0,
-    avgQuality: 0
+    errorsDetected: 0,
+    correctionsGiven: 0,
+    averageQuality: 0
   };
-
-  // Para almacenar puntuaciones de calidad
-  private qualityScores: number[] = [];
-  private sessionTimer: any = null;
-
-  // 🍞 SISTEMA DE TOAST INTELIGENTE
-  private toastHistory: Map<string, ToastMessage> = new Map();
-  private activeToasts: Set<string> = new Set();
-  private lastErrorTime: number = 0;
-  private lastRepetitionToast: number = 0;
-  private currentErrorType: string = '';
-  private lastQualityFeedback: number = 0;
+  // ✅ PROPIEDADES FALTANTES PARA EL TEMPLATE
+showCamera = false;
+selectedExercise: ExerciseType = ExerciseType.SQUATS;
+todayStats = {
+  duration: '0:00',
+  repetitions: 0,
+  avgQuality: 0
+};
+sessionData = {
+  repetitions: 0,
+  avgQuality: 0,
+  errors: [] as PostureError[]
+};
 
   constructor(
+    private auth: AuthService,
     private router: Router,
     private alertController: AlertController,
-    private toastController: ToastController,
-    private authService: AuthService
-  ) {}
+    private toastController: ToastController
+  ) {
+    console.log('🎬 Tab2Page constructor');
+  }
 
   ngOnInit() {
-    console.log('🎬 Tab2Page ngOnInit');
+    console.log('🚀 Tab2Page ngOnInit');
     
-    // Suscribirse al usuario actual
-    this.authService.user$.subscribe(user => {
+    // Suscribirse al usuario autenticado
+    this.auth.user$.subscribe(user => {
       this.user = user;
+      console.log('👤 Usuario cargado:', user?.email);
     });
-    
-    // Cargar estadísticas del día
-    this.loadTodayStats();
-
-    // Limpiar historial de toasts cada 5 minutos
-    setInterval(() => {
-      this.clearOldToastHistory();
-    }, 300000);
   }
 
   ngOnDestroy() {
-    this.clearSessionTimer();
+    console.log('🧹 Tab2Page ngOnDestroy');
+    this.stopTraining();
   }
 
-  // 🍞 MÉTODOS DEL SISTEMA DE TOAST INTELIGENTE
+  // 🚀 INICIAR ENTRENAMIENTO
+  async startTraining(): Promise<void> {
+    try {
+      console.log('🚀 Iniciando entrenamiento...');
+      
+      if (!this.cameraComponent) {
+        console.error('❌ Componente de cámara no disponible');
+        this.showToast('Error: Componente de cámara no disponible', 'danger');
+        return;
+      }
 
-  private async showSmartToast(
-    message: string, 
-    color: string = 'primary', 
-    cooldown: number = 3000, 
-    category: string = 'general'
-  ): Promise<boolean> {
-    const toastId = this.generateToastId(message, category);
-    const now = Date.now();
+      // Configurar componente de cámara
+      this.cameraComponent.exerciseType = this.currentExercise;
+      this.cameraComponent.enableAudio = this.audioEnabled;
+      this.cameraComponent.enableErrorDetection = this.detectionEnabled;
+      this.cameraComponent.showSkeleton = this.skeletonVisible;
+
+      // Iniciar cámara
+      await this.cameraComponent.startCamera();
+
+      // Marcar como activo
+      this.isTrainingActive = true;
+      this.sessionStartTime = Date.now();
+      this.resetSessionStats();
+
+      console.log('✅ Entrenamiento iniciado');
+      this.showToast('Entrenamiento iniciado correctamente', 'success');
+
+    } catch (error) {
+      console.error('❌ Error iniciando entrenamiento:', error);
+      this.showToast('Error iniciando entrenamiento. Verifica permisos de cámara.', 'danger');
+    }
+  }
+
+  // 🛑 PARAR ENTRENAMIENTO
+  async stopTraining(): Promise<void> {
+    try {
+      console.log('🛑 Parando entrenamiento...');
+
+      if (this.cameraComponent) {
+        await this.cameraComponent.stopCamera();
+      }
+
+      this.isTrainingActive = false;
+      this.calculateSessionDuration();
+
+      console.log('✅ Entrenamiento parado');
+      this.showToast('Entrenamiento finalizado', 'warning');
+
+    } catch (error) {
+      console.error('❌ Error parando entrenamiento:', error);
+    }
+  }
+
+  // 🏋️ CAMBIAR EJERCICIO
+  changeExercise(exerciseType: ExerciseType): void {
+    console.log(`🏋️ Cambiando ejercicio a: ${exerciseType}`);
     
-    // Verificar si el toast está en cooldown
-    if (this.isToastInCooldown(toastId, now)) {
-      console.log(`🚫 Toast "${message}" está en cooldown`);
-      return false;
+    this.currentExercise = exerciseType;
+    
+    if (this.cameraComponent && this.isTrainingActive) {
+      this.cameraComponent.setExerciseType(exerciseType);
+    }
+
+    const exercise = this.availableExercises.find(ex => ex.type === exerciseType);
+    this.showToast(`Ejercicio cambiado a: ${exercise?.name}`, 'primary');
+  }
+
+  // 🔄 RESET CONTADOR
+  resetRepetitions(): void {
+    console.log('🔄 Reseteando repeticiones');
+    
+    if (this.cameraComponent) {
+      this.cameraComponent.resetRepetitions();
     }
     
-    // Verificar si ya hay un toast activo del mismo tipo
-    if (this.activeToasts.has(toastId)) {
-      console.log(`🚫 Toast "${message}" ya está activo`);
-      return false;
+    this.totalRepetitions = 0;
+    this.sessionStats.errorsDetected = 0;
+    this.sessionStats.correctionsGiven = 0;
+    
+    this.showToast('Contador reseteado', 'medium');
+  }
+
+  // 🎤 TOGGLE AUDIO
+  toggleAudio(): void {
+    this.audioEnabled = !this.audioEnabled;
+    console.log(`🔊 Audio ${this.audioEnabled ? 'activado' : 'desactivado'}`);
+    
+    if (this.cameraComponent) {
+      this.cameraComponent.toggleAudio();
     }
     
-    // Registrar el toast
-    this.toastHistory.set(toastId, {
-      id: toastId,
-      message,
-      color,
-      lastShown: now,
-      cooldown
-    });
+    this.showToast(
+      `Audio ${this.audioEnabled ? 'activado' : 'desactivado'}`, 
+      this.audioEnabled ? 'success' : 'medium'
+    );
+  }
+
+  // 🔍 TOGGLE DETECCIÓN
+  toggleDetection(): void {
+    this.detectionEnabled = !this.detectionEnabled;
+    console.log(`🔍 Detección ${this.detectionEnabled ? 'activada' : 'desactivada'}`);
     
-    this.activeToasts.add(toastId);
+    if (this.cameraComponent) {
+      this.cameraComponent.toggleErrorDetection();
+    }
     
-    // Crear y mostrar el toast
+    this.showToast(
+      `Detección de errores ${this.detectionEnabled ? 'activada' : 'desactivada'}`, 
+      this.detectionEnabled ? 'success' : 'medium'
+    );
+  }
+
+  // 🎨 TOGGLE ESQUELETO
+  toggleSkeleton(): void {
+    this.skeletonVisible = !this.skeletonVisible;
+    console.log(`🎨 Esqueleto ${this.skeletonVisible ? 'visible' : 'oculto'}`);
+    
+    if (this.cameraComponent) {
+      this.cameraComponent.toggleSkeleton();
+    }
+    
+    this.showToast(
+      `Esqueleto ${this.skeletonVisible ? 'visible' : 'oculto'}`, 
+      this.skeletonVisible ? 'success' : 'medium'
+    );
+  }
+
+  // 🎤 PROBAR AUDIO
+  testAudio(): void {
+    console.log('🎤 Probando audio...');
+    
+    if (this.cameraComponent) {
+      this.cameraComponent.testAudio();
+    }
+    
+    this.showToast('Prueba de audio ejecutada', 'tertiary');
+  }
+
+  // 📊 EVENTOS DEL COMPONENTE DE CÁMARA
+
+  // Manejar pose detectada
+  onPoseDetected(pose: PoseKeypoints): void {
+    // Este evento se dispara cada frame, no necesitamos hacer nada específico
+    // Solo para debug si es necesario
+  }
+
+  // Manejar error detectado
+  onErrorDetected(errors: PostureError[]): void {
+    console.log('🚨 Errores detectados:', errors.length);
+    
+    this.sessionStats.errorsDetected += errors.length;
+    this.sessionStats.correctionsGiven += errors.length;
+    
+    // Mostrar toast solo para errores críticos (severity > 7)
+    const criticalErrors = errors.filter(error => error.severity > 7);
+    if (criticalErrors.length > 0) {
+      const errorTypes = criticalErrors.map(error => error.type).join(', ');
+      this.showToast(`⚠️ Errores críticos detectados: ${errorTypes}`, 'danger');
+    }
+  }
+
+  // Manejar repetición completada
+  onRepetitionCounted(count: number): void {
+    console.log(`🔢 Repetición completada: ${count}`);
+    this.totalRepetitions = count;
+    
+    // Mostrar motivación cada 5 repeticiones
+    if (count > 0 && count % 5 === 0) {
+      this.showToast(`🎉 ¡Excelente! ${count} repeticiones completadas`, 'success');
+    }
+  }
+
+  // 📊 MÉTODOS DE ESTADÍSTICAS
+
+  // Reset estadísticas de sesión
+  private resetSessionStats(): void {
+    this.sessionStats = {
+      duration: 0,
+      errorsDetected: 0,
+      correctionsGiven: 0,
+      averageQuality: 0
+    };
+    this.totalRepetitions = 0;
+  }
+
+  // Calcular duración de sesión
+  private calculateSessionDuration(): void {
+    if (this.sessionStartTime) {
+      this.sessionStats.duration = Math.round((Date.now() - this.sessionStartTime) / 1000);
+    }
+  }
+
+  // Obtener estadísticas formateadas
+  getFormattedDuration(): string {
+    const minutes = Math.floor(this.sessionStats.duration / 60);
+    const seconds = this.sessionStats.duration % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  // 📱 MÉTODOS DE UI
+
+  // Obtener nombre del ejercicio actual
+  getCurrentExerciseName(): string {
+    const exercise = this.availableExercises.find(ex => ex.type === this.currentExercise);
+    return exercise?.name || 'Desconocido';
+  }
+
+  // Obtener icono del ejercicio actual
+  getCurrentExerciseIcon(): string {
+    const exercise = this.availableExercises.find(ex => ex.type === this.currentExercise);
+    return exercise?.icon || 'fitness-outline';
+  }
+
+  // Obtener descripción del ejercicio actual
+  getCurrentExerciseDescription(): string {
+    const exercise = this.availableExercises.find(ex => ex.type === this.currentExercise);
+    return exercise?.description || '';
+  }
+
+  // Verificar si hay estadísticas de cámara disponibles
+  getCameraStats(): any {
+    return this.cameraComponent ? this.cameraComponent.getCurrentStats() : null;
+  }
+
+  // 🍞 MOSTRAR TOAST
+  private async showToast(message: string, color: string = 'primary'): Promise<void> {
     const toast = await this.toastController.create({
       message,
-      duration: this.calculateToastDuration(color),
+      duration: 2000,
       position: 'bottom',
       color,
-      buttons: color === 'danger' ? [
+      buttons: [
         {
           text: 'Cerrar',
           role: 'cancel'
         }
-      ] : undefined
-    });
-    
-    // Remover de activos cuando se cierre
-    toast.onDidDismiss().then(() => {
-      this.activeToasts.delete(toastId);
-    });
-    
-    await toast.present();
-    console.log(`✅ Toast mostrado: "${message}"`);
-    return true;
-  }
-  
-  private generateToastId(message: string, category: string): string {
-    const messageHash = message.toLowerCase().replace(/[^\w\s]/g, '').slice(0, 20);
-    return `${category}_${messageHash}`;
-  }
-  
-  private isToastInCooldown(toastId: string, currentTime: number): boolean {
-    const lastToast = this.toastHistory.get(toastId);
-    if (!lastToast) return false;
-    
-    return (currentTime - lastToast.lastShown) < lastToast.cooldown;
-  }
-  
-  private calculateToastDuration(color: string): number {
-    switch (color) {
-      case 'danger': return 4000;
-      case 'warning': return 3500;
-      case 'success': return 2500;
-      default: return 3000;
-    }
-  }
-  
-  private clearOldToastHistory(maxAge: number = 300000): void {
-    const now = Date.now();
-    for (const [id, toast] of this.toastHistory.entries()) {
-      if (now - toast.lastShown > maxAge) {
-        this.toastHistory.delete(id);
-      }
-    }
-  }
-
-  // Métodos específicos de toast
-  private async showErrorToast(message: string): Promise<boolean> {
-    return this.showSmartToast(message, 'danger', 5000, 'error');
-  }
-  
-  private async showSuccessToast(message: string): Promise<boolean> {
-    return this.showSmartToast(message, 'success', 3000, 'success');
-  }
-  
-  private async showWarningToast(message: string): Promise<boolean> {
-    return this.showSmartToast(message, 'warning', 4000, 'warning');
-  }
-  
-  private async showCoachingToast(message: string): Promise<boolean> {
-    return this.showSmartToast(`💡 ${message}`, 'primary', 8000, 'coaching');
-  }
-  
-  private async showProgressToast(message: string): Promise<boolean> {
-    return this.showSmartToast(message, 'success', 2000, 'progress');
-  }
-
-  // 🏋️ INICIAR EJERCICIO CON CÁMARA
-  async startExercise(exerciseType: string) {
-    console.log('🎯 === INICIANDO EJERCICIO ===');
-    console.log('🎯 Tipo:', exerciseType);
-
-    const exerciseMap: { [key: string]: ExerciseType } = {
-      'squats': ExerciseType.SQUATS,
-      'pushups': ExerciseType.PUSHUPS,
-      'plank': ExerciseType.PLANK,
-      'lunges': ExerciseType.LUNGES,
-      'bicep_curls': ExerciseType.BICEP_CURLS,
-      'deadlift': ExerciseType.DEADLIFT,
-      'bench_press': ExerciseType.BENCH_PRESS,
-      'shoulder_press': ExerciseType.SHOULDER_PRESS
-    };
-
-    const exercise = exerciseMap[exerciseType];
-    
-    if (!exercise) {
-      console.log('❌ Ejercicio no encontrado:', exerciseType);
-      await this.showErrorToast('Ejercicio no disponible');
-      return;
-    }
-
-    this.selectedExercise = exercise;
-    this.showCamera = true;
-    this.resetSessionData();
-    this.startSessionTimer();
-    
-    await this.showSuccessToast(`¡Ejercicio ${this.getExerciseName(exercise)} iniciado!`);
-  }
-
-  // ⏱️ TEMPORIZADOR DE SESIÓN
-  private startSessionTimer() {
-    this.sessionData.startTime = new Date();
-    
-    this.sessionTimer = setInterval(() => {
-      if (this.sessionData.startTime) {
-        const duration = (Date.now() - this.sessionData.startTime.getTime()) / (1000 * 60);
-        this.sessionData.duration = Math.round(duration * 10) / 10;
-      }
-    }, 1000);
-  }
-
-  private clearSessionTimer() {
-    if (this.sessionTimer) {
-      clearInterval(this.sessionTimer);
-      this.sessionTimer = null;
-    }
-  }
-
-  // 🔄 REINICIAR DATOS DE SESIÓN
-  private resetSessionData() {
-    this.sessionData = {
-      repetitions: 0,
-      totalErrors: 0,
-      avgQuality: 0,
-      startTime: new Date(),
-      errors: [],
-      duration: 0
-    };
-    this.qualityScores = [];
-    
-    // Reiniciar contadores de toast
-    this.lastErrorTime = 0;
-    this.lastRepetitionToast = 0;
-    this.currentErrorType = '';
-    this.lastQualityFeedback = 0;
-  }
-
-  // 📊 CARGAR ESTADÍSTICAS DEL DÍA
-  private loadTodayStats() {
-    // TODO: Implementar carga desde Firestore
-    // Por ahora usar datos por defecto
-    this.todayStats = {
-      duration: 0,
-      repetitions: 0,
-      avgQuality: 0
-    };
-  }
-
-  // 🛑 DETENER EJERCICIO
-  async stopExercise() {
-    console.log('🛑 === DETENIENDO EJERCICIO ===');
-    
-    this.clearSessionTimer();
-    
-    // Si hay progreso, preguntar antes de salir
-    if (this.sessionData.repetitions > 0) {
-      const alert = await this.alertController.create({
-        header: '🛑 Finalizar Ejercicio',
-        message: `¿Quieres guardar tu progreso?\n\n• ${this.sessionData.repetitions} repeticiones\n• ${this.sessionData.duration} minutos\n• ${this.sessionData.avgQuality}% calidad promedio`,
-        buttons: [
-          {
-            text: 'Descartar',
-            role: 'cancel',
-            handler: () => {
-              this.discardSession();
-            }
-          },
-          {
-            text: 'Guardar',
-            handler: () => {
-              this.saveSession();
-            }
-          }
-        ]
-      });
-      await alert.present();
-    } else {
-      this.discardSession();
-    }
-  }
-
-  // 🗑️ DESCARTAR SESIÓN
-  private discardSession() {
-    this.showCamera = false;
-    this.resetSessionData();
-    console.log('🗑️ Sesión descartada');
-  }
-
-  // 📊 EVENTOS DE LA CÁMARA CON TOAST INTELIGENTE
-
-  onPoseDetected(pose: PoseKeypoints) {
-    // Pose detectada - se podría usar para analytics futuro
-  }
-
-  onErrorDetected(errors: PostureError[]) {
-    this.sessionData.errors = errors;
-    this.sessionData.totalErrors += errors.length;
-    
-    // Mostrar toast para errores críticos (severidad >= 8)
-    const criticalErrors = errors.filter(error => error.severity >= 8);
-    if (criticalErrors.length > 0) {
-      const error = criticalErrors[0];
-      const now = Date.now();
-      
-      // Solo mostrar si es un error diferente o han pasado 5 segundos
-      if (this.currentErrorType !== error.type || (now - this.lastErrorTime) > 5000) {
-        this.showErrorToast(error.description);
-        this.currentErrorType = error.type;
-        this.lastErrorTime = now;
-      }
-    }
-  }
-
-  onRepetitionComplete(repetitionCount: number) {
-    this.sessionData.repetitions = repetitionCount;
-    
-    // Feedback háptico si está disponible
-    if ('vibrate' in navigator) {
-      navigator.vibrate(100);
-    }
-    
-    // Mensajes de aliento más inteligentes
-    if (repetitionCount % 5 === 0 && repetitionCount > 0) {
-      const now = Date.now();
-      
-      // Evitar repetir el mismo mensaje si no han pasado 3 segundos
-      if ((now - this.lastRepetitionToast) > 3000) {
-        const messages = [
-          `¡${repetitionCount} repeticiones! ¡Excelente trabajo!`,
-          `¡Vas muy bien! ${repetitionCount} repeticiones completadas`,
-          `¡Increíble! Ya llevas ${repetitionCount} repeticiones`,
-          `¡Sigue así! ${repetitionCount} repeticiones perfectas`
-        ];
-        
-        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-        this.showProgressToast(randomMessage);
-        this.lastRepetitionToast = now;
-      }
-    }
-    
-    // Hitos especiales
-    if (repetitionCount === 10) {
-      this.showSuccessToast('🎉 ¡10 repeticiones! ¡Estás en fuego!');
-    } else if (repetitionCount === 25) {
-      this.showSuccessToast('🔥 ¡25 repeticiones! ¡Eres una máquina!');
-    } else if (repetitionCount === 50) {
-      this.showSuccessToast('⭐ ¡50 repeticiones! ¡Nivel experto!');
-    }
-  }
-
-  onQualityScore(score: number) {
-    this.qualityScores.push(score);
-    
-    // Calcular promedio de calidad
-    if (this.qualityScores.length > 0) {
-      const sum = this.qualityScores.reduce((a, b) => a + b, 0);
-      this.sessionData.avgQuality = Math.round(sum / this.qualityScores.length);
-      
-      // Mostrar feedback de calidad solo en momentos específicos
-      if (this.qualityScores.length % 10 === 0) { // Cada 10 mediciones
-        const now = Date.now();
-        
-        // Evitar spam de feedback de calidad
-        if ((now - this.lastQualityFeedback) > 15000) { // 15 segundos
-          if (this.sessionData.avgQuality >= 90) {
-            this.showSuccessToast('⭐ Técnica excelente mantenida');
-          } else if (this.sessionData.avgQuality >= 75) {
-            this.showSuccessToast('👍 Buena técnica general');
-          } else if (this.sessionData.avgQuality < 60) {
-            this.showWarningToast('⚠️ Revisa tu postura');
-          }
-          this.lastQualityFeedback = now;
-        }
-      }
-    }
-  }
-
-  onCoachingTip(tip: string) {
-    // Los tips tienen un cooldown más largo para no saturar
-    this.showCoachingToast(tip);
-  }
-
-  // ✅ NUEVO MÉTODO PARA MANEJAR EL RETROCESO
-  async onBackToExercises() {
-    console.log('🔙 Evento de retroceso recibido');
-    
-    // Si hay repeticiones, preguntar antes de salir
-    if (this.sessionData.repetitions > 0) {
-      const alert = await this.alertController.create({
-        header: '🔙 Volver a Ejercicios',
-        message: `¿Quieres guardar tu progreso actual?\n\n• ${this.sessionData.repetitions} repeticiones\n• ${this.sessionData.avgQuality}% calidad promedio`,
-        buttons: [
-          {
-            text: 'Descartar y Volver',
-            role: 'destructive',
-            handler: () => {
-              this.discardAndGoBack();
-            }
-          },
-          {
-            text: 'Guardar y Volver',
-            handler: () => {
-              this.saveAndGoBack();
-            }
-          },
-          {
-            text: 'Cancelar',
-            role: 'cancel'
-          }
-        ]
-      });
-      await alert.present();
-    } else {
-      // Si no hay progreso, volver directamente
-      this.goBackDirectly();
-    }
-  }
-
-  // 🗑️ DESCARTAR Y VOLVER
-  private discardAndGoBack(): void {
-    this.showCamera = false;
-    this.resetSessionData();
-    this.showWarningToast('Sesión descartada');
-  }
-
-  // 💾 GUARDAR Y VOLVER
-  private async saveAndGoBack(): Promise<void> {
-    try {
-      await this.saveSession();
-      this.showCamera = false;
-      this.showSuccessToast('¡Progreso guardado correctamente!');
-    } catch (error) {
-      console.error('❌ Error guardando:', error);
-      this.showErrorToast('Error al guardar. Volviendo sin guardar.');
-      this.showCamera = false;
-    }
-  }
-
-  // 🔙 VOLVER DIRECTAMENTE
-  private goBackDirectly(): void {
-    this.showCamera = false;
-    this.resetSessionData();
-  }
-
-  // 💾 GUARDAR SESIÓN
-  private async saveSession() {
-    try {
-      // Calcular duración final
-      if (this.sessionData.startTime) {
-        const duration = (Date.now() - this.sessionData.startTime.getTime()) / (1000 * 60);
-        this.sessionData.duration = Math.round(duration * 10) / 10; // Redondear a 1 decimal
-      }
-      
-      // Actualizar estadísticas del día
-      this.todayStats.repetitions += this.sessionData.repetitions;
-      this.todayStats.duration += this.sessionData.duration;
-      
-      // Recalcular promedio de calidad del día
-      if (this.sessionData.avgQuality > 0) {
-        this.todayStats.avgQuality = Math.round(
-          (this.todayStats.avgQuality + this.sessionData.avgQuality) / 2
-        );
-      }
-      
-      // TODO: Aquí se implementaría el guardado en Firestore
-      // await this.saveSessionToFirebase(this.sessionData);
-      
-      await this.showSuccessToast('¡Sesión guardada correctamente!');
-      
-      // Mostrar resumen
-      await this.showSessionSummary();
-      
-      this.showCamera = false;
-      
-    } catch (error) {
-      console.error('❌ Error guardando sesión:', error);
-      await this.showErrorToast('Error al guardar la sesión');
-    }
-  }
-
-  // 📋 MOSTRAR RESUMEN DE SESIÓN
-  private async showSessionSummary() {
-    const alert = await this.alertController.create({
-      header: '🎉 ¡Sesión Completada!',
-      message: `
-        📊 Resumen de tu entrenamiento:
-        
-        ⏱️ Duración: ${this.sessionData.duration} minutos
-        🔢 Repeticiones: ${this.sessionData.repetitions}
-        ⭐ Calidad promedio: ${this.sessionData.avgQuality}%
-        ⚠️ Errores totales: ${this.sessionData.totalErrors}
-        
-        ¡Excelente trabajo! 💪
-      `,
-      buttons: [
-        {
-          text: 'Continuar',
-          role: 'cancel'
-        }
       ]
     });
+
+    await toast.present();
+  }
+
+  // 📋 MOSTRAR INFO DEL EJERCICIO
+  async showExerciseInfo(): Promise<void> {
+    const alert = await this.alertController.create({
+      header: this.getCurrentExerciseName(),
+      subHeader: 'Información del ejercicio',
+      message: `
+        <p><strong>Descripción:</strong><br>
+        ${this.getCurrentExerciseDescription()}</p>
+        
+        <p><strong>Beneficios:</strong><br>
+        ${this.getExerciseBenefits()}</p>
+        
+        <p><strong>Consejos:</strong><br>
+        ${this.getExerciseTips()}</p>
+      `,
+      buttons: ['Entendido']
+    });
+
     await alert.present();
   }
 
-  // 🍞 MÉTODO LEGACY PARA COMPATIBILIDAD
-  private async showToast(message: string, color: string): Promise<void> {
-    // Usar el nuevo sistema inteligente
-    await this.showSmartToast(message, color);
-  }
-
-  // 🔧 UTILIDADES
-
-  // Método para trackBy en ngFor (optimización)
-  trackByExercise(index: number, exercise: any): string {
-    return exercise.id || exercise.name || index;
-  }
-
-  // TrackBy para errores
-  trackByErrorType(index: number, error: PostureError): string {
-    return `${error.type}_${error.severity}_${index}`;
-  }
-
-  // Formatear tiempo
-  formatTime(minutes: number): string {
-    if (minutes < 1) return '< 1 min';
-    return `${Math.floor(minutes)} min`;
-  }
-
-  // Obtener color según calidad
-  getQualityColor(quality: number): string {
-    if (quality >= 90) return 'success';
-    if (quality >= 75) return 'warning';
-    if (quality >= 60) return 'medium';
-    return 'danger';
-  }
-
-  // Obtener emoji según calidad
-  getQualityEmoji(quality: number): string {
-    if (quality >= 90) return '⭐';
-    if (quality >= 75) return '👍';
-    if (quality >= 60) return '👌';
-    return '⚠️';
-  }
-
-  // 📊 MÉTODOS FALTANTES DEL TEMPLATE
-
-  // Obtener nombre del ejercicio
-  getExerciseName(exerciseType: ExerciseType): string {
-    const exerciseNames: { [key in ExerciseType]: string } = {
-      [ExerciseType.SQUATS]: 'Sentadillas',
-      [ExerciseType.PUSHUPS]: 'Flexiones',
-      [ExerciseType.PLANK]: 'Plancha',
-      [ExerciseType.LUNGES]: 'Estocadas',
-      [ExerciseType.BICEP_CURLS]: 'Curl de Bíceps',
-      [ExerciseType.DEADLIFT]: 'Peso Muerto',
-      [ExerciseType.BENCH_PRESS]: 'Press de Banca',
-      [ExerciseType.SHOULDER_PRESS]: 'Press de Hombros'
+  // Obtener beneficios del ejercicio
+  private getExerciseBenefits(): string {
+    const benefits = {
+      [ExerciseType.SQUATS]: 'Fortalece piernas, glúteos y core. Mejora la funcionalidad en actividades diarias.',
+      [ExerciseType.PUSHUPS]: 'Desarrolla pecho, hombros, tríceps y core. Mejora la fuerza del tren superior.',
+      [ExerciseType.PLANK]: 'Fortalece toda la musculatura del core. Mejora la estabilidad y postura.',
+      [ExerciseType.LUNGES]: 'Trabajo unilateral que mejora equilibrio y corrige asimetrías musculares.',
+      [ExerciseType.BICEP_CURLS]: 'Fortalece bíceps y mejora la fuerza de brazos.',
+      [ExerciseType.DEADLIFTS]: 'Ejercicio completo que fortalece toda la cadena posterior.',
+      [ExerciseType.OVERHEAD_PRESS]: 'Desarrolla hombros y estabilidad del core.'
     };
-    
-    return exerciseNames[exerciseType] || 'Ejercicio';
+    return benefits[this.currentExercise] || 'Ejercicio beneficial para la salud general.';
   }
 
-  // Mostrar estadísticas detalladas
-  async showDetailedStats(): Promise<void> {
+  // Obtener consejos del ejercicio
+  private getExerciseTips(): string {
+    const tips = {
+      [ExerciseType.SQUATS]: 'Mantén los pies separados al ancho de hombros. Baja como si te sentaras en una silla.',
+      [ExerciseType.PUSHUPS]: 'Mantén el cuerpo recto como una tabla. Controla la bajada y subida.',
+      [ExerciseType.PLANK]: 'Mantén la línea desde cabeza hasta talones. Respira normalmente.',
+      [ExerciseType.LUNGES]: 'Da pasos amplios. Mantén el peso en el talón del pie delantero.',
+      [ExerciseType.BICEP_CURLS]: 'Mantén codos fijos pegados al torso. Controla el movimiento.',
+      [ExerciseType.DEADLIFTS]: 'Mantén la espalda recta y levanta con las piernas.',
+      [ExerciseType.OVERHEAD_PRESS]: 'Mantén el core activado y empuja verticalmente.'
+    };
+    return tips[this.currentExercise] || 'Ejecuta el movimiento de forma controlada.';
+  }
+
+  // 🚪 CERRAR SESIÓN
+  async logout(): Promise<void> {
     const alert = await this.alertController.create({
-      header: '📊 Estadísticas Detalladas',
-      message: `
-        <div style="text-align: left;">
-          <h4>Hoy:</h4>
-          <p>⏱️ Tiempo total: ${this.todayStats.duration} min</p>
-          <p>🔢 Repeticiones: ${this.todayStats.repetitions}</p>
-          <p>⭐ Calidad promedio: ${this.todayStats.avgQuality}%</p>
-          
-          <h4>Sesión actual:</h4>
-          <p>⏱️ Duración: ${this.sessionData.duration} min</p>
-          <p>🔢 Repeticiones: ${this.sessionData.repetitions}</p>
-          <p>⭐ Calidad: ${this.sessionData.avgQuality}%</p>
-          <p>⚠️ Errores: ${this.sessionData.totalErrors}</p>
-        </div>
-      `,
+      header: 'Cerrar Sesión',
+      message: '¿Estás seguro de que quieres cerrar sesión?',
       buttons: [
         {
-          text: 'Ver Historial',
-          handler: () => {
-            this.showHistoryStats();
-          }
+          text: 'Cancelar',
+          role: 'cancel'
         },
         {
-          text: 'Cerrar',
-          role: 'cancel'
+          text: 'Cerrar Sesión',
+          handler: async () => {
+            await this.stopTraining();
+            await this.auth.logout();
+            this.router.navigate(['/auth/login']);
+          }
         }
       ]
     });
-    
+
     await alert.present();
   }
+  // ✅ MÉTODOS FALTANTES PARA EL TEMPLATE
+startExercise(exerciseType: string): void {
+  this.selectedExercise = exerciseType as ExerciseType;
+  this.showCamera = true;
+  this.startTraining();
+}
 
-  // Mostrar historial de estadísticas
-  private async showHistoryStats(): Promise<void> {
-    // TODO: Implementar carga de historial desde Firestore
-    const alert = await this.alertController.create({
-      header: '📈 Historial',
-      message: `
-        <div style="text-align: left;">
-          <h4>Esta semana:</h4>
-          <p>🗓️ Días entrenados: 0</p>
-          <p>⏱️ Tiempo total: 0 min</p>
-          <p>🔢 Repeticiones totales: 0</p>
-          
-          <h4>Este mes:</h4>
-          <p>🗓️ Días entrenados: 0</p>
-          <p>⏱️ Tiempo total: 0 min</p>
-          <p>🔢 Repeticiones totales: 0</p>
-          
-          <p><em>Conecta tu cuenta para ver estadísticas detalladas</em></p>
-        </div>
-      `,
-      buttons: ['Cerrar']
-    });
-    
-    await alert.present();
-  }
+exitCamera(): void {
+  this.showCamera = false;
+  this.stopTraining();
+}
 
-  // Salir de la cámara
-  exitCamera(): void {
-    console.log('🚪 Saliendo de la cámara...');
-    this.stopExercise();
-  }
+getExerciseName(exercise: ExerciseType): string {
+  const exercise_obj = this.availableExercises.find(ex => ex.type === exercise);
+  return exercise_obj?.name || 'Ejercicio';
+}
+
+showDetailedStats(): void {
+  // Implementar modal o navegación a estadísticas detalladas
+  console.log('Mostrar estadísticas detalladas');
+}
+
+
+trackByErrorType(index: number, error: PostureError): string {
+  return error.type;
+}
 }

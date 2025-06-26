@@ -1,7 +1,7 @@
 // src/app/core/integration.spec.ts
 import { TestBed } from '@angular/core/testing';
 import { PoseDetectionEngine } from './pose-engine/pose-detection.engine';
-import { EnhancedBiomechanicsAnalyzer } from './pose-engine/biomechanics.analyzer.enhanced';
+import { EnhancedBiomechanicsAnalyzer } from './pose-engine/biomechanics.analyzer.enhanced.ts.backup';
 import { PrecisionValidator } from './pose-engine/precision-validator';
 import { ExerciseType } from '../shared/models/pose.models';
 
