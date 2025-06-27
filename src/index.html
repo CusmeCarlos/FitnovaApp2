@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>FitNova</title>
+  <title>FitNova - AI Fitness Trainer</title>
 
   <base href="/" />
 
@@ -14,58 +14,49 @@
 
   <link rel="icon" type="image/png" href="assets/icon/favicon.png" />
 
-  <!-- ✅ MediaPipe Scripts - ORDEN CORRECTO Y URLs VERIFICADOS -->
-  <!-- 1. Control Utils - Primero -->
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
-  
-  <!-- 2. Drawing Utils - Segundo -->
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-  
-  <!-- 3. Camera Utils - Tercero -->
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-  
-  <!-- 4. Pose - Último y más importante -->
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
-
-  <!-- ✅ Script de verificación de MediaPipe -->
-  <script>
-    // Verificar que MediaPipe se haya cargado correctamente
-    window.addEventListener('load', function() {
-      console.log('🔍 Verificando MediaPipe...');
-      
-      const components = {
-        'Pose': window.Pose,
-        'Camera': window.Camera,
-        'drawConnectors': window.drawConnectors,
-        'drawLandmarks': window.drawLandmarks,
-        'POSE_CONNECTIONS': window.POSE_CONNECTIONS,
-        'POSE_LANDMARKS': window.POSE_LANDMARKS
-      };
-      
-      let allLoaded = true;
-      
-      for (const [name, component] of Object.entries(components)) {
-        if (component) {
-          console.log(`✅ ${name}: Disponible`);
-        } else {
-          console.error(`❌ ${name}: NO disponible`);
-          allLoaded = false;
-        }
-      }
-      
-      if (allLoaded) {
-        console.log('🎉 MediaPipe completamente cargado y listo');
-        window.dispatchEvent(new CustomEvent('mediapipe-ready'));
-      } else {
-        console.error('💥 Error: MediaPipe no se cargó completamente');
-        window.dispatchEvent(new CustomEvent('mediapipe-error'));
-      }
-    });
-  </script>
-
   <!-- add to homescreen for ios -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+
+  <!-- ✅ SCRIPTS DE MEDIAPIPE (CRÍTICOS PARA EL EXAMEN) -->
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils@0.6.1675469404/control_utils.js"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
+
+  <!-- ✅ VERIFICAR CARGA DE MEDIAPIPE -->
+  <script>
+    window.mediaPipeLoadedPromise = new Promise((resolve, reject) => {
+      let checkInterval;
+      let attempts = 0;
+      const maxAttempts = 100; // 10 segundos máximo
+
+      checkInterval = setInterval(() => {
+        attempts++;
+        
+        if (window.Pose && window.Camera && window.drawConnectors && window.POSE_CONNECTIONS) {
+          console.log('✅ MediaPipe cargado exitosamente en intento:', attempts);
+          clearInterval(checkInterval);
+          resolve(true);
+        } else if (attempts >= maxAttempts) {
+          console.error('❌ MediaPipe no se cargó después de', maxAttempts, 'intentos');
+          clearInterval(checkInterval);
+          reject(new Error('MediaPipe failed to load'));
+        }
+      }, 100);
+    });
+
+    // Debug global para MediaPipe
+    window.debugMediaPipe = () => {
+      console.log('🔍 Estado de MediaPipe:', {
+        Pose: !!window.Pose,
+        Camera: !!window.Camera,
+        drawConnectors: !!window.drawConnectors,
+        POSE_CONNECTIONS: !!window.POSE_CONNECTIONS,
+        drawLandmarks: !!window.drawLandmarks
+      });
+    };
+  </script>
 </head>
 
 <body>

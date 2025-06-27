@@ -1,776 +1,512 @@
 // src/app/features/training/components/pose-camera/pose-camera.component.scss
-// ✅ ESTILOS CORREGIDOS Y OPTIMIZADOS
+// ✅ ESTILOS SIN EFECTO ESPEJO
 
 .camera-container {
   position: relative;
   width: 100%;
-  height: 100vh;
+  height: 100%;
   background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+// 🔄 ESTADO DE CARGA
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+
+  .loading-spinner {
+    margin-bottom: 20px;
+    
+    ion-spinner {
+      width: 50px;
+      height: 50px;
+    }
+  }
+
+  .loading-text {
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .loading-subtitle {
+    color: #ccc;
+    font-size: 14px;
+  }
+}
+
+// ❌ ESTADO DE ERROR
+.error-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(139, 69, 19, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+
+  .error-content {
+    text-align: center;
+    color: white;
+    padding: 30px;
+
+    .error-icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+      color: #ff6b6b;
+    }
+
+    .error-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+
+    .error-message {
+      font-size: 16px;
+      margin-bottom: 25px;
+      line-height: 1.5;
+    }
+
+    .retry-button {
+      --border-radius: 25px;
+      --padding-start: 25px;
+      --padding-end: 25px;
+    }
+  }
+}
+
+// ✅ CONTENIDO DE CÁMARA
+.camera-content {
+  position: relative;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 
-  // ✅ OVERLAY DE CARGA
-  .loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.9);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    color: white;
-
-    .loading-spinner {
-      margin-bottom: 20px;
-      
-      ion-spinner {
-        width: 50px;
-        height: 50px;
-      }
-    }
-
-    .loading-text {
-      font-size: 18px;
-      font-weight: 500;
-      margin-bottom: 10px;
-      text-align: center;
-    }
-
-    .loading-subtitle {
-      font-size: 14px;
-      color: #ccc;
-      text-align: center;
-    }
+  &.hidden {
+    display: none;
   }
+}
 
-  // ❌ OVERLAY DE ERROR
-  .error-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.95);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
+// 📹 VIDEO DE CÁMARA (SIN ESPEJO)
+.camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); // ✅ AGREGAR ESTA LÍNEA
+  // ✅ ELIMINADO: transform: scaleX(-1); - Ya no hay efecto espejo
+}
 
-    .error-content {
-      text-align: center;
-      color: white;
-      max-width: 400px;
+// 🎨 CANVAS DE ESQUELETO (SIN ESPEJO)
+.skeleton-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  // ✅ ELIMINADO: transform: scaleX(-1); - Ya no hay efecto espejo
 
-      .error-icon {
-        font-size: 60px;
-        color: #ff6b6b;
-        margin-bottom: 20px;
-      }
-
-      .error-title {
-        font-size: 22px;
-        font-weight: bold;
-        margin-bottom: 15px;
-        color: #ff6b6b;
-      }
-
-      .error-message {
-        font-size: 16px;
-        line-height: 1.5;
-        margin-bottom: 25px;
-        color: #ccc;
-      }
-
-      .retry-button {
-        --border-radius: 25px;
-        --padding-start: 20px;
-        --padding-end: 20px;
-        font-weight: 600;
-      }
-    }
+  &.hidden {
+    display: none;
   }
+}
 
-  // 📹 CONTENIDO DE CÁMARA
-  .camera-content {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    
-    &.hidden {
-      display: none;
-    }
+// 🚨 CANVAS DE OVERLAY DE ERRORES (SIN ESPEJO)
+.error-overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 20;
+  // ✅ ELIMINADO: transform: scaleX(-1); - Ya no hay efecto espejo
+}
 
-    .video-element {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transform: scaleX(-1); 
-    }
+// 📊 PANEL DE INFORMACIÓN
+.info-panel {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  right: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 30;
+  pointer-events: none;
 
-    .canvas-element,
-    .overlay-element {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      
-      &.hidden {
-        display: none;
-      }
-    }
-
-    .overlay-element {
-      z-index: 10;
-    }
-  }
-
-  // 🎨 INTERFAZ DE USUARIO
-  .ui-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    z-index: 100;
-
-    // Permitir interacción solo en los paneles
-    > * {
-      pointer-events: auto;
-    }
-  }
-
-  // 📊 PANEL DE ESTADÍSTICAS
-  .stats-panel {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    border-radius: 12px;
-    padding: 15px;
-    min-width: 200px;
+  > div {
+    background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-
-    .stats-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 12px;
-      color: white;
-      font-weight: 600;
-
-      ion-icon {
-        color: #4CAF50;
-      }
-
-      .stats-title {
-        flex: 1;
-      }
-
-      .connection-indicator {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 12px;
-
-        .pulse-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          animation: pulse 2s infinite;
-        }
-
-        &.success .pulse-dot {
-          background: #4CAF50;
-        }
-
-        &.warning .pulse-dot {
-          background: #FF9800;
-        }
-
-        &.danger .pulse-dot {
-          background: #F44336;
-        }
-
-        .connection-text {
-          font-size: 10px;
-          opacity: 0.8;
-        }
-      }
-    }
-
-    .stats-content {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-
-      .stat-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 14px;
-        color: white;
-
-        .stat-label {
-          opacity: 0.8;
-        }
-
-        .stat-value {
-          font-weight: 600;
-          
-          &.stat-primary {
-            color: #2196F3;
-          }
-          
-          &.stat-warning {
-            color: #FF9800;
-          }
-          
-          &.stat-danger {
-            color: #F44336;
-          }
-        }
-      }
-    }
-  }
-
-  // 🎮 PANEL DE CONTROLES
-  .controls-panel {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    border-radius: 12px;
-    padding: 15px;
-    min-width: 250px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    max-width: 300px;
-
-    .controls-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 15px;
-      color: white;
-      font-weight: 600;
-
-      ion-icon {
-        color: #2196F3;
-      }
-    }
-
-    .controls-content {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-
-      .control-group {
-        .control-label {
-          display: block;
-          color: white;
-          font-size: 14px;
-          margin-bottom: 8px;
-          opacity: 0.9;
-        }
-
-        ion-select {
-          --background: rgba(255, 255, 255, 0.1);
-          --color: white;
-          --border-radius: 8px;
-          --padding-start: 12px;
-          --padding-end: 12px;
-          font-size: 14px;
-        }
-      }
-
-      .toggle-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-
-        ion-button {
-          --border-radius: 20px;
-          --padding-start: 12px;
-          --padding-end: 12px;
-          height: 36px;
-          font-size: 12px;
-          justify-content: flex-start;
-
-          span {
-            margin-left: 4px;
-          }
-        }
-      }
-
-      .action-buttons {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-
-        ion-button {
-          --border-radius: 18px;
-          height: 32px;
-          font-size: 11px;
-          flex: 1;
-          min-width: 70px;
-        }
-      }
-    }
-  }
-
-  // 💬 PANEL DE MOTIVACIÓN
-  .motivation-panel {
-    position: absolute;
-    bottom: 140px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(135deg, #4CAF50, #45a049);
-    border-radius: 25px;
-    padding: 12px 20px;
-    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
-    animation: slideUp 0.5s ease-out;
-
-    .motivation-content {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: white;
-
-      .motivation-icon {
-        font-size: 20px;
-        color: white;
-      }
-
-      .motivation-text {
-        font-size: 14px;
-        font-weight: 600;
-        text-align: center;
-      }
-    }
-  }
-
-  // 🚨 ALERTAS DE ERRORES
-  .error-alerts {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 90%;
-    max-width: 500px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-
-    .error-alert {
-      background: rgba(244, 67, 54, 0.95);
-      border-radius: 15px;
-      padding: 15px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      animation: errorSlideIn 0.3s ease-out;
-      box-shadow: 0 4px 20px rgba(244, 67, 54, 0.4);
-
-      &.severity-1,
-      &.severity-2,
-      &.severity-3 {
-        background: rgba(255, 193, 7, 0.95);
-        box-shadow: 0 4px 20px rgba(255, 193, 7, 0.4);
-      }
-
-      &.severity-7,
-      &.severity-8,
-      &.severity-9,
-      &.severity-10 {
-        background: rgba(244, 67, 54, 0.95);
-        box-shadow: 0 4px 20px rgba(244, 67, 54, 0.5);
-        border: 2px solid rgba(255, 255, 255, 0.3);
-      }
-
-      .error-content {
-        margin-bottom: 10px;
-
-        .error-header {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 8px;
-
-          .error-icon {
-            color: white;
-            font-size: 18px;
-            animation: pulse 1.5s infinite;
-          }
-
-          .error-title {
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-            flex: 1;
-          }
-
-          .audio-indicator {
-            color: white;
-            font-size: 14px;
-            opacity: 0.8;
-          }
-        }
-
-        .error-description {
-          color: white;
-          font-size: 13px;
-          font-weight: 600;
-          margin-bottom: 6px;
-          line-height: 1.3;
-        }
-
-        .error-recommendation {
-          display: flex;
-          align-items: flex-start;
-          gap: 6px;
-          color: rgba(255, 255, 255, 0.9);
-          font-size: 12px;
-          line-height: 1.4;
-
-          .recommendation-icon {
-            color: #FFD700;
-            font-size: 14px;
-            margin-top: 1px;
-            flex-shrink: 0;
-          }
-        }
-      }
-
-      .error-severity {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-
-        .severity-bar {
-          flex: 1;
-          height: 4px;
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 2px;
-          overflow: hidden;
-
-          .severity-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #FFD700, #FF6B6B);
-            border-radius: 2px;
-            transition: width 0.3s ease;
-          }
-        }
-
-        .severity-text {
-          color: white;
-          font-size: 10px;
-          font-weight: 600;
-          opacity: 0.8;
-        }
-      }
-    }
-  }
-
-  // 🔧 PANEL DE DEBUG
-  .debug-panel {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.9);
+    padding: 8px 12px;
     border-radius: 8px;
-    padding: 10px;
-    font-size: 12px;
     color: white;
-    max-width: 200px;
+    font-size: 14px;
+  }
+}
 
-    details {
-      summary {
-        cursor: pointer;
-        font-weight: 600;
-        margin-bottom: 10px;
-        list-style: none;
+// 🏃 INFORMACIÓN DE EJERCICIO
+.exercise-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 
-        &::-webkit-details-marker {
-          display: none;
-        }
+  .exercise-name {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
 
-        &::before {
-          content: "▶ ";
-          transition: transform 0.2s;
-        }
-      }
+  .exercise-phase {
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    
+    &.phase-idle { background: #6b7280; }
+    &.phase-top { background: #10b981; }
+    &.phase-bottom { background: #3b82f6; }
+    &.phase-descending { background: #f59e0b; }
+    &.phase-ascending { background: #8b5cf6; }
+    &.phase-hold { background: #ef4444; }
+  }
+}
 
-      &[open] summary::before {
-        transform: rotate(90deg);
+// 🔢 CONTADOR DE REPETICIONES
+.repetition-counter {
+  text-align: center;
+
+  .counter-label {
+    font-size: 12px;
+    opacity: 0.8;
+  }
+
+  .counter-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #00ff88;
+  }
+}
+
+// 📈 PUNTUACIÓN DE CALIDAD
+.quality-score {
+  text-align: center;
+
+  .score-label {
+    font-size: 12px;
+    opacity: 0.8;
+  }
+
+  .score-value {
+    font-size: 18px;
+    font-weight: bold;
+
+    &.quality-excellent { color: #22c55e; } // Verde
+    &.quality-good { color: #84cc16; }      // Verde claro
+    &.quality-fair { color: #f59e0b; }      // Naranja
+    &.quality-poor { color: #ef4444; }      // Rojo
+  }
+}
+
+// 📊 INDICADOR DE FPS
+.fps-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+
+  ion-icon {
+    font-size: 14px;
+  }
+}
+
+// 🚦 PANEL DE ESTADO DE PREPARACIÓN
+.readiness-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  padding: 20px 30px;
+  border-radius: 15px;
+  text-align: center;
+  z-index: 35;
+  border: 3px solid;
+  animation: pulse 2s infinite;
+
+  &.not-ready {
+    border-color: #3b82f6;
+    
+    .readiness-icon {
+      color: #3b82f6;
+    }
+  }
+
+  &.getting-ready {
+    border-color: #f59e0b;
+    
+    .readiness-icon {
+      color: #f59e0b;
+    }
+  }
+
+  &.ready-to-start {
+    border-color: #22c55e;
+    
+    .readiness-icon {
+      color: #22c55e;
+    }
+  }
+
+  .readiness-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+  }
+
+  .readiness-message {
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    margin: 0;
+  }
+}
+
+// 🚨 PANEL DE ERRORES ACTUALES
+.current-errors {
+  position: absolute;
+  bottom: 80px;
+  left: 15px;
+  right: 15px;
+  z-index: 30;
+  pointer-events: none;
+
+  .error-item {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 4px solid;
+
+    &.severity-critical {
+      border-left-color: #ef4444; // Rojo
+      
+      .error-header ion-icon {
+        color: #ef4444;
       }
     }
 
-    .debug-content {
-      .debug-item {
-        margin-bottom: 5px;
-        font-family: monospace;
-
-        strong {
-          color: #4CAF50;
-        }
+    &.severity-warning {
+      border-left-color: #f59e0b; // Naranja
+      
+      .error-header ion-icon {
+        color: #f59e0b;
       }
+    }
+
+    &.severity-info {
+      border-left-color: #3b82f6; // Azul
+      
+      .error-header ion-icon {
+        color: #3b82f6;
+      }
+    }
+
+    .error-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+
+      ion-icon {
+        font-size: 18px;
+      }
+
+      .error-type {
+        font-weight: bold;
+        color: white;
+        font-size: 14px;
+      }
+    }
+
+    .error-description {
+      color: #e5e7eb;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .error-recommendation {
+      color: #fbbf24;
+      font-size: 12px;
+      font-style: italic;
     }
   }
 }
 
-// 🎭 ANIMACIONES
+// 🎛️ CONTROLES
+.controls-panel {
+  position: absolute;
+  bottom: 15px;
+  left: 15px;
+  right: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  z-index: 30;
+
+  ion-button {
+    --border-radius: 50%;
+    --padding-start: 12px;
+    --padding-end: 12px;
+    width: 44px;
+    height: 44px;
+    backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.5);
+
+    ion-icon {
+      font-size: 20px;
+    }
+  }
+}
+
+// 🎤 INDICADOR DE AUDIO
+.audio-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  padding: 15px 20px;
+  border-radius: 25px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 40;
+  animation: pulse 2s infinite;
+
+  ion-icon {
+    font-size: 20px;
+    color: #00ff88;
+  }
+
+  span {
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+// 📱 RESPONSIVE
+@media (max-width: 768px) {
+  .info-panel {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+
+    > div {
+      font-size: 12px;
+    }
+  }
+
+  .repetition-counter .counter-value {
+    font-size: 20px;
+  }
+
+  .quality-score .score-value {
+    font-size: 16px;
+  }
+
+  .current-errors {
+    bottom: 70px;
+
+    .error-item {
+      padding: 10px;
+
+      .error-header .error-type {
+        font-size: 13px;
+      }
+
+      .error-description {
+        font-size: 12px;
+      }
+
+      .error-recommendation {
+        font-size: 11px;
+      }
+    }
+  }
+
+  .readiness-panel {
+    padding: 15px 20px;
+    
+    .readiness-icon {
+      font-size: 28px;
+    }
+    
+    .readiness-message {
+      font-size: 16px;
+    }
+  }
+}
+
+// 🎨 ANIMACIONES
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+// 🌊 ANIMACIÓN DE CARGA
+@keyframes wave {
+  0%, 60%, 100% {
+    transform: initial;
+  }
+  30% {
+    transform: translateY(-15px);
+  }
+}
+
+.loading-text {
+  animation: wave 2s infinite;
+}
+
+// ✅ ANIMACIÓN DE PREPARACIÓN
+@keyframes readinessPulse {
+  0%, 100% {
+    border-width: 3px;
     transform: scale(1);
   }
   50% {
-    opacity: 0.7;
-    transform: scale(1.1);
+    border-width: 5px;
+    transform: scale(1.02);
   }
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
-@keyframes errorSlideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) scale(1);
-  }
-}
-
-// 📱 RESPONSIVE DESIGN
-@media (max-width: 768px) {
-  .camera-container {
-    .stats-panel,
-    .controls-panel {
-      position: relative;
-      margin: 10px;
-      width: calc(100% - 40px);
-      max-width: none;
-    }
-
-    .stats-panel {
-      top: auto;
-      left: auto;
-      order: 1;
-    }
-
-    .controls-panel {
-      top: auto;
-      right: auto;
-      order: 2;
-
-      .controls-content {
-        .toggle-buttons {
-          flex-direction: row;
-          flex-wrap: wrap;
-          
-          ion-button {
-            flex: 1;
-            min-width: 120px;
-          }
-        }
-      }
-    }
-
-    .error-alerts {
-      width: 95%;
-      bottom: 10px;
-
-      .error-alert {
-        padding: 12px;
-
-        .error-content {
-          .error-description {
-            font-size: 12px;
-          }
-
-          .error-recommendation {
-            font-size: 11px;
-          }
-        }
-      }
-    }
-
-    .motivation-panel {
-      bottom: 120px;
-      width: 90%;
-      max-width: 300px;
-
-      .motivation-content {
-        .motivation-text {
-          font-size: 13px;
-        }
-      }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .camera-container {
-    .ui-overlay {
-      padding: 5px;
-    }
-
-    .stats-panel,
-    .controls-panel {
-      margin: 5px;
-      width: calc(100% - 20px);
-      padding: 12px;
-    }
-
-    .controls-panel {
-      .controls-content {
-        .toggle-buttons {
-          ion-button {
-            font-size: 11px;
-            height: 32px;
-            min-width: 100px;
-
-            span {
-              display: none; // Ocultar texto en móviles muy pequeños
-            }
-          }
-        }
-
-        .action-buttons {
-          ion-button {
-            font-size: 10px;
-            height: 28px;
-            min-width: 60px;
-          }
-        }
-      }
-    }
-
-    .error-alerts {
-      width: 98%;
-
-      .error-alert {
-        padding: 10px;
-
-        .error-content {
-          .error-header {
-            .error-title {
-              font-size: 13px;
-            }
-          }
-
-          .error-description {
-            font-size: 11px;
-          }
-
-          .error-recommendation {
-            font-size: 10px;
-          }
-        }
-      }
-    }
-  }
-}
-
-// 🌙 DARK MODE ENHANCEMENTS
-@media (prefers-color-scheme: dark) {
-  .camera-container {
-    .stats-panel,
-    .controls-panel {
-      background: rgba(18, 18, 18, 0.95);
-      border-color: rgba(255, 255, 255, 0.15);
-    }
-
-    .error-alerts .error-alert {
-      backdrop-filter: blur(15px);
-    }
-  }
-}
-
-// 🎯 ESTADOS ESPECIALES
-.camera-container {
-  // Estado de audio activado
-  &.audio-enabled {
-    .error-alerts .error-alert {
-      .audio-indicator {
-        animation: pulse 1s infinite;
-      }
-    }
-  }
-
-  // Estado de alta calidad (buen FPS)
-  &.high-quality {
-    .stats-panel .connection-indicator.success {
-      .pulse-dot {
-        animation: pulse 1s infinite ease-in-out;
-      }
-    }
-  }
-
-  // Estado de ejercicio activo
-  &.exercise-active {
-    .motivation-panel {
-      animation: slideUp 0.5s ease-out, pulse 3s infinite 2s;
-    }
-  }
-
-  // Estado de detección activa
-  &.detection-active {
-    .controls-panel {
-      border-left: 3px solid #4CAF50;
-    }
-  }
-  // 🎨 ALERTAS POR COLORES
-.error-alerts {
-  .alert-success {
-    background: rgba(76, 175, 80, 0.95) !important;
-    border: 2px solid rgba(129, 199, 132, 0.8);
-    box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
-  }
-
-  .alert-warning {
-    background: rgba(255, 152, 0, 0.95) !important;
-    border: 2px solid rgba(255, 183, 77, 0.8);
-    box-shadow: 0 4px 20px rgba(255, 152, 0, 0.4);
-  }
-
-  .alert-danger {
-    background: rgba(244, 67, 54, 0.95) !important;
-    border: 2px solid rgba(255, 138, 128, 0.8);
-    box-shadow: 0 4px 20px rgba(244, 67, 54, 0.5);
-  }
-
-  .bar-success .severity-fill {
-    background: linear-gradient(90deg, #4CAF50, #81C784) !important;
-  }
-
-  .bar-warning .severity-fill {
-    background: linear-gradient(90deg, #FF9800, #FFB74D) !important;
-  }
-
-  .bar-danger .severity-fill {
-    background: linear-gradient(90deg, #F44336, #EF5350) !important;
-  }
-}
+.readiness-panel {
+  animation: readinessPulse 2s infinite ease-in-out;
 }

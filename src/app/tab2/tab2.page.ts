@@ -1,5 +1,5 @@
 // src/app/tab2/tab2.page.ts
-// ✅ PÁGINA PRINCIPAL CORREGIDA PARA EXAMEN
+// ✅ PÁGINA PRINCIPAL CORREGIDA PARA EXAMEN CON INTEGRACIÓN COMPLETA
 
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
@@ -10,7 +10,8 @@ import { PoseCameraComponent } from '../features/training/components/pose-camera
 import { 
   ExerciseType, 
   PoseKeypoints, 
-  PostureError 
+  PostureError,
+  RepetitionPhase
 } from '../shared/models/pose.models';
 
 @Component({
@@ -40,25 +41,29 @@ export class Tab2Page implements OnInit, OnDestroy {
       type: ExerciseType.SQUATS, 
       name: 'Sentadillas', 
       icon: 'fitness-outline',
-      description: 'Ejercicio fundamental para piernas y glúteos'
+      description: 'Ejercicio fundamental para piernas y glúteos',
+      difficulty: 'Principiante'
     },
     { 
       type: ExerciseType.PUSHUPS, 
       name: 'Flexiones', 
       icon: 'body-outline',
-      description: 'Fortalecimiento del tren superior'
+      description: 'Fortalecimiento del tren superior',
+      difficulty: 'Intermedio'
     },
     { 
       type: ExerciseType.PLANK, 
       name: 'Plancha', 
       icon: 'remove-outline',
-      description: 'Ejercicio isométrico para el core'
+      description: 'Ejercicio isométrico para el core',
+      difficulty: 'Principiante'
     },
     { 
       type: ExerciseType.LUNGES, 
       name: 'Estocadas', 
       icon: 'walk-outline',
-      description: 'Trabajo unilateral de piernas'
+      description: 'Trabajo unilateral de piernas',
+      difficulty: 'Intermedio'
     }
   ];
 
@@ -69,19 +74,25 @@ export class Tab2Page implements OnInit, OnDestroy {
     correctionsGiven: 0,
     averageQuality: 0
   };
-  // ✅ PROPIEDADES FALTANTES PARA EL TEMPLATE
-showCamera = false;
-selectedExercise: ExerciseType = ExerciseType.SQUATS;
-todayStats = {
-  duration: '0:00',
-  repetitions: 0,
-  avgQuality: 0
-};
-sessionData = {
-  repetitions: 0,
-  avgQuality: 0,
-  errors: [] as PostureError[]
-};
+
+  // ✅ DATOS ACTUALES
+  showCamera = false;
+  selectedExercise: ExerciseType = ExerciseType.SQUATS;
+  todayStats = {
+    duration: '0:00',
+    repetitions: 0,
+    avgQuality: 0
+  };
+  sessionData = {
+    repetitions: 0,
+    avgQuality: 0,
+    errors: [] as PostureError[],
+    currentPhase: RepetitionPhase.IDLE
+  };
+
+  // ✅ CONTROL DE SESIÓN
+  private sessionTimer: any = null;
+  private sessionDuration = 0;
 
   constructor(
     private auth: AuthService,
@@ -100,6 +111,9 @@ sessionData = {
       this.user = user;
       console.log('👤 Usuario cargado:', user?.email);
     });
+
+    // Cargar estadísticas del día
+    this.loadTodayStats();
   }
 
   ngOnDestroy() {
@@ -112,340 +126,243 @@ sessionData = {
     try {
       console.log('🚀 Iniciando entrenamiento...');
       
-      if (!this.cameraComponent) {
-        console.error('❌ Componente de cámara no disponible');
-        this.showToast('Error: Componente de cámara no disponible', 'danger');
-        return;
-      }
+      // Mostrar alerta de confirmación
+      const alert = await this.alertController.create({
+        header: 'Iniciar Entrenamiento',
+        message: `¿Estás listo para entrenar ${this.getExerciseName()}?`,
+        buttons: [
+          {
+            text: 'Cancelar',
+            role: 'cancel'
+          },
+          {
+            text: 'Comenzar',
+            handler: () => {
+              this.initializeTraining();
+            }
+          }
+        ]
+      });
 
-      // Configurar componente de cámara
-      this.cameraComponent.exerciseType = this.currentExercise;
-      this.cameraComponent.enableAudio = this.audioEnabled;
-      this.cameraComponent.enableErrorDetection = this.detectionEnabled;
-      this.cameraComponent.showSkeleton = this.skeletonVisible;
-
-      // Iniciar cámara
-      await this.cameraComponent.startCamera();
-
-      // Marcar como activo
-      this.isTrainingActive = true;
-      this.sessionStartTime = Date.now();
-      this.resetSessionStats();
-
-      console.log('✅ Entrenamiento iniciado');
-      this.showToast('Entrenamiento iniciado correctamente', 'success');
+      await alert.present();
 
     } catch (error) {
       console.error('❌ Error iniciando entrenamiento:', error);
-      this.showToast('Error iniciando entrenamiento. Verifica permisos de cámara.', 'danger');
+      this.showErrorToast('Error al iniciar entrenamiento');
     }
   }
 
-  // 🛑 PARAR ENTRENAMIENTO
-  async stopTraining(): Promise<void> {
-    try {
-      console.log('🛑 Parando entrenamiento...');
-
-      if (this.cameraComponent) {
-        await this.cameraComponent.stopCamera();
-      }
-
-      this.isTrainingActive = false;
-      this.calculateSessionDuration();
-
-      console.log('✅ Entrenamiento parado');
-      this.showToast('Entrenamiento finalizado', 'warning');
-
-    } catch (error) {
-      console.error('❌ Error parando entrenamiento:', error);
-    }
-  }
-
-  // 🏋️ CAMBIAR EJERCICIO
-  changeExercise(exerciseType: ExerciseType): void {
-    console.log(`🏋️ Cambiando ejercicio a: ${exerciseType}`);
-    
-    this.currentExercise = exerciseType;
-    
-    if (this.cameraComponent && this.isTrainingActive) {
-      this.cameraComponent.setExerciseType(exerciseType);
-    }
-
-    const exercise = this.availableExercises.find(ex => ex.type === exerciseType);
-    this.showToast(`Ejercicio cambiado a: ${exercise?.name}`, 'primary');
-  }
-
-  // 🔄 RESET CONTADOR
-  resetRepetitions(): void {
-    console.log('🔄 Reseteando repeticiones');
-    
-    if (this.cameraComponent) {
-      this.cameraComponent.resetRepetitions();
-    }
-    
+  // 🎯 INICIALIZAR ENTRENAMIENTO
+  private initializeTraining(): void {
+    this.isTrainingActive = true;
+    this.showCamera = true;
+    this.sessionStartTime = Date.now();
     this.totalRepetitions = 0;
-    this.sessionStats.errorsDetected = 0;
-    this.sessionStats.correctionsGiven = 0;
-    
-    this.showToast('Contador reseteado', 'medium');
-  }
-
-  // 🎤 TOGGLE AUDIO
-  toggleAudio(): void {
-    this.audioEnabled = !this.audioEnabled;
-    console.log(`🔊 Audio ${this.audioEnabled ? 'activado' : 'desactivado'}`);
-    
-    if (this.cameraComponent) {
-      this.cameraComponent.toggleAudio();
-    }
-    
-    this.showToast(
-      `Audio ${this.audioEnabled ? 'activado' : 'desactivado'}`, 
-      this.audioEnabled ? 'success' : 'medium'
-    );
-  }
-
-  // 🔍 TOGGLE DETECCIÓN
-  toggleDetection(): void {
-    this.detectionEnabled = !this.detectionEnabled;
-    console.log(`🔍 Detección ${this.detectionEnabled ? 'activada' : 'desactivada'}`);
-    
-    if (this.cameraComponent) {
-      this.cameraComponent.toggleErrorDetection();
-    }
-    
-    this.showToast(
-      `Detección de errores ${this.detectionEnabled ? 'activada' : 'desactivada'}`, 
-      this.detectionEnabled ? 'success' : 'medium'
-    );
-  }
-
-  // 🎨 TOGGLE ESQUELETO
-  toggleSkeleton(): void {
-    this.skeletonVisible = !this.skeletonVisible;
-    console.log(`🎨 Esqueleto ${this.skeletonVisible ? 'visible' : 'oculto'}`);
-    
-    if (this.cameraComponent) {
-      this.cameraComponent.toggleSkeleton();
-    }
-    
-    this.showToast(
-      `Esqueleto ${this.skeletonVisible ? 'visible' : 'oculto'}`, 
-      this.skeletonVisible ? 'success' : 'medium'
-    );
-  }
-
-  // 🎤 PROBAR AUDIO
-  testAudio(): void {
-    console.log('🎤 Probando audio...');
-    
-    if (this.cameraComponent) {
-      this.cameraComponent.testAudio();
-    }
-    
-    this.showToast('Prueba de audio ejecutada', 'tertiary');
-  }
-
-  // 📊 EVENTOS DEL COMPONENTE DE CÁMARA
-
-  // Manejar pose detectada
-  onPoseDetected(pose: PoseKeypoints): void {
-    // Este evento se dispara cada frame, no necesitamos hacer nada específico
-    // Solo para debug si es necesario
-  }
-
-  // Manejar error detectado
-  onErrorDetected(errors: PostureError[]): void {
-    console.log('🚨 Errores detectados:', errors.length);
-    
-    this.sessionStats.errorsDetected += errors.length;
-    this.sessionStats.correctionsGiven += errors.length;
-    
-    // Mostrar toast solo para errores críticos (severity > 7)
-    const criticalErrors = errors.filter(error => error.severity > 7);
-    if (criticalErrors.length > 0) {
-      const errorTypes = criticalErrors.map(error => error.type).join(', ');
-      this.showToast(`⚠️ Errores críticos detectados: ${errorTypes}`, 'danger');
-    }
-  }
-
-  // Manejar repetición completada
-  onRepetitionCounted(count: number): void {
-    console.log(`🔢 Repetición completada: ${count}`);
-    this.totalRepetitions = count;
-    
-    // Mostrar motivación cada 5 repeticiones
-    if (count > 0 && count % 5 === 0) {
-      this.showToast(`🎉 ¡Excelente! ${count} repeticiones completadas`, 'success');
-    }
-  }
-
-  // 📊 MÉTODOS DE ESTADÍSTICAS
-
-  // Reset estadísticas de sesión
-  private resetSessionStats(): void {
     this.sessionStats = {
       duration: 0,
       errorsDetected: 0,
       correctionsGiven: 0,
       averageQuality: 0
     };
-    this.totalRepetitions = 0;
+
+    // Configurar ejercicio en el componente de cámara
+    this.selectedExercise = this.currentExercise;
+
+    // Iniciar timer de sesión
+    this.startSessionTimer();
+
+    console.log('✅ Entrenamiento iniciado:', {
+      exercise: this.currentExercise,
+      startTime: this.sessionStartTime
+    });
   }
 
-  // Calcular duración de sesión
-  private calculateSessionDuration(): void {
-    if (this.sessionStartTime) {
-      this.sessionStats.duration = Math.round((Date.now() - this.sessionStartTime) / 1000);
+  // ⏹️ PARAR ENTRENAMIENTO
+  async stopTraining(): Promise<void> {
+    try {
+      if (!this.isTrainingActive) return;
+
+      console.log('⏹️ Parando entrenamiento...');
+      
+      this.isTrainingActive = false;
+      this.showCamera = false;
+      
+      // Parar timer
+      if (this.sessionTimer) {
+        clearInterval(this.sessionTimer);
+        this.sessionTimer = null;
+      }
+
+      // Mostrar resumen de sesión
+      await this.showSessionSummary();
+
+      // Resetear datos
+      this.sessionStartTime = null;
+      this.sessionDuration = 0;
+
+      console.log('✅ Entrenamiento finalizado');
+
+    } catch (error) {
+      console.error('❌ Error parando entrenamiento:', error);
     }
   }
 
-  // Obtener estadísticas formateadas
-  getFormattedDuration(): string {
-    const minutes = Math.floor(this.sessionStats.duration / 60);
-    const seconds = this.sessionStats.duration % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  // ⏰ INICIAR TIMER DE SESIÓN
+  private startSessionTimer(): void {
+    this.sessionTimer = setInterval(() => {
+      if (this.sessionStartTime) {
+        this.sessionDuration = Math.floor((Date.now() - this.sessionStartTime) / 1000);
+        this.sessionStats.duration = this.sessionDuration;
+        this.todayStats.duration = this.formatDuration(this.sessionDuration);
+      }
+    }, 1000);
   }
 
-  // 📱 MÉTODOS DE UI
+  // 🎯 SELECCIONAR EJERCICIO
+  selectExercise(exerciseType: ExerciseType): void {
+    if (this.isTrainingActive) {
+      this.showErrorToast('No puedes cambiar ejercicio durante el entrenamiento');
+      return;
+    }
 
-  // Obtener nombre del ejercicio actual
-  getCurrentExerciseName(): string {
+    this.currentExercise = exerciseType;
+    console.log('🎯 Ejercicio seleccionado:', exerciseType);
+  }
+
+  // 🧠 MANEJAR DETECCIÓN DE POSE
+  onPoseDetected(pose: PoseKeypoints): void {
+    // Pose detectada - puede usar para logging adicional
+    console.log('👁️ Pose detectada con', Object.keys(pose).length, 'puntos');
+  }
+
+  // 🚨 MANEJAR ERRORES DETECTADOS
+  onErrorDetected(errors: PostureError[]): void {
+    this.sessionData.errors = errors;
+    this.sessionStats.errorsDetected += errors.length;
+    this.sessionStats.correctionsGiven += errors.length;
+
+    // Log para debugging
+    console.log('🚨 Errores detectados:', errors.map(e => ({
+      type: e.type,
+      severity: e.severity,
+      description: e.description
+    })));
+
+    // Mostrar toast para errores críticos
+    const criticalErrors = errors.filter(e => e.severity >= 7);
+    if (criticalErrors.length > 0) {
+      this.showErrorToast(`¡Atención! ${criticalErrors[0].description}`);
+    }
+  }
+
+  // 🔢 MANEJAR REPETICIÓN CONTADA
+  onRepetitionCounted(count: number): void {
+    this.totalRepetitions = count;
+    this.sessionData.repetitions = count;
+    this.todayStats.repetitions = count;
+
+    console.log('🎉 Repetición contada. Total:', count);
+
+    // Mostrar celebración cada 10 repeticiones
+    if (count > 0 && count % 10 === 0) {
+      this.showSuccessToast(`¡Excelente! ${count} repeticiones completadas`);
+    }
+  }
+
+  // 📊 CARGAR ESTADÍSTICAS DEL DÍA
+  private loadTodayStats(): void {
+    // En una implementación real, cargarías esto de Firebase
+    this.todayStats = {
+      duration: '0:00',
+      repetitions: 0,
+      avgQuality: 0
+    };
+  }
+
+  // 📋 MOSTRAR RESUMEN DE SESIÓN
+  private async showSessionSummary(): Promise<void> {
+    const alert = await this.alertController.create({
+      header: 'Sesión Completada',
+      message: `
+        <div style="text-align: center;">
+          <h3>¡Gran trabajo!</h3>
+          <p><strong>Ejercicio:</strong> ${this.getExerciseName()}</p>
+          <p><strong>Duración:</strong> ${this.formatDuration(this.sessionDuration)}</p>
+          <p><strong>Repeticiones:</strong> ${this.totalRepetitions}</p>
+          <p><strong>Errores corregidos:</strong> ${this.sessionStats.errorsDetected}</p>
+        </div>
+      `,
+      buttons: ['OK']
+    });
+
+    await alert.present();
+  }
+
+  // 🏃 OBTENER NOMBRE DEL EJERCICIO
+  getExerciseName(): string {
     const exercise = this.availableExercises.find(ex => ex.type === this.currentExercise);
-    return exercise?.name || 'Desconocido';
+    return exercise ? exercise.name : 'Ejercicio';
   }
 
-  // Obtener icono del ejercicio actual
-  getCurrentExerciseIcon(): string {
-    const exercise = this.availableExercises.find(ex => ex.type === this.currentExercise);
-    return exercise?.icon || 'fitness-outline';
+  // ⏰ FORMATEAR DURACIÓN
+  formatDuration(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
-  // Obtener descripción del ejercicio actual
-  getCurrentExerciseDescription(): string {
-    const exercise = this.availableExercises.find(ex => ex.type === this.currentExercise);
-    return exercise?.description || '';
+  // 🎛️ TOGGLE CONFIGURACIONES
+  toggleAudio(): void {
+    this.audioEnabled = !this.audioEnabled;
+    if (this.cameraComponent) {
+      this.cameraComponent.enableAudio = this.audioEnabled;
+    }
   }
 
-  // Verificar si hay estadísticas de cámara disponibles
-  getCameraStats(): any {
-    return this.cameraComponent ? this.cameraComponent.getCurrentStats() : null;
+  toggleDetection(): void {
+    this.detectionEnabled = !this.detectionEnabled;
+    if (this.cameraComponent) {
+      this.cameraComponent.enableErrorDetection = this.detectionEnabled;
+    }
   }
 
-  // 🍞 MOSTRAR TOAST
-  private async showToast(message: string, color: string = 'primary'): Promise<void> {
+  toggleSkeleton(): void {
+    this.skeletonVisible = !this.skeletonVisible;
+    if (this.cameraComponent) {
+      this.cameraComponent.showSkeleton = this.skeletonVisible;
+    }
+  }
+
+  // 📱 MOSTRAR TOASTS
+  private async showSuccessToast(message: string): Promise<void> {
     const toast = await this.toastController.create({
       message,
       duration: 2000,
-      position: 'bottom',
-      color,
-      buttons: [
-        {
-          text: 'Cerrar',
-          role: 'cancel'
-        }
-      ]
+      color: 'success',
+      position: 'top'
     });
-
     await toast.present();
   }
 
-  // 📋 MOSTRAR INFO DEL EJERCICIO
-  async showExerciseInfo(): Promise<void> {
-    const alert = await this.alertController.create({
-      header: this.getCurrentExerciseName(),
-      subHeader: 'Información del ejercicio',
-      message: `
-        <p><strong>Descripción:</strong><br>
-        ${this.getCurrentExerciseDescription()}</p>
-        
-        <p><strong>Beneficios:</strong><br>
-        ${this.getExerciseBenefits()}</p>
-        
-        <p><strong>Consejos:</strong><br>
-        ${this.getExerciseTips()}</p>
-      `,
-      buttons: ['Entendido']
+  private async showErrorToast(message: string): Promise<void> {
+    const toast = await this.toastController.create({
+      message,
+      duration: 3000,
+      color: 'danger',
+      position: 'top'
     });
-
-    await alert.present();
+    await toast.present();
   }
 
-  // Obtener beneficios del ejercicio
-  private getExerciseBenefits(): string {
-    const benefits = {
-      [ExerciseType.SQUATS]: 'Fortalece piernas, glúteos y core. Mejora la funcionalidad en actividades diarias.',
-      [ExerciseType.PUSHUPS]: 'Desarrolla pecho, hombros, tríceps y core. Mejora la fuerza del tren superior.',
-      [ExerciseType.PLANK]: 'Fortalece toda la musculatura del core. Mejora la estabilidad y postura.',
-      [ExerciseType.LUNGES]: 'Trabajo unilateral que mejora equilibrio y corrige asimetrías musculares.',
-      [ExerciseType.BICEP_CURLS]: 'Fortalece bíceps y mejora la fuerza de brazos.',
-      [ExerciseType.DEADLIFTS]: 'Ejercicio completo que fortalece toda la cadena posterior.',
-      [ExerciseType.OVERHEAD_PRESS]: 'Desarrolla hombros y estabilidad del core.'
-    };
-    return benefits[this.currentExercise] || 'Ejercicio beneficial para la salud general.';
+  // 🎯 OBTENER COLOR DEL EJERCICIO
+  getExerciseColor(exerciseType: ExerciseType): string {
+    return exerciseType === this.currentExercise ? 'primary' : 'medium';
   }
 
-  // Obtener consejos del ejercicio
-  private getExerciseTips(): string {
-    const tips = {
-      [ExerciseType.SQUATS]: 'Mantén los pies separados al ancho de hombros. Baja como si te sentaras en una silla.',
-      [ExerciseType.PUSHUPS]: 'Mantén el cuerpo recto como una tabla. Controla la bajada y subida.',
-      [ExerciseType.PLANK]: 'Mantén la línea desde cabeza hasta talones. Respira normalmente.',
-      [ExerciseType.LUNGES]: 'Da pasos amplios. Mantén el peso en el talón del pie delantero.',
-      [ExerciseType.BICEP_CURLS]: 'Mantén codos fijos pegados al torso. Controla el movimiento.',
-      [ExerciseType.DEADLIFTS]: 'Mantén la espalda recta y levanta con las piernas.',
-      [ExerciseType.OVERHEAD_PRESS]: 'Mantén el core activado y empuja verticalmente.'
-    };
-    return tips[this.currentExercise] || 'Ejecuta el movimiento de forma controlada.';
+  // 📊 OBTENER PROGRESO VISUAL
+  getProgressPercentage(): number {
+    if (!this.sessionStartTime) return 0;
+    const targetDuration = 15 * 60; // 15 minutos objetivo
+    return Math.min((this.sessionDuration / targetDuration) * 100, 100);
   }
-
-  // 🚪 CERRAR SESIÓN
-  async logout(): Promise<void> {
-    const alert = await this.alertController.create({
-      header: 'Cerrar Sesión',
-      message: '¿Estás seguro de que quieres cerrar sesión?',
-      buttons: [
-        {
-          text: 'Cancelar',
-          role: 'cancel'
-        },
-        {
-          text: 'Cerrar Sesión',
-          handler: async () => {
-            await this.stopTraining();
-            await this.auth.logout();
-            this.router.navigate(['/auth/login']);
-          }
-        }
-      ]
-    });
-
-    await alert.present();
-  }
-  // ✅ MÉTODOS FALTANTES PARA EL TEMPLATE
-startExercise(exerciseType: string): void {
-  this.selectedExercise = exerciseType as ExerciseType;
-  this.showCamera = true;
-  this.startTraining();
-}
-
-exitCamera(): void {
-  this.showCamera = false;
-  this.stopTraining();
-}
-
-getExerciseName(exercise: ExerciseType): string {
-  const exercise_obj = this.availableExercises.find(ex => ex.type === exercise);
-  return exercise_obj?.name || 'Ejercicio';
-}
-
-showDetailedStats(): void {
-  // Implementar modal o navegación a estadísticas detalladas
-  console.log('Mostrar estadísticas detalladas');
-}
-
-
-trackByErrorType(index: number, error: PostureError): string {
-  return error.type;
-}
 }

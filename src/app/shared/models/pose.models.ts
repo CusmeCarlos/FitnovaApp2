@@ -1,5 +1,5 @@
 // src/app/shared/models/pose.models.ts
-// ✅ MODELOS CORREGIDOS Y SIMPLIFICADOS
+// ✅ MODELOS COMPLETOS ACTUALIZADOS PARA EXAMEN
 
 // 🧍 LANDMARK DE POSE
 export interface PoseLandmark {
@@ -9,7 +9,7 @@ export interface PoseLandmark {
   visibility: number;
 }
 
-// 🎯 PUNTOS CLAVE DEL CUERPO
+// 🎯 PUNTOS CLAVE DEL CUERPO (33 PUNTOS DE MEDIAPIPE)
 export interface PoseKeypoints {
   // Cabeza
   nose: PoseLandmark;
@@ -79,61 +79,32 @@ export interface BiomechanicalAngles {
   [key: string]: number | undefined;
 }
 
-// 🏋️ TIPOS DE EJERCICIO
-export enum ExerciseType {
-  SQUATS = 'squats',
-  PUSHUPS = 'pushups',
-  LUNGES = 'lunges',
-  PLANK = 'plank',
-  BICEP_CURLS = 'bicep_curls',
-  DEADLIFTS = 'deadlifts',
-  OVERHEAD_PRESS = 'overhead_press'
-}
-
-// 🔄 FASES DE REPETICIÓN
-export enum RepetitionPhase {
-  IDLE = 'idle',
-  TOP = 'top',
-  DESCENDING = 'descending',
-  BOTTOM = 'bottom',
-  ASCENDING = 'ascending',
-  HOLD = 'hold'
-}
-
-// 🚨 TIPOS DE ERROR POSTURAL
+// 🚨 TIPOS DE ERRORES POSTURALES (ACTUALIZADOS)
 export enum PostureErrorType {
+  // Errores de sentadillas
+  KNEE_VALGUS = 'KNEE_VALGUS',
+  ROUNDED_BACK = 'ROUNDED_BACK',
+  INSUFFICIENT_DEPTH = 'INSUFFICIENT_DEPTH',
+  HEEL_RISE = 'HEEL_RISE',
+  FORWARD_LEAN = 'FORWARD_LEAN',
+  
+  // Errores de flexiones
+  DROPPED_HIPS = 'DROPPED_HIPS',
+  HIGH_HIPS = 'HIGH_HIPS',
+  EXCESSIVE_ELBOW_FLARE = 'EXCESSIVE_ELBOW_FLARE',
+  HEAD_POSITION = 'HEAD_POSITION',
+  
+  // Errores de estocadas
+  KNEE_FORWARD = 'KNEE_FORWARD',
+  UNSTABLE_BALANCE = 'UNSTABLE_BALANCE',
+  
   // Errores generales
-  POOR_ALIGNMENT = 'poor_alignment',
-  EXCESSIVE_SPEED = 'excessive_speed',
-  ASYMMETRY = 'asymmetry',
-  SHALLOW_DEPTH = 'shallow_depth',
-  
-  // Errores específicos de sentadillas
-  KNEE_VALGUS = 'knee_valgus',
-  FORWARD_LEAN = 'forward_lean',
-  BUTT_WINK = 'butt_wink',
-  HEEL_RISE = 'heel_rise',
-  
-  // Errores específicos de flexiones
-  SAGGING_HIPS = 'sagging_hips',
-  RAISED_HIPS = 'raised_hips',
-  HEAD_POSITION = 'head_position',
-  ELBOW_FLARE = 'elbow_flare',
-  
-  // Errores específicos de plancha
-  CORE_WEAKNESS = 'core_weakness',
-  SHOULDER_INSTABILITY = 'shoulder_instability',
-  
-  // Errores específicos de estocadas
-  KNEE_FORWARD = 'knee_forward',
-  BALANCE_LOSS = 'balance_loss',
-  
-  // Errores específicos de curl de bíceps
-  MOMENTUM_USE = 'momentum_use',
-  ELBOW_MOVEMENT = 'elbow_movement'
+  POOR_ALIGNMENT = 'POOR_ALIGNMENT',
+  EXCESSIVE_SPEED = 'EXCESSIVE_SPEED',
+  ASYMMETRY = 'ASYMMETRY'
 }
 
-// 🚨 ERROR POSTURAL
+// ⚠️ ERROR POSTURAL
 export interface PostureError {
   type: PostureErrorType;
   severity: number; // 1-10 (1=leve, 10=crítico)
@@ -142,30 +113,67 @@ export interface PostureError {
   affectedJoints: string[];
   confidence: number; // 0-1
   timestamp: number;
-  
-  // Información biomecánica opcional
-  biomechanicalData?: {
-    angleDeviation?: number;
-    forceImbalance?: number;
-    positionError?: number;
+  correctionCues?: string[];
+  riskLevel?: 'low' | 'medium' | 'high' | 'critical';
+}
+
+// 🏃 TIPOS DE EJERCICIO
+export enum ExerciseType {
+  SQUATS = 'SQUATS',
+  PUSHUPS = 'PUSHUPS',
+  PLANK = 'PLANK',
+  LUNGES = 'LUNGES',
+  DEADLIFTS = 'DEADLIFTS',
+  BICEP_CURLS = 'BICEP_CURLS',
+  SHOULDER_PRESS = 'SHOULDER_PRESS'
+}
+
+// 🔄 FASES DE REPETICIÓN
+export enum RepetitionPhase {
+  IDLE = 'IDLE',
+  TOP = 'TOP',
+  BOTTOM = 'BOTTOM',
+  DESCENDING = 'DESCENDING',
+  ASCENDING = 'ASCENDING',
+  HOLD = 'HOLD',
+  TRANSITION = 'TRANSITION'
+}
+
+// 📊 ANÁLISIS DE MOVIMIENTO
+export interface MovementAnalysis {
+  errors: PostureError[];
+  phase: RepetitionPhase;
+  repetitionCount: number;
+  qualityScore: number; // 0-100
+  precisionMetrics?: PrecisionMetrics;
+  performanceMetrics?: PerformanceMetrics;
+  scientificValidation?: {
+    isWithinTargets: boolean;
+    angularAccuracy: number;
+    correlationCoefficient: number;
   };
 }
 
-// 📊 REGLA DE DETECCIÓN DE ERROR
-export interface PostureErrorRule {
-  errorType: PostureErrorType;
-  condition: string; // Descripción de la condición
-  threshold: number;
-  message: string;
-  recommendation: string;
-  severity: number;
-  biomechanicalBasis?: string;
-  correctionCues?: string[];
-  riskLevel?: 'low' | 'medium' | 'high' | 'critical';
-  musculatureInvolved?: string[];
+// 📊 MÉTRICAS DE PRECISIÓN
+export interface PrecisionMetrics {
+  frameStability: number; // 0-100%
+  angularAccuracy: number; // 0-100%
+  temporalConsistency: number; // 0-100%
+  landmarkConfidence: number; // 0-100%
+  overallPrecision: number; // 0-100%
 }
 
-// 🏋️ CONFIGURACIÓN DE EJERCICIO
+// 📊 MÉTRICAS DE RENDIMIENTO
+export interface PerformanceMetrics {
+  fps: number;
+  latency: number; // ms
+  processingTime: number; // ms
+  memoryUsage: number; // MB
+  cpuUsage: number; // %
+  batteryImpact: 'low' | 'medium' | 'high';
+}
+
+// 🎯 CONFIGURACIÓN DE EJERCICIO
 export interface ExerciseConfiguration {
   type: ExerciseType;
   name: string;
@@ -192,45 +200,14 @@ export interface AngleThreshold {
   warning?: number;
 }
 
-// 📐 UMBRAL AVANZADO DE ÁNGULO
-export interface AdvancedAngleThreshold extends AngleThreshold {
-  tolerance: number;
-  adaptiveRange: boolean;
-  personnalizationFactor: number;
-}
-
-// 📊 MÉTRICAS DE PRECISIÓN
-export interface PrecisionMetrics {
-  frameStability: number; // 0-100%
-  angularAccuracy: number; // 0-100%
-  temporalConsistency: number; // 0-100%
-  landmarkConfidence: number; // 0-100%
-  overallPrecision: number; // 0-100%
-}
-
-// 📊 MÉTRICAS DE RENDIMIENTO
-export interface PerformanceMetrics {
-  fps: number;
-  latency: number; // ms
-  processingTime: number; // ms
-  memoryUsage: number; // MB
-  cpuUsage: number; // %
-  batteryImpact: 'low' | 'medium' | 'high';
-}
-
-// 📊 ANÁLISIS DE MOVIMIENTO
-export interface MovementAnalysis {
-  errors: PostureError[];
-  phase: RepetitionPhase;
-  repetitionCount: number;
-  qualityScore: number; // 0-100
-  precisionMetrics?: PrecisionMetrics;
-  performanceMetrics?: PerformanceMetrics;
-  scientificValidation?: {
-    isWithinTargets: boolean;
-    angularAccuracy: number;
-    correlationCoefficient: number;
-  };
+// 📋 REGLA DE DETECCIÓN DE ERROR
+export interface PostureErrorRule {
+  errorType: PostureErrorType;
+  condition: (pose: PoseKeypoints, angles: BiomechanicalAngles) => boolean;
+  severity: number;
+  description: string;
+  recommendation: string;
+  cooldownTime: number; // ms
 }
 
 // 📈 ESTADÍSTICAS DE SESIÓN
@@ -244,15 +221,6 @@ export interface SessionStats {
     temporalConsistency: number;
   };
   recommendations: string[];
-}
-
-// 🎯 PUNTO DE REFERENCIA BIOMECÁNICO
-export interface BiomechanicalReference {
-  jointName: string;
-  referenceAngle: number;
-  tolerance: number;
-  importance: 'critical' | 'high' | 'medium' | 'low';
-  muscleGroups: string[];
 }
 
 // 🔄 ESTADO DE ENTRENAMIENTO
@@ -299,27 +267,6 @@ export interface VisualConfiguration {
   thickness: number;
 }
 
-// 🔬 VALIDACIÓN CIENTÍFICA
-export interface ScientificValidation {
-  isValidated: boolean;
-  studyReference: string;
-  accuracy: number;
-  sampleSize: number;
-  populationDemographics: string[];
-  limitations: string[];
-  confidenceLevel: number;
-}
-
-// 📊 REPORTE DE VALIDACIÓN
-export interface ValidationReport {
-  precision: PrecisionMetrics;
-  performance: PerformanceMetrics;
-  errors: PostureError[];
-  recommendations: string[];
-  scientificBasis: ScientificValidation;
-  timestamp: number;
-}
-
 // 🎯 CONFIGURACIÓN COMPLETA DEL SISTEMA
 export interface SystemConfiguration {
   device: DeviceConfiguration;
@@ -346,6 +293,5 @@ export interface DetectionEngineResponse {
   angles: BiomechanicalAngles | null;
   analysis: MovementAnalysis | null;
   error?: string;
-  processingTime: number;
   timestamp: number;
 }

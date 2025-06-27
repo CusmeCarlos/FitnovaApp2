@@ -1,26 +1,24 @@
 // src/app/tab2/tab2.module.ts
-// ✅ MÓDULO CORREGIDO - INCREMENTO 2
+// ✅ MÓDULO CORREGIDO CON IMPORTACIÓN DEL COMPONENTE DE CÁMARA
 
-import { IonicModule } from '@ionic/angular';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Tab2Page } from './tab2.page';
-import { ExploreContainerComponentModule } from '../explore-container/explore-container.module';
+import { IonicModule } from '@ionic/angular';
 
 import { Tab2PageRoutingModule } from './tab2-routing.module';
+import { Tab2Page } from './tab2.page';
 
-// ✅ Importar el componente de cámara standalone
+// ✅ IMPORTAR EL COMPONENTE DE CÁMARA
 import { PoseCameraComponent } from '../features/training/components/pose-camera/pose-camera.component';
 
 @NgModule({
   imports: [
-    IonicModule,
     CommonModule,
     FormsModule,
-    ExploreContainerComponentModule,
+    IonicModule,
     Tab2PageRoutingModule,
-    // ✅ Importar el componente standalone de cámara
+    // ✅ AGREGAR EL COMPONENTE STANDALONE
     PoseCameraComponent
   ],
   declarations: [Tab2Page]

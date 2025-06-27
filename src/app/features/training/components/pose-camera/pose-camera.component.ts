@@ -1,5 +1,5 @@
 // src/app/features/training/components/pose-camera/pose-camera.component.ts
-// ✅ COMPONENTE CORREGIDO CON SISTEMA DE AUDIO PARA EXAMEN
+// ✅ COMPONENTE CORREGIDO SIN ESPEJO + ESTADOS DE PREPARACIÓN
 
 import { 
   Component, 
@@ -16,10 +16,10 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
-import { Subscription } from 'rxjs';
+import { Subscription, timer } from 'rxjs';
 
 import { PoseDetectionEngine } from '../../../../core/pose-engine/pose-detection.engine';
-import { BiomechanicsAnalyzer } from '../../../../core/pose-engine/biomechanics.analyzer';
+import { BiomechanicsAnalyzer, ReadinessState } from '../../../../core/pose-engine/biomechanics.analyzer';
 import { 
   PoseKeypoints, 
   BiomechanicalAngles, 
@@ -46,7 +46,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() exerciseType: ExerciseType = ExerciseType.SQUATS;
   @Input() enableErrorDetection = true;
   @Input() showSkeleton = true;
-  @Input() enableAudio = true; // ✅ NUEVO: Controlar audio
+  @Input() enableAudio = true;
   
   @Output() poseDetected = new EventEmitter<PoseKeypoints>();
   @Output() errorDetected = new EventEmitter<PostureError[]>();
@@ -64,6 +64,11 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   currentErrors: PostureError[] = [];
   repetitionCount = 0;
   currentPhase: RepetitionPhase = RepetitionPhase.IDLE;
+  currentQualityScore = 0;
+
+  // ✅ NUEVOS: Estados de preparación
+  currentReadinessState: ReadinessState = ReadinessState.NOT_READY;
+  readinessMessage = '';
 
   // ✅ CONTEXTOS DE CANVAS
   private canvasCtx: CanvasRenderingContext2D | null = null;
@@ -77,13 +82,25 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   initializationAttempts = 0;
   readonly maxInitializationAttempts = 10;
 
-  // ✅ SISTEMA DE AUDIO TTS (Text-to-Speech)
+  // ✅ SISTEMA DE AUDIO MEJORADO CON ESTADOS
   private speechSynthesis: SpeechSynthesis;
   private currentUtterance: SpeechSynthesisUtterance | null = null;
   private audioQueue: string[] = [];
   isPlayingAudio = false;
   private lastAudioTime = 0;
-  private readonly AUDIO_COOLDOWN = 4000; // 4 segundos entre audios
+  private readonly AUDIO_COOLDOWN = 5000; // 5 segundos entre audios
+  private lastReadinessAudioTime = 0;
+  private readonly READINESS_AUDIO_COOLDOWN = 8000; // 8 segundos para mensajes de preparación
+  private lastGoodFormTime = 0;
+  private readonly GOOD_FORM_INTERVAL = 15000; // 15 segundos para mensajes positivos
+
+  // ✅ SISTEMA DE COLORES PARA ERRORES
+  errorColors = {
+    good: '#22c55e',      // VERDE - Buena forma
+    warning: '#f59e0b',   // NARANJA - Errores moderados  
+    critical: '#ef4444',  // ROJO - Errores críticos
+    preparing: '#3b82f6'  // AZUL - Preparándose
+  };
 
   constructor(
     private poseEngine: PoseDetectionEngine,
@@ -97,156 +114,116 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     this.initializeAudioSystem();
   }
 
-  // ✅ INICIALIZAR SISTEMA DE AUDIO (MEJORADO)
-private initializeAudioSystem(): void {
-  try {
-    // Verificar disponibilidad de TTS
-    if (!this.speechSynthesis) {
-      console.warn('⚠️ Text-to-Speech no disponible en este navegador');
-      this.enableAudio = false;
-      return;
-    }
-
-    // ✅ FORZAR CARGA DE VOCES
-    const loadVoices = () => {
-      const voices = this.speechSynthesis.getVoices();
-      console.log(`🎤 Voces disponibles: ${voices.length}`);
-      
-      if (voices.length > 0) {
-        voices.forEach((voice, index) => {
-          console.log(`Voz ${index}: ${voice.name} (${voice.lang})`);
-        });
-        
-        // Buscar voz en español
-        const spanishVoice = voices.find(voice => 
-          voice.lang.includes('es') || 
-          voice.name.toLowerCase().includes('spanish') ||
-          voice.name.toLowerCase().includes('español')
-        );
-        
-        if (spanishVoice) {
-          console.log(`✅ Voz en español encontrada: ${spanishVoice.name}`);
-        } else {
-          console.log('⚠️ No se encontró voz en español, usando voz por defecto');
-        }
-      }
-    };
-
-    // ✅ CARGAR VOCES INMEDIATAMENTE Y CON EVENTO
-    loadVoices();
-    this.speechSynthesis.onvoiceschanged = loadVoices;
-    
-    // ✅ FORZAR CARGA EN ALGUNOS NAVEGADORES
-    if (this.speechSynthesis.getVoices().length === 0) {
-      console.log('🔄 Forzando carga de voces...');
-      const utterance = new SpeechSynthesisUtterance('');
-      this.speechSynthesis.speak(utterance);
-      this.speechSynthesis.cancel();
-    }
-
-    console.log('✅ Sistema de audio inicializado');
-    
-  } catch (error) {
-    console.error('❌ Error inicializando sistema de audio:', error);
-    this.enableAudio = false;
-  }
-}
-
-// 🔊 REPRODUCIR AUDIO (CORREGIDO CON VOZ EN ESPAÑOL)
-private playAudio(message: string): void {
-  if (!this.enableAudio || !this.speechSynthesis) {
-    console.log('🔇 Audio desactivado o no disponible');
-    return;
-  }
-
-  console.log('🔊 INICIANDO AUDIO:', message);
-
-  try {
-    // ✅ CANCELAR AUDIO ANTERIOR SOLO SI ESTÁ HABLANDO
-    if (this.speechSynthesis.speaking) {
-      this.speechSynthesis.cancel();
-      console.log('🛑 Audio anterior cancelado');
-    }
-    
-    // ✅ ESPERAR A QUE SE CANCELE COMPLETAMENTE
-    setTimeout(() => {
-      const utterance = new SpeechSynthesisUtterance(message);
-      
-      // ✅ CONFIGURACIÓN MEJORADA
-      utterance.lang = 'es-ES';
-      utterance.rate = 0.8;        // Más lento
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      
-      // ✅ BUSCAR Y ASIGNAR VOZ EN ESPAÑOL
-      const voices = this.speechSynthesis.getVoices();
-      const spanishVoice = voices.find(voice => 
-        voice.lang.includes('es') || 
-        voice.name.toLowerCase().includes('spanish') ||
-        voice.name.toLowerCase().includes('español')
-      );
-      
-      if (spanishVoice) {
-        utterance.voice = spanishVoice;
-        console.log(`🎤 Usando voz: ${spanishVoice.name}`);
-      } else {
-        console.log('⚠️ Usando voz por defecto');
-      }
-
-      // ✅ EVENTOS DE AUDIO
-      utterance.onstart = () => {
-        console.log('✅ Audio INICIADO:', message);
-        this.isPlayingAudio = true;
-      };
-
-      utterance.onend = () => {
-        console.log('✅ Audio COMPLETADO');
-        this.isPlayingAudio = false;
-      };
-
-      utterance.onerror = (event) => {
-        console.error('❌ Error audio:', event.error);
-        this.isPlayingAudio = false;
-        
-        // ✅ RETRY SI ES "INTERRUPTED"
-        if (event.error === 'interrupted') {
-          console.log('🔄 Reintentando audio...');
-          setTimeout(() => {
-            this.speechSynthesis.speak(utterance);
-          }, 500);
-        }
-      };
-
-      // ✅ REPRODUCIR AUDIO
-      this.speechSynthesis.speak(utterance);
-      this.lastAudioTime = Date.now();
-      
-    }, 300); // Aumentado el delay
-    
-  } catch (error) {
-    console.error('❌ Error reproduciendo audio:', error);
-  }
-}
-
-  ngOnInit(): void {
+  ngOnInit() {
     console.log('🚀 PoseCameraComponent ngOnInit');
-    this.setupPoseEngineSubscriptions();
-    this.startErrorCleanup(); // ✅ AGREGAR ESTA LÍNEA
+    this.setupSubscriptions();
   }
 
-  ngAfterViewInit(): void {
-    console.log('🎯 PoseCameraComponent ngAfterViewInit');
-    this.attemptInitializationWithFallback();
+  ngAfterViewInit() {
+    console.log('🔄 PoseCameraComponent ngAfterViewInit');
+    
+    // Configurar contextos de canvas
+    this.canvasCtx = this.canvasElementRef.nativeElement.getContext('2d');
+    this.overlayCtx = this.overlayElementRef.nativeElement.getContext('2d');
+    
+    // Iniciar cámara automáticamente
+    this.startCamera();
   }
 
-  ngOnDestroy(): void {
+  ngOnDestroy() {
     console.log('🧹 PoseCameraComponent ngOnDestroy');
     this.cleanup();
   }
 
-  // ✅ CONFIGURAR SUBSCRIPCIONES AL POSE ENGINE
-  private setupPoseEngineSubscriptions(): void {
-    // Establecer ejercicio en el analizador
+  // ✅ INICIALIZAR SISTEMA DE AUDIO
+  private initializeAudioSystem(): void {
+    try {
+      if (!this.speechSynthesis) {
+        console.warn('⚠️ Text-to-Speech no disponible');
+        this.enableAudio = false;
+        return;
+      }
+
+      this.speechSynthesis.onvoiceschanged = () => {
+        const voices = this.speechSynthesis.getVoices();
+        const spanishVoice = voices.find(voice => 
+          voice.lang.includes('es') || voice.name.includes('Spanish')
+        );
+        console.log('🎤 Voces disponibles:', voices.length, 'Español:', !!spanishVoice);
+      };
+
+      console.log('🎤 Sistema de audio inicializado');
+    } catch (error) {
+      console.error('❌ Error inicializando audio:', error);
+      this.enableAudio = false;
+    }
+  }
+
+  // 🔔 REPRODUCIR AUDIO CON COOLDOWN MEJORADO
+  private async playAudio(message: string, isReadinessMessage = false): Promise<void> {
+    if (!this.enableAudio || !this.speechSynthesis) return;
+
+    const now = Date.now();
+    
+    // ✅ COOLDOWN DIFERENTE PARA MENSAJES DE PREPARACIÓN
+    const relevantCooldown = isReadinessMessage ? this.READINESS_AUDIO_COOLDOWN : this.AUDIO_COOLDOWN;
+    const relevantLastTime = isReadinessMessage ? this.lastReadinessAudioTime : this.lastAudioTime;
+    
+    if (now - relevantLastTime < relevantCooldown) {
+      console.log('⏸️ Audio en cooldown, saltando mensaje:', message);
+      return;
+    }
+
+    try {
+      // Cancelar audio anterior si existe
+      if (this.currentUtterance) {
+        this.speechSynthesis.cancel();
+      }
+
+      this.currentUtterance = new SpeechSynthesisUtterance(message);
+      
+      // Configurar voz
+      const voices = this.speechSynthesis.getVoices();
+      const spanishVoice = voices.find(voice => 
+        voice.lang.includes('es') || voice.name.includes('Spanish')
+      );
+      
+      if (spanishVoice) {
+        this.currentUtterance.voice = spanishVoice;
+      }
+
+      this.currentUtterance.rate = 0.9;
+      this.currentUtterance.pitch = 1.0;
+      this.currentUtterance.volume = 0.8;
+
+      this.currentUtterance.onstart = () => {
+        this.isPlayingAudio = true;
+        console.log('🔊 Audio iniciado:', message);
+      };
+
+      this.currentUtterance.onend = () => {
+        this.isPlayingAudio = false;
+        console.log('✅ Audio completado');
+      };
+
+      this.speechSynthesis.speak(this.currentUtterance);
+      
+      // ✅ ACTUALIZAR TIEMPO CORRECTO
+      if (isReadinessMessage) {
+        this.lastReadinessAudioTime = now;
+      } else {
+        this.lastAudioTime = now;
+      }
+
+    } catch (error) {
+      console.error('❌ Error reproduciendo audio:', error);
+      this.isPlayingAudio = false;
+    }
+  }
+
+  // 📡 CONFIGURAR SUBSCRIPCIONES
+  private setupSubscriptions(): void {
+    // Configurar analizador
     this.biomechanicsAnalyzer.setCurrentExercise(this.exerciseType);
 
     // Suscribirse a pose
@@ -267,8 +244,7 @@ private playAudio(message: string): void {
         this.currentAngles = angles;
         
         if (angles && this.currentPose && this.enableErrorDetection) {
-          console.log('🧠 Analizando movimiento...');
-          this.analyzeMovement(this.currentPose, angles);
+          this.analyzeMovementWithStates(this.currentPose, angles);
         }
         
         this.cdr.detectChanges();
@@ -296,610 +272,586 @@ private playAudio(message: string): void {
     );
   }
 
-// 🧠 ANALIZAR MOVIMIENTO (CON CONTEO CORREGIDO)
-private analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
+  // ✅ BUSCAR ESTE MÉTODO EN pose-camera.component.ts Y REEMPLAZARLO COMPLETO:
+
+// 🧠 ANÁLIZAR MOVIMIENTO CON ESTADOS DE PREPARACIÓN (CORREGIDO)
+private analyzeMovementWithStates(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
   try {
     const analysis = this.biomechanicsAnalyzer.analyzeMovement(pose, angles);
     
-    console.log('📊 Análisis completado:', {
+    // ✅ ACTUALIZAR ESTADO DE PREPARACIÓN
+    const prevReadinessState = this.currentReadinessState;
+    this.currentReadinessState = this.biomechanicsAnalyzer.getReadinessState();
+    this.readinessMessage = this.biomechanicsAnalyzer.getReadinessMessage();
+    
+    console.log('📊 Análisis:', {
+      readinessState: this.currentReadinessState,
       errorsCount: analysis.errors.length,
       phase: analysis.phase,
       repetitions: analysis.repetitionCount,
-      componentCount: this.repetitionCount // ✅ AGREGAR PARA DEBUG
+      quality: analysis.qualityScore
     });
 
-    // ✅ ACTUALIZAR REPETICIONES INMEDIATAMENTE
+    // ✅ MANEJAR CAMBIOS DE ESTADO DE PREPARACIÓN
+    this.handleReadinessStateChange(prevReadinessState, this.currentReadinessState);
+
+    // ✅ ACTUALIZAR DATOS GENERALES
     const previousCount = this.repetitionCount;
-    this.repetitionCount = analysis.repetitionCount; // ✅ SINCRONIZAR SIEMPRE
+    this.repetitionCount = analysis.repetitionCount;
+    this.currentPhase = analysis.phase;
+    this.currentQualityScore = analysis.qualityScore;
     
     // ✅ DETECTAR NUEVA REPETICIÓN
-    if (this.repetitionCount > previousCount) {
-      const newReps = this.repetitionCount - previousCount;
-      console.log(`🎉 ¡NUEVA(S) REPETICIÓN(ES)! Anterior: ${previousCount}, Actual: ${this.repetitionCount}, Nuevas: ${newReps}`);
-      
-      // ✅ EMITIR EVENTO
+    if (this.repetitionCount > previousCount && this.currentReadinessState === ReadinessState.EXERCISING) {
+      console.log(`🎉 ¡NUEVA REPETICIÓN! Total: ${this.repetitionCount}`);
       this.repetitionCounted.emit(this.repetitionCount);
       
-      // ✅ AUDIO DE REPETICIÓN COMPLETADA
-      // ✅ AUDIO SOLO CADA 5 REPETICIONES
-     // ✅ AUDIO MOTIVACIONAL CADA 5 REPETICIONES
-        if (this.repetitionCount % 5 === 0) {
-          let message = '';
-          
-          switch (this.repetitionCount) {
-            case 5:
-              message = '¡Bien! 5 repeticiones completadas';
-              break;
-            case 10:
-              message = '¡Excelente! Ya llevas 10 repeticiones';
-              break;
-            case 15:
-              message = '¡Increíble! 15 repeticiones, vas genial';
-              break;
-            case 20:
-              message = '¡Impresionante! 20 repeticiones completadas';
-              break;
-            case 25:
-              message = '¡Eres imparable! 25 repeticiones';
-              break;
-            default:
-              message = `¡Fantástico! ${this.repetitionCount} repeticiones completadas`;
-          }
-          
-          this.playAudio(message);
-          console.log(`🔊 Milestone alcanzado: ${this.repetitionCount} repeticiones`);
-        } else {
-          console.log(`✅ Repetición ${this.repetitionCount} completada silenciosamente`);
-        }
-      }
-
-    // ✅ PROCESAR ERRORES NUEVOS
-    const newErrors = this.filterNewErrors(analysis.errors);
-    
-    if (newErrors.length > 0) {
-      console.log('🚨 Nuevos errores detectados:', newErrors.length);
-      
-      // ✅ ACTUALIZAR ERRORES ACTUALES
-      this.currentErrors = newErrors;
-      this.errorDetected.emit(newErrors);
-      
-      // ✅ REPRODUCIR AUDIO PARA ERRORES (SOLO SI NO HAY REPETICIÓN NUEVA)
-      if (this.repetitionCount === previousCount) {
-        newErrors.forEach((error, index) => {
-          console.log(`🔊 Reproduciendo audio para error ${index + 1}:`, error.description);
-          
-          setTimeout(() => {
-            this.playAudio(error.recommendation);
-          }, index * 500);
-        });
+      // Audio de repetición cada 5
+      if (this.repetitionCount % 5 === 0) {
+        this.playAudio(`¡Excelente! ${this.repetitionCount} repeticiones completadas`);
       }
     }
 
-    // ✅ ACTUALIZAR FASE ACTUAL
-    this.currentPhase = analysis.phase;
-    
+    // ✅ PROCESAR SEGÚN ESTADO
+    if (this.currentReadinessState === ReadinessState.EXERCISING) {
+      this.processExerciseErrors(analysis.errors, previousCount);
+    } else {
+      this.processReadinessErrors(analysis.errors);
+      // ✅ LIMPIAR OVERLAYS DE EJERCICIO CUANDO NO ESTÁ EJERCITÁNDOSE
+      this.clearErrorOverlay();
+    }
+
   } catch (error) {
     console.error('❌ Error en análisis biomecánico:', error);
   }
 }
-// 🔍 FILTRAR ERRORES (SOLO UNO A LA VEZ)
-private filterNewErrors(errors: PostureError[]): PostureError[] {
-  if (errors.length === 0) return [];
+
+// ✅ TAMBIÉN AGREGAR ESTE MÉTODO NUEVO:
+
+// 🏃 PROCESAR ERRORES DURANTE EJERCICIO (MEJORADO)
+private processExerciseErrors(errors: PostureError[], previousCount: number): void {
+  const newErrors = this.filterNewErrors(errors);
   
-  const now = Date.now();
-  const ERROR_DISPLAY_DURATION = 5000;
-  
-  // Limpiar errores antiguos
-  this.currentErrors = this.currentErrors.filter(error => 
-    (now - error.timestamp) < ERROR_DISPLAY_DURATION
-  );
-  
-  // ✅ SI YA HAY UN ERROR MOSTRÁNDOSE, NO MOSTRAR MÁS
-  if (this.currentErrors.length > 0) {
-    console.log('⏸️ Ya hay error mostrándose, esperando...');
-    return [];
-  }
-  
-  // ✅ SOLO EL ERROR MÁS SEVERO
-  const mostSevereError = errors.reduce((prev, current) => 
-    (prev.severity > current.severity) ? prev : current
-  );
-  
-  console.log('✅ Mostrando error:', mostSevereError.description);
-  return [mostSevereError];
-}
-
-// 🎨 DIBUJAR ESQUELETO (SIN MODO ESPEJO)
-private drawSkeleton(pose: PoseKeypoints): void {
-  if (!this.showSkeleton || !this.canvasCtx || !pose) return;
-
-  const ctx = this.canvasCtx;
-  const width = ctx.canvas.width;
-  const height = ctx.canvas.height;
-
-  // Limpiar canvas
-  ctx.clearRect(0, 0, width, height);
-
-  // ✅ CONFIGURAR ESTILO SIN TRANSFORMACIONES
-  ctx.strokeStyle = '#00ff00';
-  ctx.lineWidth = 2;
-  ctx.fillStyle = '#ff0000';
-
-  // ✅ DIBUJAR PUNTOS (COORDENADAS DIRECTAS)
-  const keyPoints = [
-    'nose', 'left_shoulder', 'right_shoulder',
-    'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist',
-    'left_hip', 'right_hip', 'left_knee', 'right_knee',
-    'left_ankle', 'right_ankle'
-  ];
-
-  keyPoints.forEach(pointName => {
-    const point = pose[pointName];
-    if (point && point.visibility > 0.5) {
-      // ✅ INVERTIR X PARA CORREGIR ESPEJO
-      const x = point.x * width;  // ← ESTA ES LA CLAVE
-      const y = point.y * height;
-      
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, 2 * Math.PI);
-      ctx.fill();
-    }
-  });
-
-  // ✅ DIBUJAR CONEXIONES (COORDENADAS CORREGIDAS)
-  const connections = [
-    ['left_shoulder', 'right_shoulder'],
-    ['left_shoulder', 'left_elbow'],
-    ['left_elbow', 'left_wrist'],
-    ['right_shoulder', 'right_elbow'],
-    ['right_elbow', 'right_wrist'],
-    ['left_shoulder', 'left_hip'],
-    ['right_shoulder', 'right_hip'],
-    ['left_hip', 'right_hip'],
-    ['left_hip', 'left_knee'],
-    ['left_knee', 'left_ankle'],
-    ['right_hip', 'right_knee'],
-    ['right_knee', 'right_ankle']
-  ];
-
-  connections.forEach(([point1, point2]) => {
-    const p1 = pose[point1];
-    const p2 = pose[point2];
+  if (newErrors.length > 0) {
+    console.log('🚨 Errores reales detectados:', newErrors.map(e => e.description));
+    this.currentErrors = newErrors;
+    this.errorDetected.emit(newErrors);
     
-    if (p1 && p2 && p1.visibility > 0.5 && p2.visibility > 0.5) {
-      ctx.beginPath();
-      // ✅ INVERTIR X PARA AMBOS PUNTO
-      ctx.moveTo((p1.x) * width, p1.y * height);
-      ctx.lineTo((p2.x) * width, p2.y * height);
-      ctx.stroke();
+    // ✅ AUDIO PARA ERRORES (SOLO SI NO HAY REPETICIÓN NUEVA)
+    if (this.repetitionCount === previousCount) {
+      const mostSevereError = this.getMostSevereError(newErrors);
+      if (mostSevereError) {
+        this.playAudio(mostSevereError.recommendation);
+      }
     }
-  });
+    
+    // ✅ DIBUJAR OVERLAY DE ERROR
+    this.drawErrorOverlay(newErrors);
+    
+  } else {
+    // ✅ BUENA FORMA DURANTE EJERCICIO
+    this.currentErrors = [];
+    
+    const now = Date.now();
+    if (now - this.lastGoodFormTime > this.GOOD_FORM_INTERVAL) {
+      const goodMessage = this.biomechanicsAnalyzer.generatePositiveMessage();
+      this.playAudio(goodMessage);
+      this.lastGoodFormTime = now;
+      
+      // ✅ MOSTRAR OVERLAY VERDE
+      this.drawGoodFormOverlay();
+    } else {
+      // ✅ LIMPIAR OVERLAY SIN MOSTRAR MENSAJE
+      this.clearErrorOverlay();
+    }
+  }
 }
-  // 🚨 DIBUJAR OVERLAY DE ERRORES
-  private drawErrorOverlay(): void {
-    if (!this.overlayCtx || this.currentErrors.length === 0) return;
-
-    const ctx = this.overlayCtx;
-    const width = ctx.canvas.width;
-    const height = ctx.canvas.height;
-
-    // Limpiar overlay
-    ctx.clearRect(0, 0, width, height);
-
-    // Mostrar errores actuales
-    this.currentErrors.forEach((error, index) => {
-      const y = 50 + (index * 60);
+  // 🚦 MANEJAR CAMBIOS DE ESTADO DE PREPARACIÓN
+  private handleReadinessStateChange(prevState: ReadinessState, newState: ReadinessState): void {
+    if (prevState !== newState) {
+      console.log(`🚦 Cambio de estado: ${prevState} → ${newState}`);
       
-      // Fondo del error
-      ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-      ctx.fillRect(10, y - 35, width - 20, 50);
+      switch (newState) {
+        case ReadinessState.NOT_READY:
+          this.drawPreparationOverlay('Posiciónate para el ejercicio', this.errorColors.preparing);
+          this.playAudio('Posiciónate para hacer el ejercicio', true);
+          break;
+          
+        case ReadinessState.GETTING_READY:
+          this.drawPreparationOverlay('Mantén la posición...', this.errorColors.warning);
+          break;
+          
+        case ReadinessState.READY_TO_START:
+          this.drawPreparationOverlay('¡LISTO PARA EMPEZAR!', this.errorColors.good);
+          this.playAudio('¡Listo para empezar! Comienza el ejercicio', true);
+          break;
+          
+        case ReadinessState.EXERCISING:
+          this.clearPreparationOverlay();
+          this.playAudio('¡Perfecto! Continúa con el ejercicio', true);
+          break;
+      }
+    }
+  }
+
+
+  // 🚦 PROCESAR ERRORES DE PREPARACIÓN
+  private processReadinessErrors(errors: PostureError[]): void {
+    if (errors.length > 0) {
+      this.currentErrors = errors;
+      this.errorDetected.emit(errors);
       
-      // Texto del error
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 14px Arial';
-      ctx.textAlign = 'left';
-      ctx.fillText(`⚠️ ${error.description}`, 20, y - 10);
+      // Solo audio si hay errores de posición
+      const positionError = errors[0];
+      if (positionError) {
+        this.playAudio(positionError.recommendation, true);
+      }
+    } else {
+      this.currentErrors = [];
+    }
+  }
+
+  // 🔍 FILTRAR ERRORES NUEVOS (SOLO UNO A LA VEZ)
+  private filterNewErrors(errors: PostureError[]): PostureError[] {
+    if (errors.length === 0) return [];
+    
+    const now = Date.now();
+    const ERROR_DISPLAY_DURATION = 5000;
+    
+    // Limpiar errores antiguos
+    this.currentErrors = this.currentErrors.filter(error => 
+      (now - error.timestamp) < ERROR_DISPLAY_DURATION
+    );
+    
+    // Si ya hay un error mostrándose, no mostrar más
+    if (this.currentErrors.length > 0) {
+      console.log('⏸️ Ya hay error mostrándose, esperando...');
+      return [];
+    }
+    
+    // Solo el error más severo
+    const mostSevereError = this.getMostSevereError(errors);
+    return mostSevereError ? [mostSevereError] : [];
+  }
+
+  // 🚨 OBTENER ERROR MÁS SEVERO
+  private getMostSevereError(errors: PostureError[]): PostureError | null {
+    if (errors.length === 0) return null;
+    
+    return errors.reduce((prev, current) => 
+      (current.severity > prev.severity) ? current : prev
+    );
+  }
+
+  // 🎨 DIBUJAR ESQUELETO SIN ESPEJO
+  private drawSkeleton(pose: PoseKeypoints): void {
+    if (!this.canvasCtx || !this.showSkeleton) return;
+
+    const canvas = this.canvasElementRef.nativeElement;
+    this.canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ✅ CONFIGURAR ESTILO
+    this.canvasCtx.lineWidth = 3;
+    this.canvasCtx.strokeStyle = '#00ff88';
+    this.canvasCtx.fillStyle = '#00ff88';
+
+    // ✅ DIBUJAR CONEXIONES USANDO MEDIAPIPE (SIN ESPEJO)
+    if (window.drawConnectors && window.POSE_CONNECTIONS) {
+      // Convertir pose a formato MediaPipe
+      const landmarks = this.convertPoseToLandmarks(pose);
       
-      // Recomendación
-      ctx.font = '12px Arial';
-      ctx.fillText(`💡 ${error.recommendation}`, 20, y + 8);
+      this.canvasCtx.save();
+      // ✅ NO APLICAR TRANSFORM PARA ELIMINAR ESPEJO
+      window.drawConnectors(this.canvasCtx, landmarks, window.POSE_CONNECTIONS, {
+        color: '#00ff88',
+        lineWidth: 3
+      });
+      this.canvasCtx.restore();
+    }
+
+    // ✅ DIBUJAR PUNTOS IMPORTANTES
+    this.drawKeyPoints(pose);
+  }
+
+  // 🔄 CONVERTIR POSE A LANDMARKS DE MEDIAPIPE
+  private convertPoseToLandmarks(pose: PoseKeypoints): any[] {
+    const landmarkOrder = [
+      'nose',
+      'left_eye_inner', 'left_eye', 'left_eye_outer',
+      'right_eye_inner', 'right_eye', 'right_eye_outer',
+      'left_ear', 'right_ear',
+      'mouth_left', 'mouth_right',
+      'left_shoulder', 'right_shoulder',
+      'left_elbow', 'right_elbow',
+      'left_wrist', 'right_wrist',
+      'left_pinky', 'right_pinky',
+      'left_index', 'right_index',
+      'left_thumb', 'right_thumb',
+      'left_hip', 'right_hip',
+      'left_knee', 'right_knee',
+      'left_ankle', 'right_ankle',
+      'left_heel', 'right_heel',
+      'left_foot_index', 'right_foot_index'
+    ];
+
+    return landmarkOrder.map(name => {
+      const point = pose[name as keyof PoseKeypoints];
+      return point || { x: 0, y: 0, z: 0, visibility: 0 };
     });
   }
 
-  // 🚀 INTENTAR INICIALIZACIÓN CON FALLBACK
-  private attemptInitializationWithFallback(): void {
-    this.initializationAttempts++;
-    console.log(`🎯 Intento ${this.initializationAttempts}/${this.maxInitializationAttempts}`);
-    
-    if (this.areViewChildElementsReady()) {
-      console.log('✅ ViewChild elementos listos');
-      this.startCameraSequence();
-      return;
-    }
-    
-    if (this.initializationAttempts < this.maxInitializationAttempts) {
-      const delay = this.initializationAttempts * 300;
-      console.log(`⏳ Reintentando en ${delay}ms...`);
-      this.initializationTimer = setTimeout(() => {
-        this.attemptInitializationWithFallback();
-      }, delay);
-    } else {
-      console.error('💥 Máximo de intentos alcanzado');
-      this.error = 'No se pudieron inicializar los elementos. Verifica que los permisos de cámara estén habilitados.';
-      this.isLoading = false;
-      this.cdr.detectChanges();
-    }
-  }
+  // 🎯 DIBUJAR PUNTOS CLAVE
+  private drawKeyPoints(pose: PoseKeypoints): void {
+    if (!this.canvasCtx) return;
 
-  // ✅ VERIFICAR ELEMENTOS VIEWCHILD
-  private areViewChildElementsReady(): boolean {
-    try {
-      const hasRefs = !!(this.videoElementRef && this.canvasElementRef && this.overlayElementRef);
-      const hasElements = !!(
-        this.videoElementRef?.nativeElement && 
-        this.canvasElementRef?.nativeElement && 
-        this.overlayElementRef?.nativeElement
-      );
-      
-      console.log('🔍 Estado ViewChild:', { hasRefs, hasElements });
-      return hasRefs && hasElements;
-      
-    } catch (error) {
-      console.error('❌ Error verificando ViewChild:', error);
-      return false;
-    }
-  }
+    const canvas = this.canvasElementRef.nativeElement;
+    const keyPoints = [
+      'left_shoulder', 'right_shoulder',
+      'left_elbow', 'right_elbow',
+      'left_wrist', 'right_wrist',
+      'left_hip', 'right_hip',
+      'left_knee', 'right_knee',
+      'left_ankle', 'right_ankle'
+    ];
 
-  // 📹 SECUENCIA DE INICIO DE CÁMARA
-  private async startCameraSequence(): Promise<void> {
-    try {
-      console.log('📹 === INICIANDO SECUENCIA DE CÁMARA ===');
+    this.canvasCtx.fillStyle = '#ff6b6b';
 
-      // 1. Obtener elementos
-      const videoElement = this.videoElementRef.nativeElement;
-      const canvasElement = this.canvasElementRef.nativeElement;
-      const overlayElement = this.overlayElementRef.nativeElement;
-
-      // 2. Configurar contextos de canvas
-      this.canvasCtx = canvasElement.getContext('2d');
-      this.overlayCtx = overlayElement.getContext('2d');
-
-      if (!this.canvasCtx || !this.overlayCtx) {
-        throw new Error('No se pudieron obtener contextos de canvas');
+    keyPoints.forEach(pointName => {
+      const point = pose[pointName as keyof PoseKeypoints];
+      if (point && point.visibility > 0.5) {
+        const x = point.x * canvas.width;
+        const y = point.y * canvas.height;
+        
+        this.canvasCtx!.beginPath();
+        this.canvasCtx!.arc(x, y, 5, 0, 2 * Math.PI);
+        this.canvasCtx!.fill();
       }
+    });
+  }
 
-      // 3. Iniciar cámara
-      await this.poseEngine.startCamera(videoElement, canvasElement);
+  // 🚦 DIBUJAR OVERLAY DE PREPARACIÓN
+  private drawPreparationOverlay(message: string, color: string): void {
+    if (!this.overlayCtx) return;
 
-      // 4. Sincronizar tamaños de canvas
-      overlayElement.width = canvasElement.width;
-      overlayElement.height = canvasElement.height;
+    const canvas = this.overlayElementRef.nativeElement;
+    this.overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 5. Marcar como inicializado
+    // ✅ BORDE DE PREPARACIÓN
+    this.overlayCtx.strokeStyle = color;
+    this.overlayCtx.lineWidth = 6;
+    this.overlayCtx.setLineDash([15, 10]);
+    this.overlayCtx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+
+    // ✅ TEXTO DE PREPARACIÓN
+    this.overlayCtx.fillStyle = color;
+    this.overlayCtx.font = 'bold 24px Arial';
+    this.overlayCtx.textAlign = 'center';
+    this.overlayCtx.fillText(message, canvas.width / 2, 40);
+
+    console.log(`🚦 Overlay de preparación: ${message}`);
+  }
+
+  // 🧹 LIMPIAR OVERLAY DE PREPARACIÓN
+  private clearPreparationOverlay(): void {
+    if (!this.overlayCtx) return;
+    const canvas = this.overlayElementRef.nativeElement;
+    this.overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // [MANTENER TODOS LOS OTROS MÉTODOS EXISTENTES]
+  // drawErrorOverlay, drawGoodFormOverlay, clearErrorOverlay, etc.
+
+  // 🚨 DIBUJAR OVERLAY DE ERROR CON COLORES
+  private drawErrorOverlay(errors: PostureError[]): void {
+    if (!this.overlayCtx) return;
+
+    const canvas = this.overlayElementRef.nativeElement;
+    this.overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (errors.length === 0) return;
+
+    const mostSevereError = this.getMostSevereError(errors);
+    if (!mostSevereError) return;
+
+    // ✅ DETERMINAR COLOR SEGÚN SEVERIDAD
+    let color = this.errorColors.good;
+    let alertText = 'BUENA FORMA';
+    
+    if (mostSevereError.severity >= 7) {
+      color = this.errorColors.critical; // ROJO - CRÍTICO
+      alertText = 'ERROR CRÍTICO';
+    } else if (mostSevereError.severity >= 5) {
+      color = this.errorColors.warning;  // NARANJA - MODERADO
+      alertText = 'CORREGIR POSTURA';
+    }
+
+    // ✅ DIBUJAR BORDE DE ALERTA
+    this.overlayCtx.strokeStyle = color;
+    this.overlayCtx.lineWidth = 8;
+    this.overlayCtx.setLineDash([10, 5]);
+    this.overlayCtx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+
+    // ✅ DIBUJAR TEXTO DE ALERTA
+    this.overlayCtx.fillStyle = color;
+    this.overlayCtx.font = 'bold 24px Arial';
+    this.overlayCtx.textAlign = 'center';
+    this.overlayCtx.fillText(alertText, canvas.width / 2, 40);
+
+    // ✅ DIBUJAR DESCRIPCIÓN DEL ERROR
+    this.overlayCtx.font = '16px Arial';
+    this.overlayCtx.fillStyle = '#ffffff';
+    this.overlayCtx.strokeStyle = '#000000';
+    this.overlayCtx.lineWidth = 2;
+    
+    const lines = this.wrapText(mostSevereError.description, canvas.width - 40);
+    lines.forEach((line, index) => {
+      const y = 70 + (index * 25);
+      this.overlayCtx!.strokeText(line, canvas.width / 2, y);
+      this.overlayCtx!.fillText(line, canvas.width / 2, y);
+    });
+
+    console.log(`🚨 Overlay dibujado - ${alertText}: ${mostSevereError.description}`);
+  }
+
+  // ✅ DIBUJAR OVERLAY VERDE (BUENA FORMA)
+  private drawGoodFormOverlay(): void {
+    if (!this.overlayCtx) return;
+
+    const canvas = this.overlayElementRef.nativeElement;
+    this.overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ✅ BORDE VERDE SUTIL
+    this.overlayCtx.strokeStyle = this.errorColors.good;
+    this.overlayCtx.lineWidth = 4;
+    this.overlayCtx.setLineDash([15, 10]);
+    this.overlayCtx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+
+    // ✅ INDICADOR DE BUENA FORMA
+    this.overlayCtx.fillStyle = this.errorColors.good;
+    this.overlayCtx.font = 'bold 20px Arial';
+    this.overlayCtx.textAlign = 'center';
+    this.overlayCtx.fillText('✓ EXCELENTE FORMA', canvas.width / 2, 35);
+
+    // ✅ MOSTRAR PUNTUACIÓN
+    if (this.currentQualityScore > 0) {
+      this.overlayCtx.font = '14px Arial';
+      this.overlayCtx.fillText(`Calidad: ${this.currentQualityScore}%`, canvas.width / 2, 60);
+    }
+  }
+
+  // 🧹 LIMPIAR OVERLAY DE ERROR
+  private clearErrorOverlay(): void {
+    if (!this.overlayCtx) return;
+    const canvas = this.overlayElementRef.nativeElement;
+    this.overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // 📝 ENVOLVER TEXTO
+  private wrapText(text: string, maxWidth: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word;
+      if (testLine.length * 8 <= maxWidth) { // Aproximación de ancho
+        currentLine = testLine;
+      } else {
+        if (currentLine) lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  }
+
+  // [MANTENER TODOS LOS MÉTODOS RESTANTES COMO startCamera, stopCamera, etc.]
+  
+  async startCamera(): Promise<void> {
+    this.initializationAttempts++;
+    
+    try {
+      console.log(`🚀 Intento de inicialización ${this.initializationAttempts}/${this.maxInitializationAttempts}`);
+      
+      this.isLoading = true;
+      this.error = null;
+      this.cdr.detectChanges();
+
+      await this.poseEngine.initializeMediaPipe();
+      
+      const video = this.videoElementRef.nativeElement;
+      const canvas = this.canvasElementRef.nativeElement;
+      const overlay = this.overlayElementRef.nativeElement;
+      
+      await this.poseEngine.startCamera(video, canvas);
+      
+      overlay.width = canvas.width;
+      overlay.height = canvas.height;
+      
       this.isInitialized = true;
       this.isLoading = false;
-      this.error = null;
-
-      console.log('✅ === CÁMARA INICIADA EXITOSAMENTE ===');
+      console.log('✅ Cámara iniciada exitosamente');
       
-      // ✅ Audio de bienvenida
-      this.playAudio(`Detección postural iniciada. Ejercicio: ${this.getExerciseName(this.exerciseType)}`);
-
     } catch (error) {
-      console.error('❌ Error en secuencia de cámara:', error);
-      this.error = `Error iniciando cámara: ${error}`;
+      console.error(`❌ Error iniciando cámara (intento ${this.initializationAttempts}):`, error);
+      
       this.isLoading = false;
+      this.error = `Error de inicialización: ${error}`;
+      
+      if (this.initializationAttempts < this.maxInitializationAttempts) {
+        console.log(`🔄 Reintentando en 2 segundos...`);
+        this.initializationTimer = setTimeout(() => {
+          this.startCamera();
+        }, 2000);
+      } else {
+        this.error = 'No se pudo inicializar la cámara después de varios intentos';
+      }
     }
-
+    
     this.cdr.detectChanges();
   }
 
-  // 🏋️ OBTENER NOMBRE DEL EJERCICIO EN ESPAÑOL
-  private getExerciseName(exercise: ExerciseType): string {
-    const names = {
-        [ExerciseType.SQUATS]: 'sentadillas',
-        [ExerciseType.PUSHUPS]: 'flexiones',
-        [ExerciseType.LUNGES]: 'estocadas',
-        [ExerciseType.PLANK]: 'plancha',
-        [ExerciseType.BICEP_CURLS]: 'curl de bíceps',
-        [ExerciseType.DEADLIFTS]: 'peso muerto',
-        [ExerciseType.OVERHEAD_PRESS]: 'press militar'
-      };
-    return names[exercise] || 'ejercicio';
-  }
-
-  // 🚀 MÉTODO PÚBLICO PARA INICIAR CÁMARA
-  async startCamera(): Promise<void> {
-    console.log('🚀 Método público startCamera llamado');
-    this.isLoading = true;
-    this.error = null;
-    this.initializationAttempts = 0;
-    this.cdr.detectChanges();
-    
-    // Limpiar timer previo
-    if (this.initializationTimer) {
-      clearTimeout(this.initializationTimer);
-      this.initializationTimer = null;
-    }
-    
-    this.attemptInitializationWithFallback();
-  }
-
-  // 🛑 MÉTODO PÚBLICO PARA PARAR CÁMARA
   async stopCamera(): Promise<void> {
-    console.log('🛑 Parando cámara...');
-    
     try {
       await this.poseEngine.stopCamera();
       this.isInitialized = false;
-      this.currentPose = null;
-      this.currentAngles = null;
-      this.currentErrors = [];
-      
-      // Cancelar audio si está reproduciéndose
-      if (this.speechSynthesis && this.isPlayingAudio) {
-        this.speechSynthesis.cancel();
-        this.isPlayingAudio = false;
-      }
-      
-      this.cdr.detectChanges();
-      console.log('✅ Cámara parada');
-      
+      console.log('⏹️ Cámara parada');
     } catch (error) {
       console.error('❌ Error parando cámara:', error);
     }
   }
 
-// 🔄 CAMBIAR TIPO DE EJERCICIO (MEJORADO)
-setExerciseType(exerciseType: ExerciseType): void {
-  console.log(`🏋️ Cambiando ejercicio a: ${exerciseType}`);
-  
-  // ✅ RESET COMPLETO AL CAMBIAR EJERCICIO
-  this.biomechanicsAnalyzer.setCurrentExercise(exerciseType);
-  this.biomechanicsAnalyzer.resetCounter();
-  this.repetitionCount = 0;
-  this.currentErrors = [];
-  this.currentPhase = RepetitionPhase.IDLE;
-  
-  this.exerciseType = exerciseType;
-  
-  // Audio de confirmación
-  this.playAudio(`Ejercicio cambiado a ${this.getExerciseName(exerciseType)}. Contador reseteado.`);
-  
-  this.cdr.detectChanges();
-}
+  getStatusMessage(): string {
+    if (this.initializationAttempts === 0) {
+      return 'Preparando sistema...';
+    } else if (this.initializationAttempts === 1) {
+      return 'Cargando MediaPipe...';
+    } else if (this.initializationAttempts <= 3) {
+      return 'Inicializando cámara...';
+    } else {
+      return 'Reintentando conexión...';
+    }
+  }
 
-  // 🔄 RESET CONTADOR DE REPETICIONES (MEJORADO)
-resetRepetitions(): void {
-  console.log('🔄 === RESET REPETICIONES ===');
-  console.log(`Repeticiones antes: Componente=${this.repetitionCount}, Analizador=${this.biomechanicsAnalyzer.getStats().repetitions}`);
-  
-  // ✅ RESET EN AMBOS LUGARES
-  this.biomechanicsAnalyzer.resetCounter();
-  this.repetitionCount = 0;
-  this.currentErrors = [];
-  this.currentPhase = RepetitionPhase.IDLE;
-  
-  console.log('✅ Reset completado en componente y analizador');
-  this.playAudio('Contador de repeticiones reseteado');
-  this.cdr.detectChanges();
-}
+  restartCamera(): void {
+    this.initializationAttempts = 0;
+    this.startCamera();
+  }
 
-  // 🔇 TOGGLE AUDIO
+  toggleSkeleton(): void {
+    this.showSkeleton = !this.showSkeleton;
+    if (!this.showSkeleton && this.canvasCtx) {
+      const canvas = this.canvasElementRef.nativeElement;
+      this.canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  toggleErrorDetection(): void {
+    this.enableErrorDetection = !this.enableErrorDetection;
+    if (!this.enableErrorDetection) {
+      this.currentErrors = [];
+      this.clearErrorOverlay();
+    }
+  }
+
   toggleAudio(): void {
     this.enableAudio = !this.enableAudio;
-    console.log(`🔊 Audio ${this.enableAudio ? 'activado' : 'desactivado'}`);
-    
-    if (!this.enableAudio && this.speechSynthesis && this.isPlayingAudio) {
+    if (!this.enableAudio && this.speechSynthesis) {
       this.speechSynthesis.cancel();
       this.isPlayingAudio = false;
     }
-    
-    this.cdr.detectChanges();
   }
 
-  // 🎯 TOGGLE DETECCIÓN DE ERRORES
-  toggleErrorDetection(): void {
-    this.enableErrorDetection = !this.enableErrorDetection;
-    console.log(`🔍 Detección de errores ${this.enableErrorDetection ? 'activada' : 'desactivada'}`);
-    
-    if (!this.enableErrorDetection) {
-      this.currentErrors = [];
+  // ✅ MÉTODOS PARA EL TEMPLATE
+  getExerciseName(): string {
+    switch (this.exerciseType) {
+      case ExerciseType.SQUATS: return 'Sentadillas';
+      case ExerciseType.PUSHUPS: return 'Flexiones';
+      case ExerciseType.PLANK: return 'Plancha';
+      case ExerciseType.LUNGES: return 'Estocadas';
+      default: return 'Ejercicio';
     }
-    
-    this.cdr.detectChanges();
   }
 
-  // 🎨 TOGGLE ESQUELETO
-  toggleSkeleton(): void {
-    this.showSkeleton = !this.showSkeleton;
-    console.log(`🎨 Esqueleto ${this.showSkeleton ? 'visible' : 'oculto'}`);
-    
-    if (!this.showSkeleton && this.canvasCtx) {
-      this.canvasCtx.clearRect(0, 0, this.canvasCtx.canvas.width, this.canvasCtx.canvas.height);
+  getPhaseText(): string {
+    switch (this.currentPhase) {
+      case RepetitionPhase.IDLE: return 'Reposo';
+      case RepetitionPhase.TOP: return 'Arriba';
+      case RepetitionPhase.BOTTOM: return 'Abajo';
+      case RepetitionPhase.DESCENDING: return 'Bajando';
+      case RepetitionPhase.ASCENDING: return 'Subiendo';
+      case RepetitionPhase.HOLD: return 'Mantener';
+      default: return 'Detectando...';
     }
-    
-    this.cdr.detectChanges();
   }
 
-  // 📊 OBTENER ESTADÍSTICAS ACTUALES
-  getCurrentStats(): {
-    repetitions: number;
-    currentPhase: RepetitionPhase;
-    errors: PostureError[];
-    fps: number;
-    isDetecting: boolean;
-  } {
-    return {
-      repetitions: this.repetitionCount,
-      currentPhase: this.currentPhase,
-      errors: this.currentErrors,
-      fps: this.fps,
-      isDetecting: this.enableErrorDetection && this.isInitialized
-    };
+  getQualityClass(): string {
+    if (this.currentQualityScore >= 90) return 'quality-excellent';
+    if (this.currentQualityScore >= 75) return 'quality-good';
+    if (this.currentQualityScore >= 60) return 'quality-fair';
+    return 'quality-poor';
   }
 
-  // 🧹 CLEANUP COMPLETO
+  getSeverityClass(severity: number): string {
+    if (severity >= 7) return 'critical';
+    if (severity >= 5) return 'warning';
+    return 'info';
+  }
+
+  getErrorIcon(severity: number): string {
+    if (severity >= 7) return 'warning';
+    if (severity >= 5) return 'alert-circle';
+    return 'information-circle';
+  }
+
+  getErrorTypeText(errorType: string): string {
+    switch (errorType) {
+      case 'KNEE_VALGUS': return 'Rodillas hacia adentro';
+      case 'ROUNDED_BACK': return 'Espalda curvada';
+      case 'INSUFFICIENT_DEPTH': return 'Poca profundidad';
+      case 'DROPPED_HIPS': return 'Caderas caídas';
+      case 'HIGH_HIPS': return 'Caderas altas';
+      case 'EXCESSIVE_ELBOW_FLARE': return 'Codos muy abiertos';
+      case 'KNEE_FORWARD': return 'Rodilla adelantada';
+      case 'POOR_ALIGNMENT': return 'Mala alineación';
+      case 'EXCESSIVE_SPEED': return 'Velocidad excesiva';
+      default: return 'Error postural';
+    }
+  }
+
+  // ✅ OBTENER MENSAJE ACTUAL BASADO EN ESTADO
+  getCurrentStateMessage(): string {
+    return this.readinessMessage;
+  }
+
+  // ✅ OBTENER COLOR DEL ESTADO ACTUAL
+  getCurrentStateColor(): string {
+    switch (this.currentReadinessState) {
+      case ReadinessState.NOT_READY: return this.errorColors.preparing;
+      case ReadinessState.GETTING_READY: return this.errorColors.warning;
+      case ReadinessState.READY_TO_START: return this.errorColors.good;
+      case ReadinessState.EXERCISING: return this.errorColors.good;
+      default: return this.errorColors.preparing;
+    }
+  }
+
   private cleanup(): void {
-    console.log('🧹 Limpiando PoseCameraComponent...');
-
-    // Limpiar timer de inicialización
     if (this.initializationTimer) {
       clearTimeout(this.initializationTimer);
       this.initializationTimer = null;
     }
 
-    // Parar cámara
-    this.stopCamera();
-
-    // Limpiar subscripciones
     this.subscriptions.forEach(sub => sub.unsubscribe());
     this.subscriptions = [];
 
-    // Cancelar audio
-    if (this.speechSynthesis && this.isPlayingAudio) {
+    if (this.speechSynthesis) {
       this.speechSynthesis.cancel();
-      this.isPlayingAudio = false;
     }
 
-    // Limpiar contextos
-    this.canvasCtx = null;
-    this.overlayCtx = null;
-
-    // Limpiar analizador
+    this.poseEngine.cleanup();
     this.biomechanicsAnalyzer.cleanup();
 
-    console.log('✅ PoseCameraComponent limpiado');
+    console.log('🧹 PoseCameraComponent limpiado');
   }
-
-  // 🎮 MÉTODOS PÚBLICOS PARA LA INTERFAZ
-
-  // Obtener mensaje de estado para mostrar en UI
-  getStatusMessage(): string {
-    if (this.error) return this.error;
-    if (this.isLoading) return 'Iniciando cámara...';
-    if (!this.isInitialized) return 'Cámara no inicializada';
-    if (this.fps === 0) return 'Conectando...';
-    if (this.fps < 15) return 'Conexión lenta';
-    return 'Funcionando correctamente';
-  }
-
-  // Obtener color del estado para UI
-  getStatusColor(): string {
-    if (this.error) return 'danger';
-    if (this.isLoading || !this.isInitialized) return 'warning';
-    if (this.fps < 15) return 'warning';
-    return 'success';
-  }
-
-  // Obtener fase actual del ejercicio en español
-  getCurrentPhaseText(): string {
-    const phaseTexts = {
-      [RepetitionPhase.IDLE]: 'En reposo',
-      [RepetitionPhase.TOP]: 'Posición alta',
-      [RepetitionPhase.DESCENDING]: 'Bajando',
-      [RepetitionPhase.BOTTOM]: 'Posición baja',
-      [RepetitionPhase.ASCENDING]: 'Subiendo',
-      [RepetitionPhase.HOLD]: 'Manteniendo'
-    };
-    return phaseTexts[this.currentPhase] || 'Desconocido';
-  }
-
-  // Verificar si hay errores activos
-  hasActiveErrors(): boolean {
-    return this.currentErrors.length > 0;
-  }
-
-  // Obtener lista de errores activos para UI
-  getActiveErrors(): PostureError[] {
-    return this.currentErrors;
-  }
-
-  // Obtener texto de motivación basado en repeticiones
-  getMotivationText(): string {
-    if (this.repetitionCount === 0) {
-      return '¡Empecemos! Realiza tu primer ejercicio';
-    } else if (this.repetitionCount < 5) {
-      return `¡Vas bien! ${this.repetitionCount} repeticiones completadas`;
-    } else if (this.repetitionCount < 10) {
-      return `¡Excelente! Ya tienes ${this.repetitionCount} repeticiones`;
-    } else {
-      return `¡Increíble! ${this.repetitionCount} repeticiones - ¡Eres imparable!`;
-    }
-  }
-
-  // 🎤 MÉTODO PÚBLICO PARA PROBAR AUDIO
-  testAudio(): void {
-    this.playAudio('Sistema de audio funcionando correctamente. Detección postural lista.');
-  }
-
-  // 📱 OBTENER INFO DEL DISPOSITIVO PARA DEBUG
-  getDeviceInfo(): any {
-    return {
-      userAgent: navigator.userAgent,
-      platform: navigator.platform,
-      language: navigator.language,
-      screenResolution: `${screen.width}x${screen.height}`,
-      devicePixelRatio: window.devicePixelRatio,
-      speechSynthesisSupported: !!this.speechSynthesis,
-      mediaDevicesSupported: !!navigator.mediaDevices,
-      getUserMediaSupported: !!navigator.mediaDevices?.getUserMedia
-    };
-  }
-  // Método para trackBy en template
-trackErrorById(index: number, error: PostureError): string {
-  return error.type + error.timestamp;
-}
-// 🎨 OBTENER CLASE CSS SEGÚN SEVERIDAD
-getAlertClass(severity: number): string {
-  if (severity <= 3) return 'alert-success'; // Verde
-  if (severity <= 6) return 'alert-warning'; // Naranja
-  return 'alert-danger'; // Rojo
-}
-
-// 🚨 OBTENER ÍCONO SEGÚN SEVERIDAD
-getAlertIcon(severity: number): string {
-  if (severity <= 3) return 'checkmark-circle-outline'; // Verde
-  if (severity <= 6) return 'warning-outline'; // Naranja
-  return 'alert-circle-outline'; // Rojo
-}
-
-// 📢 OBTENER TÍTULO SEGÚN SEVERIDAD
-getAlertTitle(severity: number): string {
-  if (severity <= 3) return '¡Bien hecho!'; // Verde
-  if (severity <= 6) return 'Ajuste menor'; // Naranja
-  return '¡Corrección necesaria!'; // Rojo
-}
-
-// 📊 OBTENER CLASE DE BARRA SEGÚN SEVERIDAD
-getSeverityBarClass(severity: number): string {
-  if (severity <= 3) return 'bar-success'; // Verde
-  if (severity <= 6) return 'bar-warning'; // Naranja
-  return 'bar-danger'; // Rojo
-}
-
-// 📝 OBTENER TEXTO DE SEVERIDAD
-getSeverityText(severity: number): string {
-  if (severity <= 3) return 'Excelente';
-  if (severity <= 6) return 'Mejorable';
-  return 'Crítico';
-}
-// 🔄 LIMPIAR ERRORES AUTOMÁTICAMENTE
-private startErrorCleanup(): void {
-  setInterval(() => {
-    const now = Date.now();
-    const ERROR_DISPLAY_DURATION = 5000; // 5 segundos
-    
-    const initialCount = this.currentErrors.length;
-    this.currentErrors = this.currentErrors.filter(error => 
-      (now - error.timestamp) < ERROR_DISPLAY_DURATION
-    );
-    
-    if (this.currentErrors.length !== initialCount) {
-      console.log(`🧹 Limpiados ${initialCount - this.currentErrors.length} errores antiguos`);
-      this.cdr.detectChanges();
-    }
-  }, 1000); // Revisar cada segundo
-}
-
 }

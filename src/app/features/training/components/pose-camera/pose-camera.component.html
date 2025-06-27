@@ -1,5 +1,5 @@
 <!-- src/app/features/training/components/pose-camera/pose-camera.component.html -->
-<!-- ✅ TEMPLATE CORREGIDO Y OPTIMIZADO -->
+<!-- ✅ TEMPLATE COMPLETO CON INDICADORES VISUALES -->
 
 <div class="camera-container">
   
@@ -24,7 +24,7 @@
         class="retry-button" 
         fill="solid" 
         color="primary"
-        (click)="startCamera()">
+        (click)="restartCamera()">
         <ion-icon name="refresh-outline" slot="start"></ion-icon>
         REINTENTAR
       </ion-button>
@@ -35,231 +35,140 @@
   <div class="camera-content" 
        [class.hidden]="isLoading || !!error">
     
-    <!-- 📹 VIDEO - SIEMPRE EN DOM PARA VIEWCHILD -->
+    <!-- 📹 VIDEO DE CÁMARA -->
     <video 
-      #videoElement 
-      class="video-element"
+      #videoElement
+      class="camera-video"
       autoplay 
       muted 
       playsinline>
     </video>
-    
-    <!-- 🎨 CANVAS ESQUELETO -->
+
+    <!-- 🎨 CANVAS PARA ESQUELETO (33 PUNTOS) -->
     <canvas 
-      #canvasElement 
-      class="canvas-element"
+      #canvasElement
+      class="skeleton-canvas"
       [class.hidden]="!showSkeleton">
     </canvas>
-    
-    <!-- 🚨 CANVAS OVERLAY ERRORES -->
+
+    <!-- 🚨 CANVAS PARA ALERTAS DE ERROR -->
     <canvas 
-      #overlayElement 
-      class="overlay-element">
+      #overlayElement
+      class="error-overlay-canvas">
     </canvas>
+
+  </div>
+  <!-- ✅ PANEL DE ESTADO DE PREPARACIÓN -->
+<div class="readiness-panel" 
+*ngIf="currentReadinessState !== 'EXERCISING'"
+[ngClass]="{
+  'not-ready': currentReadinessState === 'NOT_READY',
+  'getting-ready': currentReadinessState === 'GETTING_READY', 
+  'ready-to-start': currentReadinessState === 'READY_TO_START'
+}">
+<ion-icon class="readiness-icon" 
+       [name]="currentReadinessState === 'READY_TO_START' ? 'checkmark-circle' : 'body'">
+</ion-icon>
+<p class="readiness-message">{{ getCurrentStateMessage() }}</p>
+</div>
+
+  <!-- 📊 PANEL DE INFORMACIÓN -->
+  <div class="info-panel" *ngIf="isInitialized && !isLoading">
     
+    <!-- 🏃 INFORMACIÓN DE EJERCICIO -->
+    <div class="exercise-info">
+      <div class="exercise-name">
+        {{ getExerciseName() }}
+      </div>
+      <div class="exercise-phase" [class]="'phase-' + currentPhase.toLowerCase()">
+        {{ getPhaseText() }}
+      </div>
+    </div>
+
+    <!-- 🔢 CONTADOR DE REPETICIONES -->
+    <div class="repetition-counter">
+      <div class="counter-label">Repeticiones</div>
+      <div class="counter-value">{{ repetitionCount }}</div>
+    </div>
+
+    <!-- 📈 PUNTUACIÓN DE CALIDAD -->
+    <div class="quality-score" *ngIf="currentQualityScore > 0">
+      <div class="score-label">Calidad</div>
+      <div class="score-value" [class]="getQualityClass()">
+        {{ currentQualityScore }}%
+      </div>
+    </div>
+
+    <!-- 📊 FPS -->
+    <div class="fps-indicator">
+      <ion-icon name="speedometer-outline"></ion-icon>
+      {{ fps }} FPS
+    </div>
+
   </div>
 
-  <!-- 🎨 INTERFAZ DE USUARIO -->
-  <div class="ui-overlay" *ngIf="!isLoading && !error && isInitialized">
-    
-    <!-- 📊 PANEL DE ESTADÍSTICAS -->
-    <div class="stats-panel">
-      <div class="stats-header">
-        <ion-icon name="analytics-outline"></ion-icon>
-        <span class="stats-title">Estadísticas</span>
-        <div class="connection-indicator" [ngClass]="getStatusColor()">
-          <div class="pulse-dot"></div>
-          <span class="connection-text">{{ getStatusMessage() }}</span>
-        </div>
-      </div>
+  <!-- 🚨 PANEL DE ERRORES ACTUALES -->
+  <div class="current-errors" *ngIf="currentErrors.length > 0">
+    <div class="error-item" 
+         *ngFor="let error of currentErrors"
+         [class]="'severity-' + getSeverityClass(error.severity)">
       
-      <div class="stats-content">
-        <div class="stat-item">
-          <span class="stat-label">FPS:</span>
-          <span class="stat-value" [ngClass]="{'stat-warning': fps < 20}">{{ fps }}</span>
-        </div>
-        
-        <div class="stat-item">
-          <span class="stat-label">Repeticiones:</span>
-          <span class="stat-value stat-primary">{{ repetitionCount }}</span>
-        </div>
-        
-        <div class="stat-item">
-          <span class="stat-label">Fase:</span>
-          <span class="stat-value">{{ getCurrentPhaseText() }}</span>
-        </div>
-        
-        <div class="stat-item" *ngIf="hasActiveErrors()">
-          <span class="stat-label">Errores:</span>
-          <span class="stat-value stat-danger">{{ currentErrors.length }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 🎮 CONTROLES PRINCIPALES -->
-    <div class="controls-panel">
-      <div class="controls-header">
-        <ion-icon name="settings-outline"></ion-icon>
-        <span>Controles</span>
-      </div>
-      
-      <div class="controls-content">
-        <!-- Control de Ejercicio -->
-        <div class="control-group">
-          <label class="control-label">Ejercicio:</label>
-          <ion-select 
-            [value]="exerciseType" 
-            (ionChange)="setExerciseType($event.detail.value)"
-            interface="popover"
-            placeholder="Seleccionar ejercicio">
-            <ion-select-option value="squats">Sentadillas</ion-select-option>
-            <ion-select-option value="pushups">Flexiones</ion-select-option>
-            <ion-select-option value="plank">Plancha</ion-select-option>
-            <ion-select-option value="lunges">Estocadas</ion-select-option>
-          </ion-select>
-        </div>
-
-        <!-- Botones de Toggle -->
-        <div class="toggle-buttons">
-          <ion-button 
-            fill="clear" 
-            size="small"
-            [color]="enableErrorDetection ? 'success' : 'medium'"
-            (click)="toggleErrorDetection()">
-            <ion-icon 
-              [name]="enableErrorDetection ? 'eye-outline' : 'eye-off-outline'" 
-              slot="start">
-            </ion-icon>
-            <span>{{ enableErrorDetection ? 'Detección ON' : 'Detección OFF' }}</span>
-          </ion-button>
-
-          <ion-button 
-            fill="clear" 
-            size="small"
-            [color]="showSkeleton ? 'success' : 'medium'"
-            (click)="toggleSkeleton()">
-            <ion-icon 
-              [name]="showSkeleton ? 'person-outline' : 'person-remove-outline'" 
-              slot="start">
-            </ion-icon>
-            <span>{{ showSkeleton ? 'Esqueleto ON' : 'Esqueleto OFF' }}</span>
-          </ion-button>
-
-          <ion-button 
-            fill="clear" 
-            size="small"
-            [color]="enableAudio ? 'success' : 'medium'"
-            (click)="toggleAudio()">
-            <ion-icon 
-              [name]="enableAudio ? 'volume-high-outline' : 'volume-mute-outline'" 
-              slot="start">
-            </ion-icon>
-            <span>{{ enableAudio ? 'Audio ON' : 'Audio OFF' }}</span>
-          </ion-button>
-        </div>
-
-        <!-- Botones de Acción -->
-        <div class="action-buttons">
-          <ion-button 
-            fill="outline" 
-            size="small" 
-            color="warning"
-            (click)="resetRepetitions()">
-            <ion-icon name="refresh-outline" slot="start"></ion-icon>
-            Reset
-          </ion-button>
-
-          <ion-button 
-            fill="outline" 
-            size="small" 
-            color="secondary"
-            (click)="testAudio()"
-            [disabled]="!enableAudio">
-            <ion-icon name="volume-high-outline" slot="start"></ion-icon>
-            Test Audio
-          </ion-button>
-
-          <ion-button 
-            fill="solid" 
-            size="small" 
-            color="danger"
-            (click)="stopCamera()">
-            <ion-icon name="stop-outline" slot="start"></ion-icon>
-            Parar
-          </ion-button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 💬 PANEL DE MOTIVACIÓN -->
-    <div class="motivation-panel" *ngIf="repetitionCount > 0">
-      <div class="motivation-content">
-        <ion-icon name="fitness-outline" class="motivation-icon"></ion-icon>
-        <span class="motivation-text">{{ getMotivationText() }}</span>
-      </div>
-    </div>
-
-    <!-- 🚨 ALERTAS DE ERRORES EN TIEMPO REAL CON COLORES -->
-<div class="error-alerts" *ngIf="hasActiveErrors() && enableErrorDetection">
-  <div 
-    class="error-alert" 
-    *ngFor="let error of getActiveErrors(); trackBy: trackErrorById"
-    [ngClass]="getAlertClass(error.severity)">
-    
-    <div class="error-content">
       <div class="error-header">
-        <ion-icon [name]="getAlertIcon(error.severity)" class="error-icon"></ion-icon>
-        <span class="error-title">{{ getAlertTitle(error.severity) }}</span>
-        <ion-icon 
-          [name]="enableAudio ? 'volume-high-outline' : 'volume-mute-outline'" 
-          class="audio-indicator">
-        </ion-icon>
+        <ion-icon [name]="getErrorIcon(error.severity)"></ion-icon>
+        <span class="error-type">{{ getErrorTypeText(error.type) }}</span>
       </div>
       
       <div class="error-description">{{ error.description }}</div>
-      <div class="error-recommendation">
-        <ion-icon name="bulb-outline" class="recommendation-icon"></ion-icon>
-        {{ error.recommendation }}
-      </div>
-    </div>
-    
-    <div class="error-severity">
-      <div class="severity-bar">
-        <div 
-          class="severity-fill" 
-          [style.width]="(error.severity * 10) + '%'"
-          [ngClass]="getSeverityBarClass(error.severity)">
-        </div>
-      </div>
-      <span class="severity-text">{{ getSeverityText(error.severity) }}</span>
+      <div class="error-recommendation">💡 {{ error.recommendation }}</div>
+      
     </div>
   </div>
-</div>
 
-    <!-- 🔧 PANEL DE DEBUG (SOLO EN DESARROLLO) -->
-    <div class="debug-panel" *ngIf="false">
-      <details>
-        <summary>Debug Info</summary>
-        <div class="debug-content">
-          <div class="debug-item">
-            <strong>Current Pose:</strong> {{ !!currentPose }}
-          </div>
-          <div class="debug-item">
-            <strong>Current Angles:</strong> {{ !!currentAngles }}
-          </div>
-          <div class="debug-item">
-            <strong>Audio Playing:</strong> {{ isPlayingAudio }}
-          </div>
-          <div class="debug-item">
-            <strong>Exercise:</strong> {{ exerciseType }}
-          </div>
-          <div class="debug-item">
-            <strong>Phase:</strong> {{ currentPhase }}
-          </div>
-        </div>
-      </details>
-    </div>
+  <!-- 🎛️ CONTROLES -->
+  <div class="controls-panel">
+    
+    <!-- 🎨 TOGGLE ESQUELETO -->
+    <ion-button 
+      fill="clear" 
+      size="small"
+      [color]="showSkeleton ? 'primary' : 'medium'"
+      (click)="toggleSkeleton()">
+      <ion-icon name="body-outline" slot="icon-only"></ion-icon>
+    </ion-button>
 
+    <!-- 🚨 TOGGLE DETECCIÓN DE ERRORES -->
+    <ion-button 
+      fill="clear" 
+      size="small"
+      [color]="enableErrorDetection ? 'primary' : 'medium'"
+      (click)="toggleErrorDetection()">
+      <ion-icon name="alert-circle-outline" slot="icon-only"></ion-icon>
+    </ion-button>
+
+    <!-- 🔊 TOGGLE AUDIO -->
+    <ion-button 
+      fill="clear" 
+      size="small"
+      [color]="enableAudio ? 'primary' : 'medium'"
+      (click)="toggleAudio()">
+      <ion-icon [name]="enableAudio ? 'volume-high-outline' : 'volume-mute-outline'" slot="icon-only"></ion-icon>
+    </ion-button>
+
+    <!-- ⏹️ PARAR CÁMARA -->
+    <ion-button 
+      fill="clear" 
+      size="small"
+      color="danger"
+      (click)="stopCamera()">
+      <ion-icon name="stop-outline" slot="icon-only"></ion-icon>
+    </ion-button>
+
+  </div>
+
+  <!-- 🎤 INDICADOR DE AUDIO -->
+  <div class="audio-indicator" *ngIf="isPlayingAudio">
+    <ion-icon name="volume-high-outline"></ion-icon>
+    <span>Reproduciendo audio...</span>
   </div>
 
 </div>
