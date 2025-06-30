@@ -145,43 +145,51 @@
 // 📊 PANEL DE INFORMACIÓN
 .info-panel {
   position: absolute;
-  top: 15px;
-  left: 15px;
-  right: 15px;
+  top: 10px;
+  right: 10px; // Movido a la esquina superior derecha
+  width: auto;
+  max-width: 200px; // Ancho máximo reducido
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column; // Cambio a columna para ocupar menos espacio horizontal
+  gap: 6px; // Espacio reducido entre elementos
   z-index: 30;
   pointer-events: none;
 
   > div {
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(10px);
-    padding: 8px 12px;
-    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.75); // Fondo más transparente
+    backdrop-filter: blur(8px);
+    padding: 4px 8px; // Padding reducido
+    border-radius: 6px;
     color: white;
-    font-size: 14px;
+    font-size: 11px; // Tamaño de fuente más pequeño
+    line-height: 1.2;
+    border: 1px solid rgba(255, 255, 255, 0.1); // Borde sutil
   }
 }
 
-// 🏃 INFORMACIÓN DE EJERCICIO
+// 🏃 INFORMACIÓN DE EJERCICIO - Compacta
 .exercise-info {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
 
   .exercise-name {
-    font-weight: bold;
-    font-size: 16px;
-    margin-bottom: 4px;
+    font-weight: 600;
+    font-size: 12px; // Reducido
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
   }
 
   .exercise-phase {
-    font-size: 12px;
-    padding: 2px 6px;
-    border-radius: 4px;
+    font-size: 10px; // Muy pequeño
+    padding: 1px 4px;
+    border-radius: 3px;
     
     &.phase-idle { background: #6b7280; }
+    &.phase-reposo { background: #6b7280; } // Para "Reposo"
     &.phase-top { background: #10b981; }
     &.phase-bottom { background: #3b82f6; }
     &.phase-descending { background: #f59e0b; }
@@ -190,103 +198,118 @@
   }
 }
 
-// 🔢 CONTADOR DE REPETICIONES
+/// 🔢 CONTADOR DE REPETICIONES - Compacto
 .repetition-counter {
   text-align: center;
+  min-width: 60px;
 
   .counter-label {
-    font-size: 12px;
-    opacity: 0.8;
+    font-size: 9px; // Muy pequeño
+    opacity: 0.7;
+    margin-bottom: 1px;
   }
 
   .counter-value {
-    font-size: 24px;
+    font-size: 18px; // Reducido pero visible
     font-weight: bold;
     color: #00ff88;
+    line-height: 1;
   }
 }
 
-// 📈 PUNTUACIÓN DE CALIDAD
+// 📈 PUNTUACIÓN DE CALIDAD - Compacta
 .quality-score {
   text-align: center;
+  min-width: 60px;
 
   .score-label {
-    font-size: 12px;
-    opacity: 0.8;
+    font-size: 9px; // Muy pequeño
+    opacity: 0.7;
+    margin-bottom: 1px;
   }
 
   .score-value {
-    font-size: 18px;
+    font-size: 14px; // Reducido
     font-weight: bold;
+    line-height: 1;
 
-    &.quality-excellent { color: #22c55e; } // Verde
-    &.quality-good { color: #84cc16; }      // Verde claro
-    &.quality-fair { color: #f59e0b; }      // Naranja
-    &.quality-poor { color: #ef4444; }      // Rojo
+    &.quality-excellent { color: #22c55e; }
+    &.quality-good { color: #84cc16; }      
+    &.quality-fair { color: #f59e0b; }      
+    &.quality-poor { color: #ef4444; }      
   }
 }
 
-// 📊 INDICADOR DE FPS
+// 📊 INDICADOR DE FPS - Compacto
 .fps-indicator {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
+  justify-content: center;
+  gap: 3px;
+  font-size: 10px; // Muy pequeño
+  min-width: 50px;
 
   ion-icon {
-    font-size: 14px;
+    font-size: 11px;
+    opacity: 0.8;
   }
 }
-
-// 🚦 PANEL DE ESTADO DE PREPARACIÓN
+// 🚦 PANEL DE ESTADO DE PREPARACIÓN - Reposicionado y centrado
 .readiness-panel {
   position: absolute;
-  top: 50%;
+  top: 60%; // Movido más abajo para no obstruir la vista
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-  padding: 20px 30px;
-  border-radius: 15px;
+  background: rgba(15, 23, 42, 0.85); // Fondo más sutil
+  backdrop-filter: blur(12px);
+  padding: 16px 24px; // Padding reducido
+  border-radius: 16px; // Bordes más redondeados
   text-align: center;
   z-index: 35;
-  border: 3px solid;
-  animation: pulse 2s infinite;
+  border: 2px solid; // Borde más delgado
+  max-width: 280px; // Ancho máximo para no ocupar mucho espacio
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); // Sombra más sutil
+  animation: readinessFloat 3s ease-in-out infinite; // Animación más suave
 
   &.not-ready {
     border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
     
     .readiness-icon {
-      color: #3b82f6;
+      color: #60a5fa;
     }
   }
 
   &.getting-ready {
     border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
     
     .readiness-icon {
-      color: #f59e0b;
+      color: #fbbf24;
     }
   }
 
   &.ready-to-start {
     border-color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
     
     .readiness-icon {
-      color: #22c55e;
+      color: #4ade80;
     }
   }
 
   .readiness-icon {
-    font-size: 32px;
-    margin-bottom: 10px;
+    font-size: 28px; // Ligeramente más pequeño
+    margin-bottom: 8px;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
   }
 
   .readiness-message {
     color: white;
-    font-size: 18px;
-    font-weight: bold;
+    font-size: 16px; // Más compacto
+    font-weight: 600;
     margin: 0;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -362,32 +385,218 @@
   }
 }
 
-// 🎛️ CONTROLES
+// 🎛️ CONTROLES MEJORADOS - Con más vida y atractivos
 .controls-panel {
   position: absolute;
-  bottom: 15px;
-  left: 15px;
-  right: 15px;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%); // Centrado
   display: flex;
   justify-content: center;
-  gap: 10px;
+  gap: 16px; // Más espacio entre botones
   z-index: 30;
+  padding: 12px 20px;
+  background: rgba(15, 23, 42, 0.8); // Fondo del panel
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 
   ion-button {
-    --border-radius: 50%;
-    --padding-start: 12px;
-    --padding-end: 12px;
-    width: 44px;
-    height: 44px;
-    backdrop-filter: blur(10px);
-    background: rgba(0, 0, 0, 0.5);
+    --border-radius: 16px; // Más redondeado
+    --padding-start: 16px;
+    --padding-end: 16px;
+    --padding-top: 14px;
+    --padding-bottom: 14px;
+    width: 56px;
+    height: 56px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    // Fondo base
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(8px);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+
+    // Efecto de brillo interno
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+      );
+      transition: left 0.5s ease;
+    }
 
     ion-icon {
-      font-size: 20px;
+      font-size: 24px;
+      transition: all 0.3s ease;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+
+    // Estados de color
+    &[color="medium"] {
+      --color: #94a3b8;
+      border-color: rgba(148, 163, 184, 0.3);
+      
+      &:hover {
+        --color: #cbd5e1;
+        border-color: rgba(203, 213, 225, 0.5);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+      }
+    }
+
+    &[color="primary"] {
+      --color: #3b82f6;
+      border-color: rgba(59, 130, 246, 0.5);
+      background: rgba(59, 130, 246, 0.2);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+      
+      &:hover {
+        --color: #60a5fa;
+        border-color: rgba(96, 165, 250, 0.7);
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+      }
+
+      ion-icon {
+        color: #60a5fa;
+        filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.5));
+      }
+    }
+
+    // Efectos de hover
+    &:hover {
+      &::before {
+        left: 100%;
+      }
+      
+      ion-icon {
+        transform: scale(1.1);
+      }
+    }
+
+    // Efecto de pulso para estado activo
+    &[color="primary"] {
+      animation: buttonPulse 2s infinite;
+    }
+
+    // Efectos específicos por tipo de botón
+    &:nth-child(1) { // Esqueleto
+      &[color="primary"] {
+        --color: #10b981;
+        border-color: rgba(16, 185, 129, 0.5);
+        background: rgba(16, 185, 129, 0.2);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+      }
+    }
+
+    &:nth-child(2) { // Detección de errores
+      &[color="primary"] {
+        --color: #f59e0b;
+        border-color: rgba(245, 158, 11, 0.5);
+        background: rgba(245, 158, 11, 0.2);
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+      }
+    }
+
+    &:nth-child(3) { // Audio
+      &[color="primary"] {
+        --color: #8b5cf6;
+        border-color: rgba(139, 92, 246, 0.5);
+        background: rgba(139, 92, 246, 0.2);
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+      }
+    }
+
+    &:nth-child(4) { // Parar
+      &[color="danger"] {
+        --color: #ef4444;
+        border-color: rgba(239, 68, 68, 0.5);
+        background: rgba(239, 68, 68, 0.2);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+      }
     }
   }
 }
+// 🎨 ANIMACIONES MEJORADAS
+@keyframes readinessFloat {
+  0%, 100% {
+    transform: translate(-50%, -50%) translateY(0px);
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-4px);
+  }
+}
 
+@keyframes buttonPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+  }
+}
+
+// 📱 RESPONSIVE - Ajustes para móviles
+@media (max-width: 768px) {
+  .readiness-panel {
+    top: 55%; // Ligeramente más arriba en móvil
+    padding: 12px 20px;
+    max-width: 260px;
+    
+    .readiness-icon {
+      font-size: 24px;
+    }
+    
+    .readiness-message {
+      font-size: 14px;
+    }
+  }
+
+  .controls-panel {
+    bottom: 15px;
+    gap: 12px;
+    padding: 10px 16px;
+    
+    ion-button {
+      width: 48px;
+      height: 48px;
+      --padding-start: 12px;
+      --padding-end: 12px;
+      --padding-top: 12px;
+      --padding-bottom: 12px;
+      
+      ion-icon {
+        font-size: 20px;
+      }
+    }
+  }
+}
+// 🌙 MODO COMPACTO (opcional)
+.controls-panel.compact {
+  padding: 8px 12px;
+  gap: 8px;
+  
+  ion-button {
+    width: 40px;
+    height: 40px;
+    --border-radius: 12px;
+    
+    ion-icon {
+      font-size: 18px;
+    }
+  }
+}
 // 🎤 INDICADOR DE AUDIO
 .audio-indicator {
   position: absolute;
@@ -416,55 +625,38 @@
   }
 }
 
-// 📱 RESPONSIVE
-@media (max-width: 768px) {
+// 📱 VERSION MÓVIL - Aún más compacta
+@media (max-width: 480px) {
   .info-panel {
-    flex-direction: column;
-    gap: 8px;
-    align-items: stretch;
+    top: 8px;
+    right: 8px;
+    max-width: 160px;
+    gap: 4px;
 
     > div {
-      font-size: 12px;
+      padding: 3px 6px;
+      font-size: 10px;
     }
+  }
+
+  .exercise-info .exercise-name {
+    font-size: 11px;
+    max-width: 120px;
   }
 
   .repetition-counter .counter-value {
-    font-size: 20px;
-  }
-
-  .quality-score .score-value {
     font-size: 16px;
   }
 
-  .current-errors {
-    bottom: 70px;
-
-    .error-item {
-      padding: 10px;
-
-      .error-header .error-type {
-        font-size: 13px;
-      }
-
-      .error-description {
-        font-size: 12px;
-      }
-
-      .error-recommendation {
-        font-size: 11px;
-      }
-    }
+  .quality-score .score-value {
+    font-size: 13px;
   }
 
-  .readiness-panel {
-    padding: 15px 20px;
+  .fps-indicator {
+    font-size: 9px;
     
-    .readiness-icon {
-      font-size: 28px;
-    }
-    
-    .readiness-message {
-      font-size: 16px;
+    ion-icon {
+      font-size: 10px;
     }
   }
 }
@@ -478,6 +670,31 @@
   50% {
     opacity: 0.8;
     transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+// 🎯 VERSIÓN MINIMALISTA (Opcional - Solo elementos esenciales)
+.info-panel.minimal {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 180px;
+
+  .exercise-info {
+    display: none; // Oculta info del ejercicio en modo minimal
+  }
+
+  .repetition-counter,
+  .quality-score,
+  .fps-indicator {
+    flex: 0 0 auto;
+    min-width: 45px;
+  }
+}
+.info-panel.semi-transparent {
+  > div {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 }
 
