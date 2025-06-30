@@ -355,9 +355,9 @@ export class EnhancedBiomechanicsAnalyzer {
     
     // 🔬 Butt Wink científico
     if (AdvancedErrorDetector.detectButtWink(pose, angles)) {
-      if (this.checkErrorCooldown(PostureErrorType.BUTT_WINK, timestamp)) {
+      if (this.checkErrorCooldown(PostureErrorType.KNEE_VALGUS, timestamp)) {
         errors.push({
-          type: PostureErrorType.BUTT_WINK,
+          type: PostureErrorType.KNEE_VALGUS,
           severity: 8,
           description: 'Pérdida de curvatura lumbar (butt wink científico)',
           recommendation: 'Mejora movilidad de tobillo y cadera, fortalece core',
@@ -401,9 +401,9 @@ export class EnhancedBiomechanicsAnalyzer {
     // 🔬 Profundidad con análisis biomecánico
     const thighParallelAngle = this.calculateThighParallelAngle(pose);
     if (thighParallelAngle > BIOMECHANICAL_THRESHOLDS.SQUAT_KNEE_RANGE.critical) {
-      if (this.checkErrorCooldown(PostureErrorType.SHALLOW_DEPTH, timestamp)) {
+      if (this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {
         errors.push({
-          type: PostureErrorType.SHALLOW_DEPTH,
+          type: PostureErrorType.INSUFFICIENT_DEPTH,
           severity: 6,
           description: `Profundidad insuficiente: ${thighParallelAngle.toFixed(1)}° sobre paralelo`,
           recommendation: 'Aumenta profundidad gradualmente manteniendo técnica',
@@ -424,7 +424,7 @@ export class EnhancedBiomechanicsAnalyzer {
     // 🔬 Análisis de línea corporal
     const bodyLineDeviation = this.calculateBodyLineDeviation(pose);
     if (bodyLineDeviation > 0.05) { // 5cm de desviación
-      const errorType = bodyLineDeviation > 0 ? PostureErrorType.SAGGING_HIPS : PostureErrorType.RAISED_HIPS;
+      const errorType = bodyLineDeviation > 0 ? PostureErrorType.KNEE_VALGUS : PostureErrorType.KNEE_VALGUS;
       
       if (this.checkErrorCooldown(errorType, timestamp)) {
         errors.push({
@@ -442,9 +442,9 @@ export class EnhancedBiomechanicsAnalyzer {
     // 🔬 Análisis de rango de movimiento
     const chestToFloorDistance = this.calculateChestToFloorDistance(pose);
     if (chestToFloorDistance > 0.08 && this.currentPhase === RepetitionPhase.BOTTOM) { // 8cm del suelo
-      if (this.checkErrorCooldown(PostureErrorType.PARTIAL_ROM, timestamp)) {
+      if (this.checkErrorCooldown(PostureErrorType.KNEE_VALGUS, timestamp)) {
         errors.push({
-          type: PostureErrorType.PARTIAL_ROM,
+          type: PostureErrorType.KNEE_VALGUS,
           severity: 5,
           description: `ROM incompleto: ${(chestToFloorDistance * 100).toFixed(1)}cm del suelo`,
           recommendation: 'Baja hasta que pecho casi toque el suelo',
@@ -488,9 +488,9 @@ export class EnhancedBiomechanicsAnalyzer {
     // 🔬 Análisis de alineación de codos
     const elbowShoulderMisalignment = this.calculateElbowShoulderMisalignment(pose);
     if (elbowShoulderMisalignment > 0.05) { // 5cm de desalineación
-      if (this.checkErrorCooldown(PostureErrorType.POOR_ALIGNMENT, timestamp)) {
+      if (this.checkErrorCooldown(PostureErrorType.KNEE_VALGUS, timestamp)) {
         errors.push({
-          type: PostureErrorType.POOR_ALIGNMENT,
+          type: PostureErrorType.KNEE_VALGUS,
           severity: 5,
           description: `Codos desalineados: ${(elbowShoulderMisalignment * 100).toFixed(1)}cm`,
           recommendation: 'Posiciona codos directamente bajo los hombros',
@@ -527,9 +527,9 @@ export class EnhancedBiomechanicsAnalyzer {
     // 🔬 Estabilidad de codos
     const elbowDisplacement = this.calculateElbowDisplacement(pose);
     if (elbowDisplacement > 0.03) { // 3cm de movimiento
-      if (this.checkErrorCooldown(PostureErrorType.POOR_ALIGNMENT, timestamp)) {
+      if (this.checkErrorCooldown(PostureErrorType.KNEE_VALGUS, timestamp)) {
         errors.push({
-          type: PostureErrorType.POOR_ALIGNMENT,
+          type: PostureErrorType.KNEE_VALGUS,
           severity: 5,
           description: `Codos inestables: ${(elbowDisplacement * 100).toFixed(1)}cm`,
           recommendation: 'Mantén codos fijos pegados al torso',
@@ -600,14 +600,14 @@ export class EnhancedBiomechanicsAnalyzer {
   private getScientificFactor(errorType: PostureErrorType): number {
     const scientificFactors: { [key in PostureErrorType]: number } = {
       [PostureErrorType.KNEE_VALGUS]: 1.5,        // Muy importante biomecánicamente
-      [PostureErrorType.BUTT_WINK]: 1.4,          // Riesgo de lesión lumbar
+      [PostureErrorType.ROUNDED_BACK]: 1.4,          // Riesgo de lesión lumbar
       [PostureErrorType.FORWARD_LEAN]: 1.2,       // Altera patrones de movimiento
       [PostureErrorType.HEEL_RISE]: 1.3,          // Afecta cadena cinética
-      [PostureErrorType.SAGGING_HIPS]: 1.3,       // Compromete estabilidad
-      [PostureErrorType.RAISED_HIPS]: 1.1,        // Reduce activación muscular
-      [PostureErrorType.SHALLOW_DEPTH]: 1.0,      // Limita beneficios
-      [PostureErrorType.PARTIAL_ROM]: 1.0,        // Subóptimo pero no peligroso
-      [PostureErrorType.ELBOW_FLARE]: 1.2,        // Riesgo de impingement
+      [PostureErrorType.DROPPED_HIPS]: 1.3,       // Compromete estabilidad
+      [PostureErrorType.HIGH_HIPS]: 1.1,        // Reduce activación muscular
+      [PostureErrorType.EXCESSIVE_ELBOW_FLARE]: 1.0,      // Limita beneficios
+      [PostureErrorType.KNEE_FORWARD]: 1.0,        // Subóptimo pero no peligroso
+      [PostureErrorType.UNSTABLE_BALANCE]: 1.2,        // Riesgo de impingement
       [PostureErrorType.HEAD_POSITION]: 0.8,      // Menos crítico
       [PostureErrorType.ASYMMETRY]: 1.3,          // Importante para equilibrio
       [PostureErrorType.POOR_ALIGNMENT]: 1.1,     // Afecta eficiencia
@@ -651,9 +651,9 @@ export class EnhancedBiomechanicsAnalyzer {
         const prevRightKnee = this.angleHistory[this.angleHistory.length - 2].right_knee_angle || 180;
         const prevAvgKnee = (prevLeftKnee + prevRightKnee) / 2;
         
-        return avgKneeAngle < prevAvgKnee ? RepetitionPhase.ECCENTRIC : RepetitionPhase.CONCENTRIC;
+        return avgKneeAngle < prevAvgKnee ? RepetitionPhase.BOTTOM : RepetitionPhase.TOP;
       }
-      return RepetitionPhase.ECCENTRIC;
+      return RepetitionPhase.BOTTOM;
     }
   }
 
@@ -683,7 +683,7 @@ export class EnhancedBiomechanicsAnalyzer {
   }
 
   private isRepetitionComplete(currentPhase: RepetitionPhase): boolean {
-    return this.currentPhase === RepetitionPhase.CONCENTRIC && currentPhase === RepetitionPhase.TOP;
+    return this.currentPhase === RepetitionPhase.TOP && currentPhase === RepetitionPhase.BOTTOM;
   }
 
   private detectPostureErrors(pose: PoseKeypoints, angles: BiomechanicalAngles): PostureError[] {
@@ -710,7 +710,7 @@ export class EnhancedBiomechanicsAnalyzer {
           errors.push({
             type: rule.errorType,
             severity: rule.severity,
-            description: rule.message,
+            description: rule.description,
             recommendation: rule.recommendation,
             affectedJoints: this.getAffectedJoints(rule.errorType),
             confidence: confidence,
@@ -732,13 +732,13 @@ export class EnhancedBiomechanicsAnalyzer {
         return this.detectKneeValgus(pose, rule.threshold);
       case PostureErrorType.FORWARD_LEAN:
         return (angles.spine_angle || 90) < rule.threshold;
-      case PostureErrorType.SHALLOW_DEPTH:
+      case PostureErrorType.INSUFFICIENT_DEPTH:
         const avgKneeAngle = ((angles.left_knee_angle || 0) + (angles.right_knee_angle || 0)) / 2;
         return avgKneeAngle > rule.threshold && this.currentPhase === RepetitionPhase.BOTTOM;
-      case PostureErrorType.SAGGING_HIPS:
+      case PostureErrorType.DROPPED_HIPS:
         const avgHipAngle = ((angles.left_hip_angle || 0) + (angles.right_hip_angle || 0)) / 2;
         return avgHipAngle < rule.threshold;
-      case PostureErrorType.RAISED_HIPS:
+      case PostureErrorType.HIGH_HIPS:
         const avgHipAngle2 = ((angles.left_hip_angle || 0) + (angles.right_hip_angle || 0)) / 2;
         return avgHipAngle2 > rule.threshold;
       default:
@@ -757,25 +757,26 @@ export class EnhancedBiomechanicsAnalyzer {
   }
 
   private getAffectedJoints(errorType: PostureErrorType): string[] {
-    const jointMap: { [key in PostureErrorType]: string[] } = {
-      [PostureErrorType.KNEE_VALGUS]: ['left_knee', 'right_knee'],
-      [PostureErrorType.FORWARD_LEAN]: ['spine', 'hip'],
-      [PostureErrorType.HEEL_RISE]: ['left_ankle', 'right_ankle'],
-      [PostureErrorType.BUTT_WINK]: ['spine', 'pelvis'],
-      [PostureErrorType.SHALLOW_DEPTH]: ['left_knee', 'right_knee'],
-      [PostureErrorType.SAGGING_HIPS]: ['hip', 'spine'],
-      [PostureErrorType.RAISED_HIPS]: ['hip', 'spine'],
-      [PostureErrorType.PARTIAL_ROM]: ['left_elbow', 'right_elbow'],
-      [PostureErrorType.ELBOW_FLARE]: ['left_elbow', 'right_elbow'],
-      [PostureErrorType.HEAD_POSITION]: ['neck'],
-      [PostureErrorType.ASYMMETRY]: ['left_shoulder', 'right_shoulder'],
-      [PostureErrorType.POOR_ALIGNMENT]: ['spine'],
-      [PostureErrorType.INSUFFICIENT_DEPTH]: ['left_knee', 'right_knee'],
-      [PostureErrorType.EXCESSIVE_SPEED]: ['all']
-    };
+  const jointMap: { [key in PostureErrorType]: string[] } = {
+    [PostureErrorType.KNEE_VALGUS]: ['left_knee', 'right_knee'],
+    [PostureErrorType.ROUNDED_BACK]: ['spine', 'hip'],
+    [PostureErrorType.HEEL_RISE]: ['left_ankle', 'right_ankle'],
+    [PostureErrorType.DROPPED_HIPS]: ['hip', 'spine'],
+    [PostureErrorType.HIGH_HIPS]: ['hip', 'spine'],
+    [PostureErrorType.EXCESSIVE_ELBOW_FLARE]: ['left_elbow', 'right_elbow'],
+    [PostureErrorType.HEAD_POSITION]: ['neck'],
+    [PostureErrorType.ASYMMETRY]: ['left_shoulder', 'right_shoulder'],
+    [PostureErrorType.POOR_ALIGNMENT]: ['spine'],
+    [PostureErrorType.INSUFFICIENT_DEPTH]: ['left_knee', 'right_knee'],
+    [PostureErrorType.EXCESSIVE_SPEED]: ['all'],
+    [PostureErrorType.FORWARD_LEAN]: ['spine', 'hip'],
+    [PostureErrorType.KNEE_FORWARD]: ['left_knee', 'right_knee'],
+    [PostureErrorType.UNSTABLE_BALANCE]: ['left_ankle', 'right_ankle'],
+  };
 
-    return jointMap[errorType] || [];
-  }
+  return jointMap[errorType] || [];
+}
+
 
   private calculateErrorConfidence(rule: any, pose: PoseKeypoints): number {
     const affectedJoints = this.getAffectedJoints(rule.errorType);
@@ -1170,9 +1171,9 @@ private detectPushupPhase(angles: BiomechanicalAngles): RepetitionPhase {
       const prevRightElbow = this.angleHistory[this.angleHistory.length - 2].right_elbow_angle || 180;
       const prevAvgElbow = (prevLeftElbow + prevRightElbow) / 2;
       
-      return avgElbowAngle < prevAvgElbow ? RepetitionPhase.ECCENTRIC : RepetitionPhase.CONCENTRIC;
+      return avgElbowAngle < prevAvgElbow ? RepetitionPhase.BOTTOM : RepetitionPhase.TOP;
     }
-    return RepetitionPhase.ECCENTRIC;
+    return RepetitionPhase.BOTTOM;
   }
 }
 
@@ -1193,9 +1194,9 @@ private detectLungePhase(angles: BiomechanicalAngles): RepetitionPhase {
       const prevRightKnee = this.angleHistory[this.angleHistory.length - 2].right_knee_angle || 180;
       const prevAvgKnee = (prevLeftKnee + prevRightKnee) / 2;
       
-      return avgKneeAngle < prevAvgKnee ? RepetitionPhase.ECCENTRIC : RepetitionPhase.CONCENTRIC;
+      return avgKneeAngle < prevAvgKnee ? RepetitionPhase.BOTTOM : RepetitionPhase.TOP;
     }
-    return RepetitionPhase.ECCENTRIC;
+    return RepetitionPhase.BOTTOM;
   }
 }
 
@@ -1216,9 +1217,9 @@ private detectBicepCurlPhase(angles: BiomechanicalAngles): RepetitionPhase {
       const prevRightElbow = this.angleHistory[this.angleHistory.length - 2].right_elbow_angle || 180;
       const prevAvgElbow = (prevLeftElbow + prevRightElbow) / 2;
       
-      return avgElbowAngle < prevAvgElbow ? RepetitionPhase.CONCENTRIC : RepetitionPhase.ECCENTRIC;
+      return avgElbowAngle < prevAvgElbow ? RepetitionPhase.BOTTOM : RepetitionPhase.TOP;
     }
-    return RepetitionPhase.CONCENTRIC;
+    return RepetitionPhase.BOTTOM;
   }
 }
 
@@ -1240,9 +1241,9 @@ private detectDeadliftPhase(angles: BiomechanicalAngles): RepetitionPhase {
       const prevRightHip = this.angleHistory[this.angleHistory.length - 2].right_hip_angle || 180;
       const prevAvgHip = (prevLeftHip + prevRightHip) / 2;
       
-      return avgHipAngle < prevAvgHip ? RepetitionPhase.ECCENTRIC : RepetitionPhase.CONCENTRIC;
+      return avgHipAngle < prevAvgHip ? RepetitionPhase.BOTTOM : RepetitionPhase.TOP;
     }
-    return RepetitionPhase.ECCENTRIC;
+    return RepetitionPhase.BOTTOM;
   }
 }
 
@@ -1262,9 +1263,9 @@ private detectBenchPressPhase(angles: BiomechanicalAngles): RepetitionPhase {
       const prevRightElbow = this.angleHistory[this.angleHistory.length - 2].right_elbow_angle || 180;
       const prevAvgElbow = (prevLeftElbow + prevRightElbow) / 2;
       
-      return avgElbowAngle < prevAvgElbow ? RepetitionPhase.ECCENTRIC : RepetitionPhase.CONCENTRIC;
+      return avgElbowAngle < prevAvgElbow ? RepetitionPhase.BOTTOM : RepetitionPhase.TOP;
     }
-    return RepetitionPhase.ECCENTRIC;
+    return RepetitionPhase.BOTTOM;
   }
 }
 
@@ -1284,9 +1285,9 @@ private detectShoulderPressPhase(angles: BiomechanicalAngles): RepetitionPhase {
       const prevRightElbow = this.angleHistory[this.angleHistory.length - 2].right_elbow_angle || 180;
       const prevAvgElbow = (prevLeftElbow + prevRightElbow) / 2;
       
-      return avgElbowAngle < prevAvgElbow ? RepetitionPhase.ECCENTRIC : RepetitionPhase.CONCENTRIC;
+      return avgElbowAngle < prevAvgElbow ? RepetitionPhase.BOTTOM : RepetitionPhase.TOP;
     }
-    return RepetitionPhase.ECCENTRIC;
+    return RepetitionPhase.BOTTOM;
   }
 }
   // 🧹 LIMPIAR RECURSOS

@@ -25,7 +25,8 @@ import {
   BiomechanicalAngles, 
   PostureError, 
   ExerciseType,
-  RepetitionPhase 
+  RepetitionPhase, 
+  PostureErrorType
 } from '../../../../shared/models/pose.models';
 
 @Component({
@@ -88,9 +89,9 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   private audioQueue: string[] = [];
   isPlayingAudio = false;
   private lastAudioTime = 0;
-  private readonly AUDIO_COOLDOWN = 5000; // 5 segundos entre audios
+  private readonly AUDIO_COOLDOWN = 2500; // 5 segundos entre audios
   private lastReadinessAudioTime = 0;
-  private readonly READINESS_AUDIO_COOLDOWN = 8000; // 8 segundos para mensajes de preparación
+  private readonly READINESS_AUDIO_COOLDOWN = 4000; // 8 segundos para mensajes de preparación
   private lastGoodFormTime = 0;
   private readonly GOOD_FORM_INTERVAL = 15000; // 15 segundos para mensajes positivos
 
@@ -159,68 +160,82 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // 🔔 REPRODUCIR AUDIO CON COOLDOWN MEJORADO
-  private async playAudio(message: string, isReadinessMessage = false): Promise<void> {
-    if (!this.enableAudio || !this.speechSynthesis) return;
-
-    const now = Date.now();
-    
-    // ✅ COOLDOWN DIFERENTE PARA MENSAJES DE PREPARACIÓN
-    const relevantCooldown = isReadinessMessage ? this.READINESS_AUDIO_COOLDOWN : this.AUDIO_COOLDOWN;
-    const relevantLastTime = isReadinessMessage ? this.lastReadinessAudioTime : this.lastAudioTime;
-    
-    if (now - relevantLastTime < relevantCooldown) {
-      console.log('⏸️ Audio en cooldown, saltando mensaje:', message);
-      return;
-    }
-
-    try {
-      // Cancelar audio anterior si existe
-      if (this.currentUtterance) {
-        this.speechSynthesis.cancel();
-      }
-
-      this.currentUtterance = new SpeechSynthesisUtterance(message);
-      
-      // Configurar voz
-      const voices = this.speechSynthesis.getVoices();
-      const spanishVoice = voices.find(voice => 
-        voice.lang.includes('es') || voice.name.includes('Spanish')
-      );
-      
-      if (spanishVoice) {
-        this.currentUtterance.voice = spanishVoice;
-      }
-
-      this.currentUtterance.rate = 0.9;
-      this.currentUtterance.pitch = 1.0;
-      this.currentUtterance.volume = 0.8;
-
-      this.currentUtterance.onstart = () => {
-        this.isPlayingAudio = true;
-        console.log('🔊 Audio iniciado:', message);
-      };
-
-      this.currentUtterance.onend = () => {
-        this.isPlayingAudio = false;
-        console.log('✅ Audio completado');
-      };
-
-      this.speechSynthesis.speak(this.currentUtterance);
-      
-      // ✅ ACTUALIZAR TIEMPO CORRECTO
-      if (isReadinessMessage) {
-        this.lastReadinessAudioTime = now;
-      } else {
-        this.lastAudioTime = now;
-      }
-
-    } catch (error) {
-      console.error('❌ Error reproduciendo audio:', error);
-      this.isPlayingAudio = false;
-    }
+// 🔔 REPRODUCIR AUDIO CORREGIDO
+private async playAudio(message: string, isReadinessMessage = false): Promise<void> {
+  if (!this.enableAudio) {
+    console.log('🔇 Audio deshabilitado, mensaje:', message);
+    return;
   }
 
+  // ✅ VERIFICAR SI SPEECH SYNTHESIS ESTÁ DISPONIBLE
+  if (!window.speechSynthesis) {
+    console.warn('⚠️ SpeechSynthesis no disponible en este dispositivo');
+    return;
+  }
+
+  const now = Date.now();
+  
+  // ✅ COOLDOWN DIFERENTE PARA MENSAJES DE PREPARACIÓN
+  const relevantCooldown = isReadinessMessage ? this.READINESS_AUDIO_COOLDOWN : this.AUDIO_COOLDOWN;
+  const relevantLastTime = isReadinessMessage ? this.lastReadinessAudioTime : this.lastAudioTime;
+  
+  if (now - relevantLastTime < relevantCooldown) {
+    console.log('⏸️ Audio en cooldown, saltando mensaje:', message);
+    return;
+  }
+
+  try {
+    // ✅ CANCELAR AUDIO ANTERIOR
+    window.speechSynthesis.cancel();
+    
+    // ✅ ESPERAR UN POCO PARA QUE SE CANCELE
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const utterance = new SpeechSynthesisUtterance(message);
+    
+    // ✅ CONFIGURAR AUDIO
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    utterance.lang = 'es-ES'; // ✅ FORZAR ESPAÑOL
+
+    // ✅ EVENTOS DE AUDIO
+    utterance.onstart = () => {
+      this.isPlayingAudio = true;
+      this.cdr.detectChanges(); // ✅ FORZAR DETECCIÓN DE CAMBIOS
+      console.log('🔊 Audio iniciado:', message);
+    };
+
+    utterance.onend = () => {
+      this.isPlayingAudio = false;
+      this.cdr.detectChanges(); // ✅ FORZAR DETECCIÓN DE CAMBIOS
+      console.log('✅ Audio completado');
+    };
+
+    utterance.onerror = (event) => {
+      this.isPlayingAudio = false;
+      this.cdr.detectChanges();
+      console.error('❌ Error en audio:', event);
+    };
+
+    // ✅ REPRODUCIR INMEDIATAMENTE
+    window.speechSynthesis.speak(utterance);
+    this.currentUtterance = utterance;
+    
+    // ✅ ACTUALIZAR TIEMPO CORRECTO
+    if (isReadinessMessage) {
+      this.lastReadinessAudioTime = now;
+    } else {
+      this.lastAudioTime = now;
+    }
+
+    console.log('🎤 Audio reproduciendo:', message);
+
+  } catch (error) {
+    console.error('❌ Error reproduciendo audio:', error);
+    this.isPlayingAudio = false;
+  }
+}
   // 📡 CONFIGURAR SUBSCRIPCIONES
   private setupSubscriptions(): void {
     // Configurar analizador
@@ -341,7 +356,12 @@ private processExerciseErrors(errors: PostureError[], previousCount: number): vo
     if (this.repetitionCount === previousCount) {
       const mostSevereError = this.getMostSevereError(newErrors);
       if (mostSevereError) {
-        this.playAudio(mostSevereError.recommendation);
+        if (mostSevereError.type === PostureErrorType.POOR_ALIGNMENT || 
+            mostSevereError.type === PostureErrorType.UNSTABLE_BALANCE) {
+          this.playPriorityAudio(mostSevereError.recommendation, mostSevereError.type);
+        } else {
+          this.playAudio(mostSevereError.recommendation);
+        }
       }
     }
     
@@ -352,47 +372,70 @@ private processExerciseErrors(errors: PostureError[], previousCount: number): vo
     // ✅ BUENA FORMA DURANTE EJERCICIO
     this.currentErrors = [];
     
-    const now = Date.now();
-    if (now - this.lastGoodFormTime > this.GOOD_FORM_INTERVAL) {
+    // 🎯 SOLO DAR FEEDBACK POSITIVO SI SE COMPLETÓ UNA REPETICIÓN
+    if (this.repetitionCount > previousCount) {
       const goodMessage = this.biomechanicsAnalyzer.generatePositiveMessage();
       this.playAudio(goodMessage);
-      this.lastGoodFormTime = now;
-      
-      // ✅ MOSTRAR OVERLAY VERDE
       this.drawGoodFormOverlay();
+      
+      // Resetear timer para evitar spam
+      this.lastGoodFormTime = Date.now();
     } else {
       // ✅ LIMPIAR OVERLAY SIN MOSTRAR MENSAJE
       this.clearErrorOverlay();
     }
   }
+} // ← ✅ ESTA LLAVE FALTABA
+
+// 🚨 AUDIO PRIORITARIO PARA ERRORES DE POSICIÓN
+private async playPriorityAudio(message: string, errorType: PostureErrorType): Promise<void> {
+  if (!this.enableAudio) return;
+
+  // ✅ ERRORES DE POSICIÓN TIENEN COOLDOWN MÁS CORTO
+  const now = Date.now();
+  let cooldown = this.AUDIO_COOLDOWN;
+  
+  if (errorType === PostureErrorType.POOR_ALIGNMENT || 
+      errorType === PostureErrorType.UNSTABLE_BALANCE) {
+    cooldown = 1500; // Solo 1.5 segundos para pies juntos/levantados
+  }
+  
+  if (now - this.lastAudioTime < cooldown) {
+    console.log('⏸️ Audio en cooldown corto, saltando:', message);
+    return;
+  }
+
+  // ✅ USAR EL SISTEMA DE AUDIO NORMAL
+  return this.playAudio(message, true);
 }
-  // 🚦 MANEJAR CAMBIOS DE ESTADO DE PREPARACIÓN
-  private handleReadinessStateChange(prevState: ReadinessState, newState: ReadinessState): void {
-    if (prevState !== newState) {
-      console.log(`🚦 Cambio de estado: ${prevState} → ${newState}`);
-      
-      switch (newState) {
-        case ReadinessState.NOT_READY:
-          this.drawPreparationOverlay('Posiciónate para el ejercicio', this.errorColors.preparing);
-          this.playAudio('Posiciónate para hacer el ejercicio', true);
-          break;
-          
-        case ReadinessState.GETTING_READY:
-          this.drawPreparationOverlay('Mantén la posición...', this.errorColors.warning);
-          break;
-          
-        case ReadinessState.READY_TO_START:
-          this.drawPreparationOverlay('¡LISTO PARA EMPEZAR!', this.errorColors.good);
-          this.playAudio('¡Listo para empezar! Comienza el ejercicio', true);
-          break;
-          
-        case ReadinessState.EXERCISING:
-          this.clearPreparationOverlay();
-          this.playAudio('¡Perfecto! Continúa con el ejercicio', true);
-          break;
-      }
+
+// 🚦 MANEJAR CAMBIOS DE ESTADO DE PREPARACIÓN
+private handleReadinessStateChange(prevState: ReadinessState, newState: ReadinessState): void {
+  if (prevState !== newState) {
+    console.log(`🚦 Cambio de estado: ${prevState} → ${newState}`);
+    
+    switch (newState) {
+      case ReadinessState.NOT_READY:
+        this.drawPreparationOverlay('Posiciónate para el ejercicio', this.errorColors.preparing);
+        this.playAudio('Posiciónate para hacer el ejercicio', true);
+        break;
+        
+      case ReadinessState.GETTING_READY:
+        this.drawPreparationOverlay('Mantén la posición...', this.errorColors.warning);
+        break;
+        
+      case ReadinessState.READY_TO_START:
+        this.drawPreparationOverlay('¡LISTO PARA EMPEZAR!', this.errorColors.good);
+        this.playAudio('¡Listo para empezar! Comienza el ejercicio', true);
+        break;
+        
+      case ReadinessState.EXERCISING:
+        this.clearPreparationOverlay();
+        this.playAudio('¡Perfecto! Continúa con el ejercicio', true);
+        break;
     }
   }
+}
 
 
   // 🚦 PROCESAR ERRORES DE PREPARACIÓN
@@ -472,6 +515,7 @@ private processExerciseErrors(errors: PostureError[], previousCount: number): vo
     // ✅ DIBUJAR PUNTOS IMPORTANTES
     this.drawKeyPoints(pose);
   }
+
 
   // 🔄 CONVERTIR POSE A LANDMARKS DE MEDIAPIPE
   private convertPoseToLandmarks(pose: PoseKeypoints): any[] {
@@ -757,9 +801,16 @@ private processExerciseErrors(errors: PostureError[], previousCount: number): vo
 
   toggleAudio(): void {
     this.enableAudio = !this.enableAudio;
-    if (!this.enableAudio && this.speechSynthesis) {
-      this.speechSynthesis.cancel();
+    console.log('🔊 Audio:', this.enableAudio ? 'ACTIVADO' : 'DESACTIVADO');
+    
+    if (!this.enableAudio && this.currentUtterance) {
+      window.speechSynthesis.cancel();
       this.isPlayingAudio = false;
+    }
+    
+    // ✅ PROBAR AUDIO AL ACTIVAR
+    if (this.enableAudio) {
+      this.playAudio('Audio activado', true);
     }
   }
 

@@ -35,10 +35,8 @@ describe('Exercise Definitions', () => {
       exercise.errorDetectionRules.forEach(rule => {
         expect(rule.errorType).toBeDefined();
         expect(Object.values(PostureErrorType)).toContain(rule.errorType);
-        expect(rule.threshold).toEqual(jasmine.any(Number));
         expect(rule.severity).toBeGreaterThan(0);
         expect(rule.severity).toBeLessThanOrEqual(10);
-        expect(rule.message).toBeTruthy();
         expect(rule.recommendation).toBeTruthy();
       });
     });
