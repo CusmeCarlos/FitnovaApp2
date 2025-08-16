@@ -1,14 +1,16 @@
 // src/app/services/notification.service.ts
-// NOTIFICATIONSERVICE - FCM + ALERTAS AL ENTRENADOR
+// NOTIFICATIONSERVICE - FCM + ALERTAS AL ENTRENADOR (CORREGIDO)
 
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AngularFireFunctions } from '@angular/fire/compat/functions';
+import { AngularFireMessaging } from '@angular/fire/compat/messaging'; // NUEVO
 import { AuthService } from './auth.service';
 import { ErrorHandlerService } from './error-handler.service';
-import { take } from 'rxjs/operators';
+import { firstValueFrom } from 'rxjs';
 
 export interface NotificationAlert {
+  id?: string;
   uid: string;
   userDisplayName?: string;
   userEmail?: string;
@@ -22,7 +24,7 @@ export interface NotificationAlert {
   biomechanicsData?: any;
   sent: boolean;
   trainerNotified?: boolean;
-  suppressedUntil?: Date; // Para supresión temporal
+  suppressedUntil?: Date;
 }
 
 export interface NotificationPreferences {
@@ -31,7 +33,7 @@ export interface NotificationPreferences {
   enableHighAlerts: boolean;
   enableMediumAlerts: boolean;
   enableLowAlerts: boolean;
-  suppressionMinutes: number; // Tiempo de supresión después de alerta
+  suppressionMinutes: number;
   maxAlertsPerHour: number;
   alertMethods: {
     fcm: boolean;
@@ -44,17 +46,110 @@ export interface NotificationPreferences {
   providedIn: 'root'
 })
 export class NotificationService {
-  private suppressionMap = new Map<string, Date>(); // errorType_uid -> suppressedUntil
-  private hourlyAlertCount = new Map<string, { count: number; resetTime: Date }>(); // uid -> counts
+  private suppressionMap = new Map<string, Date>();
+  private hourlyAlertCount = new Map<string, { count: number; resetTime: Date }>();
+  private fcmToken: string | null = null; // NUEVO
+  private isInitialized = false; // NUEVO
 
   constructor(
     private firestore: AngularFirestore,
     private functions: AngularFireFunctions,
+    private messaging: AngularFireMessaging, // NUEVO
     private auth: AuthService,
     private errorHandler: ErrorHandlerService
   ) {}
 
-  // ENVIAR ALERTA CRÍTICA AL ENTRENADOR
+  // NUEVO: INICIALIZAR FCM
+  async initializeFCM(): Promise<void> {
+    try {
+      if (this.isInitialized) return;
+
+      console.log(' Inicializando Firebase Cloud Messaging...');
+
+      // NUEVO: SOLICITAR PERMISOS
+      const permission = await this.requestPermission();
+      if (!permission) {
+        console.warn(' Permisos de notificación denegados');
+        return;
+      }
+
+      // NUEVO: OBTENER TOKEN FCM (usando requestToken con firstValueFrom)
+      this.fcmToken = await firstValueFrom(this.messaging.requestToken);
+
+      if (this.fcmToken) {
+        console.log(' Token FCM obtenido:', this.fcmToken);
+        await this.registerFCMToken(this.fcmToken);
+      }
+
+      // NUEVO: ESCUCHAR MENSAJES EN PRIMER PLANO (CORREGIDO)
+      this.messaging.messages.subscribe((payload) => {
+        console.log(' Mensaje FCM recibido:', payload);
+        this.handleForegroundMessage(payload);
+      });
+
+      // NUEVO: ESCUCHAR CAMBIOS DE TOKEN (CORREGIDO)
+      this.messaging.tokenChanges.subscribe(async (token) => {
+        if (token) {
+          console.log(' Token FCM actualizado:', token);
+          this.fcmToken = token;
+          await this.registerFCMToken(token);
+        }
+      });
+
+      this.isInitialized = true;
+      console.log(' FCM inicializado correctamente');
+
+    } catch (error) {
+      console.error(' Error inicializando FCM:', error);
+    }
+  }
+
+  // NUEVO: SOLICITAR PERMISOS
+  private async requestPermission(): Promise<boolean> {
+    try {
+      if (!('Notification' in window)) {
+        console.warn(' Notificaciones no soportadas en este navegador');
+        return false;
+      }
+
+      if (Notification.permission === 'granted') {
+        return true;
+      }
+
+      if (Notification.permission === 'denied') {
+        console.warn(' Permisos de notificación denegados permanentemente');
+        return false;
+      }
+
+      const permission = await Notification.requestPermission();
+      return permission === 'granted';
+
+    } catch (error) {
+      console.error(' Error solicitando permisos:', error);
+      return false;
+    }
+  }
+
+  // NUEVO: MANEJAR MENSAJES EN PRIMER PLANO
+  private handleForegroundMessage(payload: any): void {
+    try {
+      // NUEVO: MOSTRAR NOTIFICACIÓN LOCAL
+      const title = payload.notification?.title || 'FitNova - Alerta';
+      const options = {
+        body: payload.notification?.body || 'Nueva notificación',
+        icon: '/assets/icon/icon-192x192.png',
+        tag: 'fitnova-foreground',
+        requireInteraction: payload.data?.severity === 'critical'
+      };
+
+      new Notification(title, options);
+
+    } catch (error) {
+      console.error(' Error mostrando notificación:', error);
+    }
+  }
+
+  // ENVIAR ALERTA CRÍTICA AL ENTRENADOR (MÉTODO EXISTENTE MEJORADO)
   async sendCriticalAlert(
     errorType: string,
     exercise: string,
@@ -65,7 +160,7 @@ export class NotificationService {
   ): Promise<boolean> {
     
     try {
-      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      const user = await firstValueFrom(this.auth.user$);
       if (!user) {
         console.warn(' No hay usuario autenticado para enviar alerta');
         return false;
@@ -104,12 +199,13 @@ export class NotificationService {
       // GUARDAR ALERTA EN FIRESTORE
       const alertRef = await this.firestore.collection('notifications').add(alert);
       
-      // LLAMAR CLOUD FUNCTION PARA PROCESAR ALERTA
+      // NUEVO: LLAMAR CLOUD FUNCTION PARA PROCESAR ALERTA (MEJORADA CON FCM)
       const sendNotification = this.functions.httpsCallable('sendTrainerNotification');
-      const result = await sendNotification({
+      const result = await firstValueFrom(sendNotification({
         alertId: alertRef.id,
+        fcmToken: this.fcmToken, // NUEVO: INCLUIR TOKEN FCM
         ...alert
-      }).toPromise();
+      }));
 
       if (result.success) {
         // MARCAR COMO ENVIADA
@@ -139,6 +235,36 @@ export class NotificationService {
     }
   }
 
+  // NUEVO: OBTENER TOKEN FCM ACTUAL
+  getCurrentFCMToken(): string | null {
+    return this.fcmToken;
+  }
+
+  // NUEVO: VERIFICAR SI FCM ESTÁ INICIALIZADO
+  isFCMInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  // REGISTRAR TOKEN FCM (MÉTODO EXISTENTE MEJORADO)
+  async registerFCMToken(token: string): Promise<void> {
+    try {
+      const user = await firstValueFrom(this.auth.user$);
+      if (!user) return;
+
+      await this.firestore.collection('fcmTokens').doc(user.uid).set({
+        token,
+        platform: 'web',
+        updatedAt: new Date(),
+        userId: user.uid, // NUEVO: Para identificar usuario
+        userEmail: user.email // NUEVO: Para identificar usuario
+      }, { merge: true });
+
+      console.log(' Token FCM registrado exitosamente');
+    } catch (error) {
+      console.error(' Error registrando token FCM:', error);
+    }
+  }
+
   // VERIFICAR SI ERROR ESTÁ SUPRIMIDO
   private isErrorSuppressed(suppressionKey: string): boolean {
     const suppressedUntil = this.suppressionMap.get(suppressionKey);
@@ -146,9 +272,9 @@ export class NotificationService {
     
     const now = new Date();
     if (now < suppressedUntil) {
-      return true; // Aún suprimido
+      return true;
     } else {
-      this.suppressionMap.delete(suppressionKey); // Limpiar supresión expirada
+      this.suppressionMap.delete(suppressionKey);
       return false;
     }
   }
@@ -159,16 +285,16 @@ export class NotificationService {
     
     switch (severity) {
       case 'critical':
-        suppressionMinutes = 15; // 15 minutos para críticos
+        suppressionMinutes = 15;
         break;
       case 'high':
-        suppressionMinutes = 30; // 30 minutos para altos
+        suppressionMinutes = 30;
         break;
       case 'medium':
-        suppressionMinutes = 60; // 1 hora para medios
+        suppressionMinutes = 60;
         break;
       default:
-        suppressionMinutes = 120; // 2 horas para bajos
+        suppressionMinutes = 120;
     }
 
     const suppressedUntil = new Date(Date.now() + suppressionMinutes * 60 * 1000);
@@ -183,16 +309,14 @@ export class NotificationService {
     const alertData = this.hourlyAlertCount.get(uid);
     
     if (!alertData) {
-      return true; // Primera alerta de la hora
+      return true;
     }
 
-    // RESETEAR CONTADOR SI PASÓ UNA HORA
     if (now.getTime() - alertData.resetTime.getTime() > 60 * 60 * 1000) {
       this.hourlyAlertCount.set(uid, { count: 0, resetTime: now });
       return true;
     }
 
-    // VERIFICAR LÍMITE (5 alertas por hora por defecto)
     return alertData.count < 5;
   }
 
@@ -225,15 +349,13 @@ export class NotificationService {
   // OBTENER PREFERENCIAS DEL USUARIO
   async getUserPreferences(uid: string): Promise<NotificationPreferences | null> {
     try {
-      const doc = await this.firestore.collection('notificationPreferences')
+      const doc = await firstValueFrom(this.firestore.collection('notificationPreferences')
         .doc(uid)
-        .get()
-        .toPromise();
+        .get());
       
       if (doc?.exists) {
         return doc.data() as NotificationPreferences;
       } else {
-        // RETORNAR PREFERENCIAS POR DEFECTO
         return {
           uid,
           enableCriticalAlerts: true,
@@ -254,33 +376,15 @@ export class NotificationService {
     }
   }
 
-  // REGISTRAR TOKEN FCM (para testing en web)
-  async registerFCMToken(token: string): Promise<void> {
-    try {
-      const user = await this.auth.user$.pipe(take(1)).toPromise();
-      if (!user) return;
-
-      await this.firestore.collection('fcmTokens').doc(user.uid).set({
-        token,
-        platform: 'web',
-        updatedAt: new Date()
-      }, { merge: true });
-
-      console.log(' Token FCM registrado exitosamente');
-    } catch (error) {
-      console.error(' Error registrando token FCM:', error);
-    }
-  }
-
   // OBTENER HISTORIAL DE ALERTAS
   async getAlertHistory(uid: string, limit: number = 50): Promise<NotificationAlert[]> {
     try {
-      const snapshot = await this.firestore.collection<NotificationAlert>('notifications',
+      const snapshot = await firstValueFrom(this.firestore.collection<NotificationAlert>('notifications',
         ref => ref
           .where('uid', '==', uid)
           .orderBy('timestamp', 'desc')
           .limit(limit)
-      ).get().toPromise();
+      ).get());
 
       return snapshot?.docs.map(doc => ({
         id: doc.id,
@@ -292,7 +396,7 @@ export class NotificationService {
     }
   }
 
-  // LIMPIAR SUPRESIONES EXPIRADAS (llamar periódicamente)
+  // LIMPIAR SUPRESIONES EXPIRADAS
   cleanExpiredSuppressions(): void {
     const now = new Date();
     for (const [key, suppressedUntil] of this.suppressionMap.entries()) {

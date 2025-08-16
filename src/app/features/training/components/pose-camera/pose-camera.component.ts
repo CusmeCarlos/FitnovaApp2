@@ -1,5 +1,5 @@
 // src/app/features/training/components/pose-camera/pose-camera.component.ts
-// ✅ COMPONENTE REFACTORIZADO CON AUDIO SERVICE
+// ✅ COMPONENTE COMPLETO CON TODOS LOS SERVICIOS INTEGRADOS
 
 import { 
   Component, 
@@ -20,7 +20,10 @@ import { Subscription, timer } from 'rxjs';
 
 import { PoseDetectionEngine } from '../../../../core/pose-engine/pose-detection.engine';
 import { BiomechanicsAnalyzer, ReadinessState } from '../../../../core/pose-engine/biomechanics.analyzer';
-import { AudioService } from '../../../../services/audio.service'; // ✅ NUEVO IMPORT
+import { AudioService } from '../../../../services/audio.service';
+import { CaptureService } from '../../../../services/capture.service'; // ✅ NUEVO
+import { NotificationService } from '../../../../services/notification.service'; // ✅ NUEVO
+import { FCMService } from '../../../../services/fcm.service'; // ✅ NUEVO FCM SERVICE
 import { 
   PoseKeypoints, 
   BiomechanicalAngles, 
@@ -29,6 +32,7 @@ import {
   RepetitionPhase, 
   PostureErrorType
 } from '../../../../shared/models/pose.models';
+import { CloudFunctionsService } from 'src/app/services/cloud-functions.service';
 
 @Component({
   selector: 'app-pose-camera',
@@ -72,6 +76,11 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   currentReadinessState: ReadinessState = ReadinessState.NOT_READY;
   readinessMessage = '';
 
+  // ✅ NUEVAS PROPIEDADES PARA SERVICIOS INTEGRADOS
+  private currentSessionId: string | null = null;
+  private hasSessionStarted = false;
+  private criticalErrorsSent = new Set<string>(); // Para evitar spam de notificaciones
+
   // ✅ ESTADO DE AUDIO (PARA TEMPLATE)
   get isPlayingAudio(): boolean {
     return this.audioService.isCurrentlyPlaying();
@@ -100,18 +109,23 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private poseEngine: PoseDetectionEngine,
     private biomechanicsAnalyzer: BiomechanicsAnalyzer,
-    private audioService: AudioService, // ✅ INYECTAR AUDIO SERVICE
+    private audioService: AudioService,
+    private captureService: CaptureService, // ✅ NUEVO
+    private notificationService: NotificationService, // ✅ NUEVO
+    private cloudFunctions: CloudFunctionsService, // ✅ NUEVO
+    private fcmService: FCMService, // ✅ NUEVO FCM SERVICE
     private cdr: ChangeDetectorRef
   ) {
-    console.log('🎬 PoseCameraComponent constructor');
+    console.log('🎬 PoseCameraComponent constructor con todos los servicios');
   }
 
-  ngOnInit() {
+  async ngOnInit() {
     console.log('🚀 PoseCameraComponent ngOnInit');
     this.setupSubscriptions();
     
-    // ✅ CONFIGURAR AUDIO SERVICE
+    // ✅ CONFIGURAR SERVICIOS CON FCM
     this.audioService.setEnabled(this.enableAudio);
+    await this.initializeServices();
   }
 
   ngAfterViewInit() {
@@ -128,6 +142,17 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy() {
     console.log('🧹 PoseCameraComponent ngOnDestroy');
     this.cleanup();
+  }
+
+  // ✅ INICIALIZAR SERVICIOS CON FCM SIMPLE
+  private async initializeServices(): Promise<void> {
+    try {
+      // ✅ INICIALIZAR FCM BÁSICO
+      await this.fcmService.initialize();
+      console.log('🔔 FCM Service inicializado correctamente');
+    } catch (error) {
+      console.error('🛑 Error inicializando servicios:', error);
+    }
   }
 
   // 📡 CONFIGURAR SUBSCRIPCIONES
@@ -181,7 +206,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     );
   }
 
-  // 🧠 ANÁLIZAR MOVIMIENTO CON ESTADOS DE PREPARACIÓN (MEJORADO CON AUDIO SERVICE)
+  // 🧠 ANÁLIZAR MOVIMIENTO CON ESTADOS DE PREPARACIÓN (INTEGRACIÓN COMPLETA)
   private analyzeMovementWithStates(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
     try {
       const analysis = this.biomechanicsAnalyzer.analyzeMovement(pose, angles);
@@ -213,18 +238,20 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log(`🎉 ¡NUEVA REPETICIÓN! Total: ${this.repetitionCount}`);
         this.repetitionCounted.emit(this.repetitionCount);
         
-        // ✅ AUDIO DE REPETICIÓN USANDO AUDIO SERVICE
+        // ✅ AUDIO DE REPETICIÓN
         if (this.repetitionCount % 5 === 0) {
           this.audioService.speakSuccess(`¡Excelente! ${this.repetitionCount} repeticiones completadas`);
         }
       }
+
+      // ✅ INTEGRACIÓN COMPLETA: CAPTURA + NOTIFICACIONES + CLOUD FUNCTIONS
+      this.handleCriticalErrorsIntegration(analysis.errors);
 
       // ✅ PROCESAR SEGÚN ESTADO
       if (this.currentReadinessState === ReadinessState.EXERCISING) {
         this.processExerciseErrors(analysis.errors, previousCount);
       } else {
         this.processReadinessErrors(analysis.errors);
-        // ✅ LIMPIAR OVERLAYS DE EJERCICIO CUANDO NO ESTÁ EJERCITÁNDOSE
         this.clearErrorOverlay();
       }
 
@@ -233,7 +260,163 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // 🏃 PROCESAR ERRORES DURANTE EJERCICIO (MEJORADO CON AUDIO SERVICE)
+  // ✅ NUEVO: INTEGRACIÓN COMPLETA DE SERVICIOS PARA ERRORES CRÍTICOS
+  private async handleCriticalErrorsIntegration(errors: PostureError[]): Promise<void> {
+    // Solo procesar si hay sesión activa
+    if (!this.currentSessionId || !this.hasSessionStarted) return;
+    
+    // Buscar errores críticos (severity >= 7)
+    const criticalErrors = errors.filter(error => error.severity >= 7);
+    
+    if (criticalErrors.length > 0) {
+      const mostCritical = criticalErrors.reduce((prev, current) => 
+        current.severity > prev.severity ? current : prev
+      );
+      
+      console.log(`🚨 Error crítico detectado: ${mostCritical.type} (severity: ${mostCritical.severity})`);
+      
+      // 1️⃣ CAPTURA AUTOMÁTICA
+      await this.handleCriticalErrorCapture(mostCritical);
+      
+      // 2️⃣ NOTIFICACIÓN AL ENTRENADOR
+      await this.handleCriticalErrorNotification(mostCritical);
+      
+      // 3️⃣ PROCESAMIENTO CON CLOUD FUNCTIONS
+      await this.handleCriticalErrorProcessing(mostCritical);
+    }
+  }
+
+  // ✅ CAPTURA AUTOMÁTICA DE ERRORES CRÍTICOS
+  private async handleCriticalErrorCapture(error: PostureError): Promise<void> {
+    if (!this.captureService.canCaptureError(error.type)) {
+      console.log('📸 Error ya capturado o límite alcanzado para:', error.type);
+      return;
+    }
+
+    try {
+      const canvas = this.canvasElementRef.nativeElement;
+      
+      const success = await this.captureService.captureErrorIfNeeded(
+        canvas,
+        error.type,
+        error.severity,
+        {
+          affectedJoints: error.affectedJoints,
+          confidence: error.confidence,
+          recommendation: error.recommendation,
+          timestamp: error.timestamp,
+          exerciseType: this.exerciseType,
+          currentPhase: this.currentPhase
+        }
+      );
+      
+      if (success) {
+        console.log('📸 ¡Captura automática realizada exitosamente!');
+        this.showCaptureNotification();
+      }
+      
+    } catch (error) {
+      console.error('🛑 Error durante captura automática:', error);
+    }
+  }
+
+  // ✅ NUEVO: NOTIFICACIÓN AL ENTRENADOR
+  private async handleCriticalErrorNotification(error: PostureError): Promise<void> {
+    const errorKey = `${error.type}_${this.currentSessionId}`;
+    
+    // Evitar spam: solo una notificación por tipo de error por sesión
+    if (this.criticalErrorsSent.has(errorKey)) return;
+    
+    try {
+      const success = await this.notificationService.sendCriticalAlert(
+        error.type,
+        this.exerciseType,
+        'critical', // Severidad
+        this.currentSessionId!,
+        undefined, // captureURL (opcional)
+        {
+          description: error.description,
+          severity: error.severity,
+          biomechanicsData: {
+            affectedJoints: error.affectedJoints,
+            confidence: error.confidence
+          },
+          deviceInfo: {
+            timestamp: error.timestamp,
+            exerciseType: this.exerciseType,
+            currentPhase: this.currentPhase
+          }
+        }
+      );
+
+      if (success) {
+        this.criticalErrorsSent.add(errorKey);
+        console.log('🔔 Notificación enviada al entrenador');
+        
+        // ✅ MOSTRAR NOTIFICACIÓN LOCAL AL USUARIO TAMBIÉN
+        this.fcmService.showLocalNotification(
+          'Error Crítico Detectado',
+          `${error.description} - Entrenador notificado`
+        );
+      }
+      
+    } catch (error) {
+      console.error('🛑 Error enviando notificación:', error);
+    }
+  }
+
+  // ✅ NUEVO: PROCESAMIENTO CON CLOUD FUNCTIONS
+  private async handleCriticalErrorProcessing(error: PostureError): Promise<void> {
+    try {
+      const processResult = await this.cloudFunctions.processBiomechanicsAnalysis({
+        errorType: error.type,
+        severity: error.severity,
+        sessionId: this.currentSessionId!,
+        exerciseType: this.exerciseType,
+        biomechanicsData: {
+          affectedJoints: error.affectedJoints,
+          confidence: error.confidence,
+          timestamp: error.timestamp
+        }
+      });
+
+      if (processResult.success) {
+        console.log('☁️ Error procesado por Cloud Functions:', processResult.data);
+        
+        // Opcional: Mostrar recomendaciones personalizadas del backend
+        if (processResult.data?.personalizedRecommendation) {
+          this.audioService.speak(processResult.data.personalizedRecommendation, 'info', 'normal');
+        }
+      }
+      
+    } catch (error) {
+      console.error('🛑 Error en Cloud Functions:', error);
+    }
+  }
+
+  // ✅ NOTIFICACIÓN VISUAL DE CAPTURA
+  private showCaptureNotification(): void {
+    const overlay = this.overlayElementRef.nativeElement;
+    const ctx = overlay.getContext('2d');
+    
+    if (ctx) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(overlay.width - 60, 10, 50, 20);
+      ctx.fillStyle = '#333';
+      ctx.font = '12px Arial';
+      ctx.fillText('📸', overlay.width - 50, 25);
+      ctx.restore();
+      
+      setTimeout(() => {
+        if (ctx) {
+          ctx.clearRect(overlay.width - 60, 10, 50, 20);
+        }
+      }, 1000);
+    }
+  }
+
+  // 🏃 PROCESAR ERRORES DURANTE EJERCICIO
   private processExerciseErrors(errors: PostureError[], previousCount: number): void {
     const newErrors = this.filterNewErrors(errors);
     
@@ -242,11 +425,10 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       this.currentErrors = newErrors;
       this.errorDetected.emit(newErrors);
       
-      // ✅ AUDIO PARA ERRORES USANDO AUDIO SERVICE (SOLO SI NO HAY REPETICIÓN NUEVA)
+      // ✅ AUDIO PARA ERRORES (SOLO SI NO HAY REPETICIÓN NUEVA)
       if (this.repetitionCount === previousCount) {
         const mostSevereError = this.getMostSevereError(newErrors);
         if (mostSevereError) {
-          // ✅ USAR DIFERENTES MÉTODOS SEGÚN SEVERIDAD
           if (mostSevereError.severity >= 7) {
             this.audioService.speakCritical(mostSevereError.recommendation);
           } else if (mostSevereError.severity >= 5) {
@@ -257,26 +439,22 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       }
       
-      // ✅ DIBUJAR OVERLAY DE ERROR
       this.drawErrorOverlay(newErrors);
       
     } else {
-      // ✅ BUENA FORMA DURANTE EJERCICIO
       this.currentErrors = [];
       
-      // 🎯 SOLO DAR FEEDBACK POSITIVO SI SE COMPLETÓ UNA REPETICIÓN
       if (this.repetitionCount > previousCount) {
         const goodMessage = this.biomechanicsAnalyzer.generatePositiveMessage();
-        this.audioService.speakSuccess(goodMessage); // ✅ USAR AUDIO SERVICE
+        this.audioService.speakSuccess(goodMessage);
         this.drawGoodFormOverlay();
       } else {
-        // ✅ LIMPIAR OVERLAY SIN MOSTRAR MENSAJE
         this.clearErrorOverlay();
       }
     }
   }
 
-  // 🚦 MANEJAR CAMBIOS DE ESTADO DE PREPARACIÓN (MEJORADO CON AUDIO SERVICE)
+  // 🚦 MANEJAR CAMBIOS DE ESTADO DE PREPARACIÓN
   private handleReadinessStateChange(prevState: ReadinessState, newState: ReadinessState): void {
     if (prevState !== newState) {
       console.log(`🚦 Cambio de estado: ${prevState} → ${newState}`);
@@ -284,7 +462,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       switch (newState) {
         case ReadinessState.NOT_READY:
           this.drawPreparationOverlay('Posiciónate para el ejercicio', this.errorColors.preparing);
-          this.audioService.speakReadiness('Posiciónate para hacer el ejercicio'); // ✅ USAR AUDIO SERVICE
+          this.audioService.speakReadiness('Posiciónate para hacer el ejercicio');
           break;
           
         case ReadinessState.GETTING_READY:
@@ -293,52 +471,48 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
           
         case ReadinessState.READY_TO_START:
           this.drawPreparationOverlay('¡LISTO PARA EMPEZAR!', this.errorColors.good);
-          this.audioService.speakReadiness('¡Listo para empezar! Comienza el ejercicio'); // ✅ USAR AUDIO SERVICE
+          this.audioService.speakReadiness('¡Listo para empezar! Comienza el ejercicio');
           break;
           
         case ReadinessState.EXERCISING:
           this.clearPreparationOverlay();
-          this.audioService.speakReadiness('¡Perfecto! Continúa con el ejercicio'); // ✅ USAR AUDIO SERVICE
+          this.audioService.speakReadiness('¡Perfecto! Continúa con el ejercicio');
           break;
       }
     }
   }
 
-  // 🚦 PROCESAR ERRORES DE PREPARACIÓN (MEJORADO CON AUDIO SERVICE)
+  // 🚦 PROCESAR ERRORES DE PREPARACIÓN
   private processReadinessErrors(errors: PostureError[]): void {
     if (errors.length > 0) {
       this.currentErrors = errors;
       this.errorDetected.emit(errors);
       
-      // ✅ AUDIO PARA ERRORES DE PREPARACIÓN USANDO AUDIO SERVICE
       const positionError = errors[0];
       if (positionError) {
-        this.audioService.speakReadiness(positionError.recommendation); // ✅ USAR AUDIO SERVICE
+        this.audioService.speakReadiness(positionError.recommendation);
       }
     } else {
       this.currentErrors = [];
     }
   }
 
-  // 🔍 FILTRAR ERRORES NUEVOS (SOLO UNO A LA VEZ)
+  // 🔍 FILTRAR ERRORES NUEVOS
   private filterNewErrors(errors: PostureError[]): PostureError[] {
     if (errors.length === 0) return [];
     
     const now = Date.now();
     const ERROR_DISPLAY_DURATION = 5000;
     
-    // Limpiar errores antiguos
     this.currentErrors = this.currentErrors.filter(error => 
       (now - error.timestamp) < ERROR_DISPLAY_DURATION
     );
     
-    // Si ya hay un error mostrándose, no mostrar más
     if (this.currentErrors.length > 0) {
       console.log('⏸️ Ya hay error mostrándose, esperando...');
       return [];
     }
     
-    // Solo el error más severo
     const mostSevereError = this.getMostSevereError(errors);
     return mostSevereError ? [mostSevereError] : [];
   }
@@ -359,18 +533,14 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     const canvas = this.canvasElementRef.nativeElement;
     this.canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ✅ CONFIGURAR ESTILO
     this.canvasCtx.lineWidth = 3;
     this.canvasCtx.strokeStyle = '#00ff88';
     this.canvasCtx.fillStyle = '#00ff88';
 
-    // ✅ DIBUJAR CONEXIONES USANDO MEDIAPIPE (SIN ESPEJO)
     if (window.drawConnectors && window.POSE_CONNECTIONS) {
-      // Convertir pose a formato MediaPipe
       const landmarks = this.convertPoseToLandmarks(pose);
       
       this.canvasCtx.save();
-      // ✅ NO APLICAR TRANSFORM PARA ELIMINAR ESPEJO
       window.drawConnectors(this.canvasCtx, landmarks, window.POSE_CONNECTIONS, {
         color: '#00ff88',
         lineWidth: 3
@@ -378,7 +548,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       this.canvasCtx.restore();
     }
 
-    // ✅ DIBUJAR PUNTOS IMPORTANTES
     this.drawKeyPoints(pose);
   }
 
@@ -445,13 +614,11 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     const canvas = this.overlayElementRef.nativeElement;
     this.overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ✅ BORDE DE PREPARACIÓN
     this.overlayCtx.strokeStyle = color;
     this.overlayCtx.lineWidth = 6;
     this.overlayCtx.setLineDash([15, 10]);
     this.overlayCtx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
 
-    // ✅ TEXTO DE PREPARACIÓN
     this.overlayCtx.fillStyle = color;
     this.overlayCtx.font = 'bold 24px Arial';
     this.overlayCtx.textAlign = 'center';
@@ -479,31 +646,27 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     const mostSevereError = this.getMostSevereError(errors);
     if (!mostSevereError) return;
 
-    // ✅ DETERMINAR COLOR SEGÚN SEVERIDAD
     let color = this.errorColors.good;
     let alertText = 'BUENA FORMA';
     
     if (mostSevereError.severity >= 7) {
-      color = this.errorColors.critical; // ROJO - CRÍTICO
+      color = this.errorColors.critical;
       alertText = 'ERROR CRÍTICO';
     } else if (mostSevereError.severity >= 5) {
-      color = this.errorColors.warning;  // NARANJA - MODERADO
+      color = this.errorColors.warning;
       alertText = 'CORREGIR POSTURA';
     }
 
-    // ✅ DIBUJAR BORDE DE ALERTA
     this.overlayCtx.strokeStyle = color;
     this.overlayCtx.lineWidth = 8;
     this.overlayCtx.setLineDash([10, 5]);
     this.overlayCtx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
 
-    // ✅ DIBUJAR TEXTO DE ALERTA
     this.overlayCtx.fillStyle = color;
     this.overlayCtx.font = 'bold 24px Arial';
     this.overlayCtx.textAlign = 'center';
     this.overlayCtx.fillText(alertText, canvas.width / 2, 40);
 
-    // ✅ DIBUJAR DESCRIPCIÓN DEL ERROR
     this.overlayCtx.font = '16px Arial';
     this.overlayCtx.fillStyle = '#ffffff';
     this.overlayCtx.strokeStyle = '#000000';
@@ -526,19 +689,16 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     const canvas = this.overlayElementRef.nativeElement;
     this.overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ✅ BORDE VERDE SUTIL
     this.overlayCtx.strokeStyle = this.errorColors.good;
     this.overlayCtx.lineWidth = 4;
     this.overlayCtx.setLineDash([15, 10]);
     this.overlayCtx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
 
-    // ✅ INDICADOR DE BUENA FORMA
     this.overlayCtx.fillStyle = this.errorColors.good;
     this.overlayCtx.font = 'bold 20px Arial';
     this.overlayCtx.textAlign = 'center';
     this.overlayCtx.fillText('✓ EXCELENTE FORMA', canvas.width / 2, 35);
 
-    // ✅ MOSTRAR PUNTUACIÓN
     if (this.currentQualityScore > 0) {
       this.overlayCtx.font = '14px Arial';
       this.overlayCtx.fillText(`Calidad: ${this.currentQualityScore}%`, canvas.width / 2, 60);
@@ -560,7 +720,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
 
     for (const word of words) {
       const testLine = currentLine + (currentLine ? ' ' : '') + word;
-      if (testLine.length * 8 <= maxWidth) { // Aproximación de ancho
+      if (testLine.length * 8 <= maxWidth) {
         currentLine = testLine;
       } else {
         if (currentLine) lines.push(currentLine);
@@ -572,7 +732,25 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     return lines;
   }
 
-  // ✅ MÉTODOS DE CÁMARA (SIN CAMBIOS)
+  // ✅ INICIALIZAR SESIÓN DE CAPTURA
+  private async initializeCaptureSession(): Promise<void> {
+    try {
+      if (!this.hasSessionStarted) {
+        this.currentSessionId = await this.captureService.startTrainingSession(this.exerciseType);
+        
+        if (this.currentSessionId) {
+          this.hasSessionStarted = true;
+          console.log('📸 Sesión de captura iniciada:', this.currentSessionId);
+        } else {
+          console.warn('📸 No se pudo iniciar sesión de captura (usuario no autenticado)');
+        }
+      }
+    } catch (error) {
+      console.error('🛑 Error inicializando sesión de captura:', error);
+    }
+  }
+
+  // ✅ MÉTODOS DE CÁMARA (MODIFICADOS PARA INCLUIR TODOS LOS SERVICIOS)
   async startCamera(): Promise<void> {
     this.initializationAttempts++;
     
@@ -596,7 +774,11 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       
       this.isInitialized = true;
       this.isLoading = false;
-      console.log('✅ Cámara iniciada exitosamente');
+
+      // ✅ NUEVO: INICIAR SESIÓN DE CAPTURA CON TODOS LOS SERVICIOS
+      await this.initializeCaptureSession();
+      
+      console.log('✅ Cámara iniciada exitosamente con integración completa de servicios');
       
     } catch (error) {
       console.error(`❌ Error iniciando cámara (intento ${this.initializationAttempts}):`, error);
@@ -620,6 +802,34 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   async stopCamera(): Promise<void> {
     try {
       await this.poseEngine.stopCamera();
+      
+      // ✅ NUEVO: FINALIZAR SESIÓN CON TODOS LOS SERVICIOS
+      if (this.hasSessionStarted) {
+        await this.captureService.endTrainingSession();
+        
+        // ✅ ENVIAR ESTADÍSTICAS FINALES VIA CLOUD FUNCTIONS
+        if (this.currentSessionId) {
+          try {
+            await this.cloudFunctions.reportUsageMetrics({
+              sessionId: this.currentSessionId,
+              exerciseType: this.exerciseType,
+              totalRepetitions: this.repetitionCount,
+              avgQualityScore: this.currentQualityScore,
+              errorsDetected: this.criticalErrorsSent.size,
+              sessionDuration: Date.now() - (Date.now() - 300000) // Aproximado
+            });
+            console.log('☁️ Estadísticas de sesión enviadas');
+          } catch (error) {
+            console.error('🛑 Error enviando estadísticas:', error);
+          }
+        }
+        
+        this.hasSessionStarted = false;
+        this.currentSessionId = null;
+        this.criticalErrorsSent.clear();
+        console.log('📸 Sesión de captura finalizada completamente');
+      }
+      
       this.isInitialized = false;
       console.log('⏹️ Cámara parada');
     } catch (error) {
@@ -660,18 +870,17 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  // ✅ TOGGLE AUDIO MEJORADO CON AUDIO SERVICE
+  // ✅ TOGGLE AUDIO MEJORADO
   toggleAudio(): void {
     this.enableAudio = !this.enableAudio;
-    this.audioService.setEnabled(this.enableAudio); // ✅ USAR AUDIO SERVICE
+    this.audioService.setEnabled(this.enableAudio);
     
-    // ✅ PROBAR AUDIO AL ACTIVAR
     if (this.enableAudio) {
-      this.audioService.speak('Audio activado'); // ✅ USAR AUDIO SERVICE
+      this.audioService.speak('Audio activado');
     }
   }
 
-  // ✅ MÉTODOS PARA EL TEMPLATE (SIN CAMBIOS)
+  // ✅ MÉTODOS PARA EL TEMPLATE
   getExerciseName(): string {
     switch (this.exerciseType) {
       case ExerciseType.SQUATS: return 'Sentadillas';
@@ -749,7 +958,20 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.audioService.isAudioEnabled();
   }
 
-  // ✅ LIMPIEZA MEJORADA CON AUDIO SERVICE
+  // ✅ NUEVOS MÉTODOS PARA ESTADO DE SERVICIOS (PARA TEMPLATE)
+  getCaptureSessionStats() {
+    return this.captureService.getSessionStats();
+  }
+
+  get hasActiveCaptureSession(): boolean {
+    return this.hasSessionStarted && !!this.currentSessionId;
+  }
+
+  get criticalErrorsCount(): number {
+    return this.criticalErrorsSent.size;
+  }
+
+  // ✅ LIMPIEZA COMPLETA CON TODOS LOS SERVICIOS
   private cleanup(): void {
     if (this.initializationTimer) {
       clearTimeout(this.initializationTimer);
@@ -759,12 +981,17 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     this.subscriptions.forEach(sub => sub.unsubscribe());
     this.subscriptions = [];
 
-    // ✅ LIMPIAR AUDIO SERVICE
+    // ✅ LIMPIAR TODOS LOS SERVICIOS
     this.audioService.cleanup();
+
+    // ✅ ASEGURAR FINALIZACIÓN DE SESIÓN
+    if (this.hasSessionStarted) {
+      this.captureService.endTrainingSession().catch(console.error);
+    }
 
     this.poseEngine.cleanup();
     this.biomechanicsAnalyzer.cleanup();
 
-    console.log('🧹 PoseCameraComponent limpiado');
+    console.log('🧹 PoseCameraComponent limpiado completamente con todos los servicios');
   }
 }

@@ -13,6 +13,7 @@ import { AngularFireAuthModule } from '@angular/fire/compat/auth';
 import { AngularFirestoreModule } from '@angular/fire/compat/firestore';
 import { AngularFireStorageModule } from '@angular/fire/compat/storage';
 import { environment } from '../environments/environment';
+import { AngularFireMessagingModule } from '@angular/fire/compat/messaging';
 
 // ✅ IMPORTAR LOS SERVICIOS DE POSE
 import { PoseDetectionEngine } from './core/pose-engine/pose-detection.engine';
@@ -27,7 +28,8 @@ import { BiomechanicsAnalyzer } from './core/pose-engine/biomechanics.analyzer';
     AngularFireModule.initializeApp(environment.firebase),
     AngularFireAuthModule,
     AngularFirestoreModule,
-    AngularFireStorageModule
+    AngularFireStorageModule,
+    AngularFireMessagingModule
   ],
   providers: [
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
