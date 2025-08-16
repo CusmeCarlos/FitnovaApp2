@@ -289,6 +289,93 @@
   }
 }
 
+// ✅ NUEVOS ESTILOS PARA INFO SECTION - TEXTO VISIBLE
+.info-section {
+  margin-top: 2rem;
+  padding: 0 0.5rem;
+  
+  .info-card {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+    
+    .info-icon {
+      color: #ff5722;
+      font-size: 1.5rem;
+      margin-top: 0.25rem;
+      flex-shrink: 0;
+    }
+    
+    .info-content {
+      flex: 1;
+      
+      .info-title {
+        color: #ffffff; // ✅ TEXTO BLANCO VISIBLE
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+        letter-spacing: 0.5px;
+      }
+      
+      .info-text {
+        color: rgba(255, 255, 255, 0.85); // ✅ TEXTO BLANCO SEMI-TRANSPARENTE
+        font-size: 0.875rem;
+        line-height: 1.5;
+        margin: 0;
+      }
+    }
+  }
+  
+  .contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.3s ease;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateX(2px);
+      }
+      
+      .contact-icon {
+        color: #ff5722;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+      }
+      
+      .contact-text {
+        color: rgba(255, 255, 255, 0.9); // ✅ TEXTO BLANCO VISIBLE
+        font-size: 0.875rem;
+        font-weight: 500;
+        line-height: 1.4;
+      }
+    }
+  }
+}
+
 // Responsive adjustments
 @media (max-height: 700px) {
   .login-container {
@@ -308,10 +395,43 @@
       font-size: 2rem;
     }
   }
+  
+  // ✅ RESPONSIVE PARA INFO SECTION
+  .info-section {
+    margin-top: 1.5rem;
+    
+    .info-card {
+      padding: 1.25rem;
+      flex-direction: column;
+      text-align: center;
+      gap: 0.75rem;
+      
+      .info-icon {
+        align-self: center;
+        margin-top: 0;
+      }
+    }
+  }
 }
 
 @media (max-width: 360px) {
   .login-container {
     padding: 1rem;
+  }
+  
+  // ✅ RESPONSIVE MÓVIL PARA INFO SECTION
+  .info-section {
+    padding: 0 0.25rem;
+    
+    .contact-item {
+      flex-direction: column;
+      text-align: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      
+      .contact-text {
+        font-size: 0.8rem;
+      }
+    }
   }
 }

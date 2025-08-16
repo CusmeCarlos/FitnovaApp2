@@ -1,3 +1,6 @@
+// src/app/services/auth.service.ts
+// ✅ AUTHSERVICE LIMPIO FINAL - SOLO FUNCIONALIDADES DOCUMENTADAS
+
 import { Injectable } from '@angular/core';
 import { AngularFireAuth } from '@angular/fire/compat/auth';
 import firebase from 'firebase/compat/app';
@@ -6,7 +9,6 @@ import { Router } from '@angular/router';
 import { Observable, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { User } from '../interfaces/user.interface';
-import { Profile } from '../interfaces/profile.interface';
 import { ErrorHandlerService } from './error-handler.service';
 
 @Injectable({ providedIn: 'root' })
@@ -18,6 +20,7 @@ export class AuthService {
     private router: Router,
     private errorHandler: ErrorHandlerService
   ) {
+    // ✅ CONFIGURAR OBSERVABLE DEL USUARIO
     this.user$ = this.afAuth.authState.pipe(
       switchMap(user => {
         if (!user) return of(null);
@@ -30,72 +33,24 @@ export class AuthService {
       })
     );
 
-    // Debug
+    // Debug para desarrollo
     this.user$.subscribe(user => {
-      console.log('🔥 user$ actualizado:', user);
+      console.log('🔥 AuthService - Usuario actualizado:', user ? user.uid : 'No autenticado');
     });
   }
 
-  // Método auxiliar para obtener el usuario actual
-  private getCurrentUser(): Promise<firebase.User | null> {
-    return new Promise((resolve) => {
-      this.afAuth.onAuthStateChanged(user => resolve(user));
-    });
-  }
-
-  async register(email: string, password: string, displayName: string): Promise<void> {
-    try {
-      console.log('🚀 register() iniciado para', email);
-      const cred = await this.afAuth.createUserWithEmailAndPassword(email, password);
-      if (!cred.user) throw new Error('No se creó el usuario');
-      
-      await cred.user.updateProfile({ displayName });
-      const uid = cred.user.uid;
-
-      const u: User = {
-        uid,
-        email: cred.user.email || '',
-        displayName,
-        photoURL: cred.user.photoURL || '',
-        role: 'user',
-        emailVerified: cred.user.emailVerified,
-        createdAt: new Date()
-      };
-      
-      const p: Profile = {
-        uid,
-        personalInfo: {},
-        medicalHistory: {},
-        fitnessLevel: 'beginner',
-        goals: [],
-        profileComplete: false
-      };
-
-      const db = firebase.firestore();
-      console.log('✍️ Escribiendo datos en Firestore...');
-      
-      // Usar Promise.all para operaciones paralelas
-      await Promise.all([
-        db.doc(`users/${uid}`).set(u, { merge: true }),
-        db.doc(`profiles/${uid}`).set(p, { merge: true })
-      ]);
-      
-      console.log('✅ Datos escritos exitosamente');
-      await this.errorHandler.showSuccess('¡Cuenta creada exitosamente!');
-      await this.router.navigate(['/tabs/profile']);
-      
-    } catch (error) {
-      console.error('🛑 Error en register:', error);
-      await this.errorHandler.handleFirebaseError(error);
-      throw error;
-    }
-  }
-
+  // ✅ LOGIN - Solo credenciales entrenador (según documento)
   async login(email: string, password: string): Promise<void> {
     try {
-      await this.afAuth.signInWithEmailAndPassword(email, password);
-      await this.errorHandler.showSuccess('¡Bienvenido a FitNova!');
-      await this.router.navigate(['/tabs']);
+      console.log('🔐 Iniciando login para:', email);
+      
+      const userCredential = await this.afAuth.signInWithEmailAndPassword(email, password);
+      
+      if (userCredential.user) {
+        await this.errorHandler.showSuccess('¡Bienvenido a FitNova!');
+        await this.router.navigate(['/tabs']);
+        console.log('✅ Login exitoso:', userCredential.user.uid);
+      }
     } catch (error) {
       console.error('🛑 Error en login:', error);
       await this.errorHandler.handleFirebaseError(error);
@@ -103,71 +58,38 @@ export class AuthService {
     }
   }
 
-  async googleLogin(): Promise<void> {
-    try {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      const cred = await this.afAuth.signInWithPopup(provider);
-    
-      if (cred.user) {
-        const db = firebase.firestore();
-        const uid = cred.user.uid;
-        const userDoc = await db.doc(`users/${uid}`).get();
-        
-        if (!userDoc.exists) {
-          const u: User = {
-            uid,
-            email: cred.user.email || '',
-            displayName: cred.user.displayName || '',
-            photoURL: cred.user.photoURL || '',
-            role: 'user',
-            emailVerified: cred.user.emailVerified,
-            createdAt: new Date()
-          };
-          
-          const p: Profile = {
-            uid,
-            personalInfo: {},
-            medicalHistory: {},
-            fitnessLevel: 'beginner',
-            goals: [],
-            profileComplete: false
-          };
-          
-          await Promise.all([
-            db.doc(`users/${uid}`).set(u),
-            db.doc(`profiles/${uid}`).set(p)
-          ]);
-        }
-        
-        await this.errorHandler.showSuccess('¡Bienvenido a FitNova!');
-        await this.router.navigate(['/tabs']);
-      }
-    } catch (error) {
-      console.error('🛑 Error en googleLogin:', error);
-      await this.errorHandler.handleFirebaseError(error);
-      throw error;
-    }
-  }
-
+  // ✅ LOGOUT - Cerrar sesión y limpiar estado
   async logout(): Promise<void> {
     try {
+      console.log('🔐 Cerrando sesión...');
+      
       await this.afAuth.signOut();
       await this.errorHandler.showSuccess('Sesión cerrada correctamente');
       await this.router.navigate(['/auth/login']);
+      
+      console.log('✅ Logout exitoso');
     } catch (error) {
       console.error('🛑 Error en logout:', error);
       await this.errorHandler.handleGeneralError(error, 'Error al cerrar sesión');
     }
   }
 
-  async resetPassword(email: string): Promise<void> {
-    try {
-      await this.afAuth.sendPasswordResetEmail(email);
-      await this.errorHandler.showSuccess('Correo de recuperación enviado. Revisa tu bandeja de entrada.');
-    } catch (error) {
-      console.error('🛑 Error en resetPassword:', error);
-      await this.errorHandler.handleFirebaseError(error);
-      throw error;
-    }
+  // ✅ MÉTODO AUXILIAR - Obtener usuario actual de forma síncrona
+  getCurrentUser(): Promise<firebase.User | null> {
+    return new Promise((resolve) => {
+      this.afAuth.onAuthStateChanged(user => resolve(user));
+    });
+  }
+
+  // ✅ MÉTODO AUXILIAR - Verificar si usuario está autenticado
+  async isAuthenticated(): Promise<boolean> {
+    const user = await this.getCurrentUser();
+    return user !== null;
+  }
+
+  // ✅ MÉTODO AUXILIAR - Obtener UID del usuario actual
+  async getCurrentUserId(): Promise<string | null> {
+    const user = await this.getCurrentUser();
+    return user ? user.uid : null;
   }
 }

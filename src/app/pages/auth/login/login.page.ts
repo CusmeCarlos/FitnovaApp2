@@ -1,7 +1,7 @@
 // src/app/pages/auth/login/login.page.ts
+// ✅ CORREGIDO - SOLO EMAIL/PASSWORD SEGÚN DOCUMENTO
 
-
-import { Component, OnInit, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { LoadingController } from '@ionic/angular';
@@ -48,14 +48,16 @@ export class LoginPage implements OnInit {
     });
   }
 
-  // Getters para acceder fácilmente a los form controls
+  // ✅ GETTERS PARA ACCEDER A LOS FORM CONTROLS
   get email() { return this.loginForm.get('email'); }
   get password() { return this.loginForm.get('password'); }
 
+  // ✅ TOGGLE PASSWORD VISIBILITY
   togglePasswordVisibility() {
     this.showPassword = !this.showPassword;
   }
 
+  // ✅ SUBMIT LOGIN FORM
   async onSubmit() {
     if (this.loginForm.invalid) return;
     
@@ -69,9 +71,9 @@ export class LoginPage implements OnInit {
     try {
       const { email, password } = this.loginForm.value;
       await this.authService.login(email, password);
-      // El AuthService ahora maneja el éxito y navegación
+      // El AuthService maneja el éxito y navegación
     } catch (error) {
-      // El ErrorHandlerService ahora maneja todos los errores
+      // El ErrorHandlerService maneja todos los errores
       console.log('Error capturado en login page:', error);
     } finally {
       await loading.dismiss();
@@ -79,23 +81,7 @@ export class LoginPage implements OnInit {
     }
   }
 
-  async googleLogin() {
-    this.loading = true;
-    const loading = await this.loadingController.create({
-      message: 'Iniciando sesión con Google...',
-      spinner: 'crescent'
-    });
-    await loading.present();
-    
-    try {
-      await this.authService.googleLogin();
-      // El AuthService ahora maneja el éxito y navegación
-    } catch (error) {
-      // El ErrorHandlerService ahora maneja todos los errores
-      console.log('Error capturado en google login:', error);
-    } finally {
-      await loading.dismiss();
-      this.loading = false;
-    }
-  }
+  // 🗑️ ELIMINADO: googleLogin() - No está en documento
+  // 🗑️ ELIMINADO: Links a reset-password - No está en documento
+  // 🗑️ ELIMINADO: Links a register - Solo credenciales entrenador
 }

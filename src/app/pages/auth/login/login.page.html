@@ -1,4 +1,6 @@
-<!-- HTML Template -->
+<!-- src/app/pages/auth/login/login.page.html -->
+<!-- ✅ MANTIENE ESENCIA VISUAL - ELIMINA SOLO FUNCIONALIDADES NO DOCUMENTADAS -->
+
 <ion-header [translucent]="true">
 
 </ion-header>
@@ -73,41 +75,38 @@
         </ion-button>
       </form>
 
-      <!-- Divider -->
-      <div class="divider-section">
-        <div class="divider-line"></div>
-        <span class="divider-text">OR</span>
-        <div class="divider-line"></div>
-      </div>
+      <!-- 🗑️ ELIMINADO: Divider "OR" -->
+      <!-- 🗑️ ELIMINADO: Google Login Button -->
+      <!-- 🗑️ ELIMINADO: Forgot Password Link -->
+      <!-- 🗑️ ELIMINADO: Sign Up Link -->
 
-      <!-- Google Login -->
-      <ion-button 
-        expand="block" 
-        fill="outline"
-        (click)="googleLogin()" 
-        [disabled]="loading"
-        class="google-btn">
-        <ion-icon name="logo-google" slot="start" class="google-icon"></ion-icon>
-        <span class="btn-text">Continue with Google</span>
-      </ion-button>
-
-      <!-- Links -->
-      <div class="links-section">
-        <ion-button 
-          fill="clear" 
-          routerLink="/auth/reset-password" 
-          class="link-btn forgot-password">
-          Forgot Password?
-        </ion-button>
+      <!-- ✅ NUEVO: Info Footer sobre credenciales (MEJORADO) -->
+      <div class="info-section">
+        <div class="info-card">
+          <ion-icon name="business-outline" class="info-icon"></ion-icon>
+          <div class="info-content">
+            <h3 class="info-title">Acceso Exclusivo para Usuarios</h3>
+            <p class="info-text">
+              Este es un sistema privado de entrenamiento personalizado. 
+              Las credenciales de acceso son proporcionadas exclusivamente por tu entrenador certificado.
+            </p>
+          </div>
+        </div>
         
-        <div class="signup-section">
-          <span class="signup-text">Don't have an account?</span>
-          <ion-button 
-            fill="clear" 
-            routerLink="/auth/register" 
-            class="link-btn signup-btn">
-            Sign Up
-          </ion-button>
+        <div class="contact-info">
+          <div class="contact-item">
+            <ion-icon name="person-circle-outline" class="contact-icon"></ion-icon>
+            <span class="contact-text">
+              ¿Necesitas acceso? Solicítalo a tu entrenador personal
+            </span>
+          </div>
+          
+          <div class="contact-item">
+            <ion-icon name="shield-checkmark-outline" class="contact-icon"></ion-icon>
+            <span class="contact-text">
+              Sistema seguro y supervisado profesionalmente
+            </span>
+          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 // src/app/features/training/components/pose-camera/pose-camera.component.ts
-// ✅ COMPONENTE CORREGIDO SIN ESPEJO + ESTADOS DE PREPARACIÓN
+// ✅ COMPONENTE REFACTORIZADO CON AUDIO SERVICE
 
 import { 
   Component, 
@@ -20,6 +20,7 @@ import { Subscription, timer } from 'rxjs';
 
 import { PoseDetectionEngine } from '../../../../core/pose-engine/pose-detection.engine';
 import { BiomechanicsAnalyzer, ReadinessState } from '../../../../core/pose-engine/biomechanics.analyzer';
+import { AudioService } from '../../../../services/audio.service'; // ✅ NUEVO IMPORT
 import { 
   PoseKeypoints, 
   BiomechanicalAngles, 
@@ -67,9 +68,14 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   currentPhase: RepetitionPhase = RepetitionPhase.IDLE;
   currentQualityScore = 0;
 
-  // ✅ NUEVOS: Estados de preparación
+  // ✅ ESTADOS DE PREPARACIÓN
   currentReadinessState: ReadinessState = ReadinessState.NOT_READY;
   readinessMessage = '';
+
+  // ✅ ESTADO DE AUDIO (PARA TEMPLATE)
+  get isPlayingAudio(): boolean {
+    return this.audioService.isCurrentlyPlaying();
+  }
 
   // ✅ CONTEXTOS DE CANVAS
   private canvasCtx: CanvasRenderingContext2D | null = null;
@@ -83,18 +89,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   initializationAttempts = 0;
   readonly maxInitializationAttempts = 10;
 
-  // ✅ SISTEMA DE AUDIO MEJORADO CON ESTADOS
-  private speechSynthesis: SpeechSynthesis;
-  private currentUtterance: SpeechSynthesisUtterance | null = null;
-  private audioQueue: string[] = [];
-  isPlayingAudio = false;
-  private lastAudioTime = 0;
-  private readonly AUDIO_COOLDOWN = 2500; // 5 segundos entre audios
-  private lastReadinessAudioTime = 0;
-  private readonly READINESS_AUDIO_COOLDOWN = 4000; // 8 segundos para mensajes de preparación
-  private lastGoodFormTime = 0;
-  private readonly GOOD_FORM_INTERVAL = 15000; // 15 segundos para mensajes positivos
-
   // ✅ SISTEMA DE COLORES PARA ERRORES
   errorColors = {
     good: '#22c55e',      // VERDE - Buena forma
@@ -106,18 +100,18 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private poseEngine: PoseDetectionEngine,
     private biomechanicsAnalyzer: BiomechanicsAnalyzer,
+    private audioService: AudioService, // ✅ INYECTAR AUDIO SERVICE
     private cdr: ChangeDetectorRef
   ) {
     console.log('🎬 PoseCameraComponent constructor');
-    
-    // ✅ INICIALIZAR SISTEMA DE AUDIO
-    this.speechSynthesis = window.speechSynthesis;
-    this.initializeAudioSystem();
   }
 
   ngOnInit() {
     console.log('🚀 PoseCameraComponent ngOnInit');
     this.setupSubscriptions();
+    
+    // ✅ CONFIGURAR AUDIO SERVICE
+    this.audioService.setEnabled(this.enableAudio);
   }
 
   ngAfterViewInit() {
@@ -136,106 +130,6 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cleanup();
   }
 
-  // ✅ INICIALIZAR SISTEMA DE AUDIO
-  private initializeAudioSystem(): void {
-    try {
-      if (!this.speechSynthesis) {
-        console.warn('⚠️ Text-to-Speech no disponible');
-        this.enableAudio = false;
-        return;
-      }
-
-      this.speechSynthesis.onvoiceschanged = () => {
-        const voices = this.speechSynthesis.getVoices();
-        const spanishVoice = voices.find(voice => 
-          voice.lang.includes('es') || voice.name.includes('Spanish')
-        );
-        console.log('🎤 Voces disponibles:', voices.length, 'Español:', !!spanishVoice);
-      };
-
-      console.log('🎤 Sistema de audio inicializado');
-    } catch (error) {
-      console.error('❌ Error inicializando audio:', error);
-      this.enableAudio = false;
-    }
-  }
-
-// 🔔 REPRODUCIR AUDIO CORREGIDO
-private async playAudio(message: string, isReadinessMessage = false): Promise<void> {
-  if (!this.enableAudio) {
-    console.log('🔇 Audio deshabilitado, mensaje:', message);
-    return;
-  }
-
-  // ✅ VERIFICAR SI SPEECH SYNTHESIS ESTÁ DISPONIBLE
-  if (!window.speechSynthesis) {
-    console.warn('⚠️ SpeechSynthesis no disponible en este dispositivo');
-    return;
-  }
-
-  const now = Date.now();
-  
-  // ✅ COOLDOWN DIFERENTE PARA MENSAJES DE PREPARACIÓN
-  const relevantCooldown = isReadinessMessage ? this.READINESS_AUDIO_COOLDOWN : this.AUDIO_COOLDOWN;
-  const relevantLastTime = isReadinessMessage ? this.lastReadinessAudioTime : this.lastAudioTime;
-  
-  if (now - relevantLastTime < relevantCooldown) {
-    console.log('⏸️ Audio en cooldown, saltando mensaje:', message);
-    return;
-  }
-
-  try {
-    // ✅ CANCELAR AUDIO ANTERIOR
-    window.speechSynthesis.cancel();
-    
-    // ✅ ESPERAR UN POCO PARA QUE SE CANCELE
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    const utterance = new SpeechSynthesisUtterance(message);
-    
-    // ✅ CONFIGURAR AUDIO
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
-    utterance.lang = 'es-ES'; // ✅ FORZAR ESPAÑOL
-
-    // ✅ EVENTOS DE AUDIO
-    utterance.onstart = () => {
-      this.isPlayingAudio = true;
-      this.cdr.detectChanges(); // ✅ FORZAR DETECCIÓN DE CAMBIOS
-      console.log('🔊 Audio iniciado:', message);
-    };
-
-    utterance.onend = () => {
-      this.isPlayingAudio = false;
-      this.cdr.detectChanges(); // ✅ FORZAR DETECCIÓN DE CAMBIOS
-      console.log('✅ Audio completado');
-    };
-
-    utterance.onerror = (event) => {
-      this.isPlayingAudio = false;
-      this.cdr.detectChanges();
-      console.error('❌ Error en audio:', event);
-    };
-
-    // ✅ REPRODUCIR INMEDIATAMENTE
-    window.speechSynthesis.speak(utterance);
-    this.currentUtterance = utterance;
-    
-    // ✅ ACTUALIZAR TIEMPO CORRECTO
-    if (isReadinessMessage) {
-      this.lastReadinessAudioTime = now;
-    } else {
-      this.lastAudioTime = now;
-    }
-
-    console.log('🎤 Audio reproduciendo:', message);
-
-  } catch (error) {
-    console.error('❌ Error reproduciendo audio:', error);
-    this.isPlayingAudio = false;
-  }
-}
   // 📡 CONFIGURAR SUBSCRIPCIONES
   private setupSubscriptions(): void {
     // Configurar analizador
@@ -287,167 +181,139 @@ private async playAudio(message: string, isReadinessMessage = false): Promise<vo
     );
   }
 
-  // ✅ BUSCAR ESTE MÉTODO EN pose-camera.component.ts Y REEMPLAZARLO COMPLETO:
-
-// 🧠 ANÁLIZAR MOVIMIENTO CON ESTADOS DE PREPARACIÓN (CORREGIDO)
-private analyzeMovementWithStates(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
-  try {
-    const analysis = this.biomechanicsAnalyzer.analyzeMovement(pose, angles);
-    
-    // ✅ ACTUALIZAR ESTADO DE PREPARACIÓN
-    const prevReadinessState = this.currentReadinessState;
-    this.currentReadinessState = this.biomechanicsAnalyzer.getReadinessState();
-    this.readinessMessage = this.biomechanicsAnalyzer.getReadinessMessage();
-    
-    console.log('📊 Análisis:', {
-      readinessState: this.currentReadinessState,
-      errorsCount: analysis.errors.length,
-      phase: analysis.phase,
-      repetitions: analysis.repetitionCount,
-      quality: analysis.qualityScore
-    });
-
-    // ✅ MANEJAR CAMBIOS DE ESTADO DE PREPARACIÓN
-    this.handleReadinessStateChange(prevReadinessState, this.currentReadinessState);
-
-    // ✅ ACTUALIZAR DATOS GENERALES
-    const previousCount = this.repetitionCount;
-    this.repetitionCount = analysis.repetitionCount;
-    this.currentPhase = analysis.phase;
-    this.currentQualityScore = analysis.qualityScore;
-    
-    // ✅ DETECTAR NUEVA REPETICIÓN
-    if (this.repetitionCount > previousCount && this.currentReadinessState === ReadinessState.EXERCISING) {
-      console.log(`🎉 ¡NUEVA REPETICIÓN! Total: ${this.repetitionCount}`);
-      this.repetitionCounted.emit(this.repetitionCount);
+  // 🧠 ANÁLIZAR MOVIMIENTO CON ESTADOS DE PREPARACIÓN (MEJORADO CON AUDIO SERVICE)
+  private analyzeMovementWithStates(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
+    try {
+      const analysis = this.biomechanicsAnalyzer.analyzeMovement(pose, angles);
       
-      // Audio de repetición cada 5
-      if (this.repetitionCount % 5 === 0) {
-        this.playAudio(`¡Excelente! ${this.repetitionCount} repeticiones completadas`);
-      }
-    }
+      // ✅ ACTUALIZAR ESTADO DE PREPARACIÓN
+      const prevReadinessState = this.currentReadinessState;
+      this.currentReadinessState = this.biomechanicsAnalyzer.getReadinessState();
+      this.readinessMessage = this.biomechanicsAnalyzer.getReadinessMessage();
+      
+      console.log('📊 Análisis:', {
+        readinessState: this.currentReadinessState,
+        errorsCount: analysis.errors.length,
+        phase: analysis.phase,
+        repetitions: analysis.repetitionCount,
+        quality: analysis.qualityScore
+      });
 
-    // ✅ PROCESAR SEGÚN ESTADO
-    if (this.currentReadinessState === ReadinessState.EXERCISING) {
-      this.processExerciseErrors(analysis.errors, previousCount);
-    } else {
-      this.processReadinessErrors(analysis.errors);
-      // ✅ LIMPIAR OVERLAYS DE EJERCICIO CUANDO NO ESTÁ EJERCITÁNDOSE
-      this.clearErrorOverlay();
-    }
+      // ✅ MANEJAR CAMBIOS DE ESTADO DE PREPARACIÓN
+      this.handleReadinessStateChange(prevReadinessState, this.currentReadinessState);
 
-  } catch (error) {
-    console.error('❌ Error en análisis biomecánico:', error);
-  }
-}
-
-// ✅ TAMBIÉN AGREGAR ESTE MÉTODO NUEVO:
-
-// 🏃 PROCESAR ERRORES DURANTE EJERCICIO (MEJORADO)
-private processExerciseErrors(errors: PostureError[], previousCount: number): void {
-  const newErrors = this.filterNewErrors(errors);
-  
-  if (newErrors.length > 0) {
-    console.log('🚨 Errores reales detectados:', newErrors.map(e => e.description));
-    this.currentErrors = newErrors;
-    this.errorDetected.emit(newErrors);
-    
-    // ✅ AUDIO PARA ERRORES (SOLO SI NO HAY REPETICIÓN NUEVA)
-    if (this.repetitionCount === previousCount) {
-      const mostSevereError = this.getMostSevereError(newErrors);
-      if (mostSevereError) {
-        if (mostSevereError.type === PostureErrorType.POOR_ALIGNMENT || 
-            mostSevereError.type === PostureErrorType.UNSTABLE_BALANCE) {
-          this.playPriorityAudio(mostSevereError.recommendation, mostSevereError.type);
-        } else {
-          this.playAudio(mostSevereError.recommendation);
+      // ✅ ACTUALIZAR DATOS GENERALES
+      const previousCount = this.repetitionCount;
+      this.repetitionCount = analysis.repetitionCount;
+      this.currentPhase = analysis.phase;
+      this.currentQualityScore = analysis.qualityScore;
+      
+      // ✅ DETECTAR NUEVA REPETICIÓN
+      if (this.repetitionCount > previousCount && this.currentReadinessState === ReadinessState.EXERCISING) {
+        console.log(`🎉 ¡NUEVA REPETICIÓN! Total: ${this.repetitionCount}`);
+        this.repetitionCounted.emit(this.repetitionCount);
+        
+        // ✅ AUDIO DE REPETICIÓN USANDO AUDIO SERVICE
+        if (this.repetitionCount % 5 === 0) {
+          this.audioService.speakSuccess(`¡Excelente! ${this.repetitionCount} repeticiones completadas`);
         }
       }
+
+      // ✅ PROCESAR SEGÚN ESTADO
+      if (this.currentReadinessState === ReadinessState.EXERCISING) {
+        this.processExerciseErrors(analysis.errors, previousCount);
+      } else {
+        this.processReadinessErrors(analysis.errors);
+        // ✅ LIMPIAR OVERLAYS DE EJERCICIO CUANDO NO ESTÁ EJERCITÁNDOSE
+        this.clearErrorOverlay();
+      }
+
+    } catch (error) {
+      console.error('❌ Error en análisis biomecánico:', error);
     }
+  }
+
+  // 🏃 PROCESAR ERRORES DURANTE EJERCICIO (MEJORADO CON AUDIO SERVICE)
+  private processExerciseErrors(errors: PostureError[], previousCount: number): void {
+    const newErrors = this.filterNewErrors(errors);
     
-    // ✅ DIBUJAR OVERLAY DE ERROR
-    this.drawErrorOverlay(newErrors);
-    
-  } else {
-    // ✅ BUENA FORMA DURANTE EJERCICIO
-    this.currentErrors = [];
-    
-    // 🎯 SOLO DAR FEEDBACK POSITIVO SI SE COMPLETÓ UNA REPETICIÓN
-    if (this.repetitionCount > previousCount) {
-      const goodMessage = this.biomechanicsAnalyzer.generatePositiveMessage();
-      this.playAudio(goodMessage);
-      this.drawGoodFormOverlay();
+    if (newErrors.length > 0) {
+      console.log('🚨 Errores reales detectados:', newErrors.map(e => e.description));
+      this.currentErrors = newErrors;
+      this.errorDetected.emit(newErrors);
       
-      // Resetear timer para evitar spam
-      this.lastGoodFormTime = Date.now();
+      // ✅ AUDIO PARA ERRORES USANDO AUDIO SERVICE (SOLO SI NO HAY REPETICIÓN NUEVA)
+      if (this.repetitionCount === previousCount) {
+        const mostSevereError = this.getMostSevereError(newErrors);
+        if (mostSevereError) {
+          // ✅ USAR DIFERENTES MÉTODOS SEGÚN SEVERIDAD
+          if (mostSevereError.severity >= 7) {
+            this.audioService.speakCritical(mostSevereError.recommendation);
+          } else if (mostSevereError.severity >= 5) {
+            this.audioService.speakError(mostSevereError.recommendation);
+          } else {
+            this.audioService.speak(mostSevereError.recommendation, 'info', 'normal');
+          }
+        }
+      }
+      
+      // ✅ DIBUJAR OVERLAY DE ERROR
+      this.drawErrorOverlay(newErrors);
+      
     } else {
-      // ✅ LIMPIAR OVERLAY SIN MOSTRAR MENSAJE
-      this.clearErrorOverlay();
+      // ✅ BUENA FORMA DURANTE EJERCICIO
+      this.currentErrors = [];
+      
+      // 🎯 SOLO DAR FEEDBACK POSITIVO SI SE COMPLETÓ UNA REPETICIÓN
+      if (this.repetitionCount > previousCount) {
+        const goodMessage = this.biomechanicsAnalyzer.generatePositiveMessage();
+        this.audioService.speakSuccess(goodMessage); // ✅ USAR AUDIO SERVICE
+        this.drawGoodFormOverlay();
+      } else {
+        // ✅ LIMPIAR OVERLAY SIN MOSTRAR MENSAJE
+        this.clearErrorOverlay();
+      }
     }
   }
-} // ← ✅ ESTA LLAVE FALTABA
 
-// 🚨 AUDIO PRIORITARIO PARA ERRORES DE POSICIÓN
-private async playPriorityAudio(message: string, errorType: PostureErrorType): Promise<void> {
-  if (!this.enableAudio) return;
-
-  // ✅ ERRORES DE POSICIÓN TIENEN COOLDOWN MÁS CORTO
-  const now = Date.now();
-  let cooldown = this.AUDIO_COOLDOWN;
-  
-  if (errorType === PostureErrorType.POOR_ALIGNMENT || 
-      errorType === PostureErrorType.UNSTABLE_BALANCE) {
-    cooldown = 1500; // Solo 1.5 segundos para pies juntos/levantados
-  }
-  
-  if (now - this.lastAudioTime < cooldown) {
-    console.log('⏸️ Audio en cooldown corto, saltando:', message);
-    return;
-  }
-
-  // ✅ USAR EL SISTEMA DE AUDIO NORMAL
-  return this.playAudio(message, true);
-}
-
-// 🚦 MANEJAR CAMBIOS DE ESTADO DE PREPARACIÓN
-private handleReadinessStateChange(prevState: ReadinessState, newState: ReadinessState): void {
-  if (prevState !== newState) {
-    console.log(`🚦 Cambio de estado: ${prevState} → ${newState}`);
-    
-    switch (newState) {
-      case ReadinessState.NOT_READY:
-        this.drawPreparationOverlay('Posiciónate para el ejercicio', this.errorColors.preparing);
-        this.playAudio('Posiciónate para hacer el ejercicio', true);
-        break;
-        
-      case ReadinessState.GETTING_READY:
-        this.drawPreparationOverlay('Mantén la posición...', this.errorColors.warning);
-        break;
-        
-      case ReadinessState.READY_TO_START:
-        this.drawPreparationOverlay('¡LISTO PARA EMPEZAR!', this.errorColors.good);
-        this.playAudio('¡Listo para empezar! Comienza el ejercicio', true);
-        break;
-        
-      case ReadinessState.EXERCISING:
-        this.clearPreparationOverlay();
-        this.playAudio('¡Perfecto! Continúa con el ejercicio', true);
-        break;
+  // 🚦 MANEJAR CAMBIOS DE ESTADO DE PREPARACIÓN (MEJORADO CON AUDIO SERVICE)
+  private handleReadinessStateChange(prevState: ReadinessState, newState: ReadinessState): void {
+    if (prevState !== newState) {
+      console.log(`🚦 Cambio de estado: ${prevState} → ${newState}`);
+      
+      switch (newState) {
+        case ReadinessState.NOT_READY:
+          this.drawPreparationOverlay('Posiciónate para el ejercicio', this.errorColors.preparing);
+          this.audioService.speakReadiness('Posiciónate para hacer el ejercicio'); // ✅ USAR AUDIO SERVICE
+          break;
+          
+        case ReadinessState.GETTING_READY:
+          this.drawPreparationOverlay('Mantén la posición...', this.errorColors.warning);
+          break;
+          
+        case ReadinessState.READY_TO_START:
+          this.drawPreparationOverlay('¡LISTO PARA EMPEZAR!', this.errorColors.good);
+          this.audioService.speakReadiness('¡Listo para empezar! Comienza el ejercicio'); // ✅ USAR AUDIO SERVICE
+          break;
+          
+        case ReadinessState.EXERCISING:
+          this.clearPreparationOverlay();
+          this.audioService.speakReadiness('¡Perfecto! Continúa con el ejercicio'); // ✅ USAR AUDIO SERVICE
+          break;
+      }
     }
   }
-}
 
-
-  // 🚦 PROCESAR ERRORES DE PREPARACIÓN
+  // 🚦 PROCESAR ERRORES DE PREPARACIÓN (MEJORADO CON AUDIO SERVICE)
   private processReadinessErrors(errors: PostureError[]): void {
     if (errors.length > 0) {
       this.currentErrors = errors;
       this.errorDetected.emit(errors);
       
-      // Solo audio si hay errores de posición
+      // ✅ AUDIO PARA ERRORES DE PREPARACIÓN USANDO AUDIO SERVICE
       const positionError = errors[0];
       if (positionError) {
-        this.playAudio(positionError.recommendation, true);
+        this.audioService.speakReadiness(positionError.recommendation); // ✅ USAR AUDIO SERVICE
       }
     } else {
       this.currentErrors = [];
@@ -515,7 +381,6 @@ private handleReadinessStateChange(prevState: ReadinessState, newState: Readines
     // ✅ DIBUJAR PUNTOS IMPORTANTES
     this.drawKeyPoints(pose);
   }
-
 
   // 🔄 CONVERTIR POSE A LANDMARKS DE MEDIAPIPE
   private convertPoseToLandmarks(pose: PoseKeypoints): any[] {
@@ -601,9 +466,6 @@ private handleReadinessStateChange(prevState: ReadinessState, newState: Readines
     const canvas = this.overlayElementRef.nativeElement;
     this.overlayCtx.clearRect(0, 0, canvas.width, canvas.height);
   }
-
-  // [MANTENER TODOS LOS OTROS MÉTODOS EXISTENTES]
-  // drawErrorOverlay, drawGoodFormOverlay, clearErrorOverlay, etc.
 
   // 🚨 DIBUJAR OVERLAY DE ERROR CON COLORES
   private drawErrorOverlay(errors: PostureError[]): void {
@@ -710,8 +572,7 @@ private handleReadinessStateChange(prevState: ReadinessState, newState: Readines
     return lines;
   }
 
-  // [MANTENER TODOS LOS MÉTODOS RESTANTES COMO startCamera, stopCamera, etc.]
-  
+  // ✅ MÉTODOS DE CÁMARA (SIN CAMBIOS)
   async startCamera(): Promise<void> {
     this.initializationAttempts++;
     
@@ -799,22 +660,18 @@ private handleReadinessStateChange(prevState: ReadinessState, newState: Readines
     }
   }
 
+  // ✅ TOGGLE AUDIO MEJORADO CON AUDIO SERVICE
   toggleAudio(): void {
     this.enableAudio = !this.enableAudio;
-    console.log('🔊 Audio:', this.enableAudio ? 'ACTIVADO' : 'DESACTIVADO');
-    
-    if (!this.enableAudio && this.currentUtterance) {
-      window.speechSynthesis.cancel();
-      this.isPlayingAudio = false;
-    }
+    this.audioService.setEnabled(this.enableAudio); // ✅ USAR AUDIO SERVICE
     
     // ✅ PROBAR AUDIO AL ACTIVAR
     if (this.enableAudio) {
-      this.playAudio('Audio activado', true);
+      this.audioService.speak('Audio activado'); // ✅ USAR AUDIO SERVICE
     }
   }
 
-  // ✅ MÉTODOS PARA EL TEMPLATE
+  // ✅ MÉTODOS PARA EL TEMPLATE (SIN CAMBIOS)
   getExerciseName(): string {
     switch (this.exerciseType) {
       case ExerciseType.SQUATS: return 'Sentadillas';
@@ -887,6 +744,12 @@ private handleReadinessStateChange(prevState: ReadinessState, newState: Readines
     }
   }
 
+  // ✅ VERIFICAR SI AUDIO ESTÁ HABILITADO (PARA TEMPLATE)
+  get isAudioEnabled(): boolean {
+    return this.audioService.isAudioEnabled();
+  }
+
+  // ✅ LIMPIEZA MEJORADA CON AUDIO SERVICE
   private cleanup(): void {
     if (this.initializationTimer) {
       clearTimeout(this.initializationTimer);
@@ -896,9 +759,8 @@ private handleReadinessStateChange(prevState: ReadinessState, newState: Readines
     this.subscriptions.forEach(sub => sub.unsubscribe());
     this.subscriptions = [];
 
-    if (this.speechSynthesis) {
-      this.speechSynthesis.cancel();
-    }
+    // ✅ LIMPIAR AUDIO SERVICE
+    this.audioService.cleanup();
 
     this.poseEngine.cleanup();
     this.biomechanicsAnalyzer.cleanup();
