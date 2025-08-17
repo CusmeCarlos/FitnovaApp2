@@ -1,10 +1,10 @@
 // src/app/services/notification.service.ts
-// NOTIFICATIONSERVICE - FCM + ALERTAS AL ENTRENADOR (CORREGIDO)
+// NOTIFICATIONSERVICE - FCM + ALERTAS AL ENTRENADOR (CORREGIDO NG0203)
 
 import { Injectable } from '@angular/core';
-import { AngularFirestore } from '@angular/fire/compat/firestore';
+import { AngularFirestore, AngularFirestoreCollection } from '@angular/fire/compat/firestore';
 import { AngularFireFunctions } from '@angular/fire/compat/functions';
-import { AngularFireMessaging } from '@angular/fire/compat/messaging'; // NUEVO
+import { AngularFireMessaging } from '@angular/fire/compat/messaging';
 import { AuthService } from './auth.service';
 import { ErrorHandlerService } from './error-handler.service';
 import { firstValueFrom } from 'rxjs';
@@ -48,67 +48,77 @@ export interface NotificationPreferences {
 export class NotificationService {
   private suppressionMap = new Map<string, Date>();
   private hourlyAlertCount = new Map<string, { count: number; resetTime: Date }>();
-  private fcmToken: string | null = null; // NUEVO
-  private isInitialized = false; // NUEVO
+  private fcmToken: string | null = null;
+  private isInitialized = false;
+
+  // ✅ CREAR REFERENCIAS DE COLECCIONES EN EL CONSTRUCTOR
+  private notificationsCollection: AngularFirestoreCollection<NotificationAlert>;
+  private fcmTokensCollection: AngularFirestoreCollection<any>;
+  private notificationPreferencesCollection: AngularFirestoreCollection<NotificationPreferences>;
 
   constructor(
     private firestore: AngularFirestore,
     private functions: AngularFireFunctions,
-    private messaging: AngularFireMessaging, // NUEVO
+    private messaging: AngularFireMessaging,
     private auth: AuthService,
     private errorHandler: ErrorHandlerService
-  ) {}
+  ) {
+    // ✅ INICIALIZAR REFERENCIAS DE COLECCIONES AQUÍ
+    this.notificationsCollection = this.firestore.collection<NotificationAlert>('notifications');
+    this.fcmTokensCollection = this.firestore.collection('fcmTokens');
+    this.notificationPreferencesCollection = this.firestore.collection<NotificationPreferences>('notificationPreferences');
+  }
 
-  // NUEVO: INICIALIZAR FCM
+  // INICIALIZAR FCM
   async initializeFCM(): Promise<void> {
     try {
       if (this.isInitialized) return;
 
-      console.log(' Inicializando Firebase Cloud Messaging...');
+      console.log('🔔 Inicializando Firebase Cloud Messaging...');
 
-      // NUEVO: SOLICITAR PERMISOS
+      // SOLICITAR PERMISOS
       const permission = await this.requestPermission();
       if (!permission) {
-        console.warn(' Permisos de notificación denegados');
+        console.warn('🔔 Permisos de notificación denegados');
         return;
       }
 
-      // NUEVO: OBTENER TOKEN FCM (usando requestToken con firstValueFrom)
+      // OBTENER TOKEN FCM
       this.fcmToken = await firstValueFrom(this.messaging.requestToken);
 
       if (this.fcmToken) {
-        console.log(' Token FCM obtenido:', this.fcmToken);
+        console.log('🔔 Token FCM obtenido:', this.fcmToken);
         await this.registerFCMToken(this.fcmToken);
       }
 
-      // NUEVO: ESCUCHAR MENSAJES EN PRIMER PLANO (CORREGIDO)
+      // ESCUCHAR MENSAJES EN PRIMER PLANO
       this.messaging.messages.subscribe((payload) => {
-        console.log(' Mensaje FCM recibido:', payload);
+        console.log('🔔 Mensaje FCM recibido:', payload);
         this.handleForegroundMessage(payload);
       });
 
-      // NUEVO: ESCUCHAR CAMBIOS DE TOKEN (CORREGIDO)
+      // ESCUCHAR CAMBIOS DE TOKEN
       this.messaging.tokenChanges.subscribe(async (token) => {
         if (token) {
-          console.log(' Token FCM actualizado:', token);
+          console.log('🔔 Token FCM actualizado:', token);
           this.fcmToken = token;
           await this.registerFCMToken(token);
         }
       });
 
       this.isInitialized = true;
-      console.log(' FCM inicializado correctamente');
+      console.log('✅ FCM inicializado correctamente');
 
     } catch (error) {
-      console.error(' Error inicializando FCM:', error);
+      console.error('🛑 Error inicializando FCM:', error);
     }
   }
 
-  // NUEVO: SOLICITAR PERMISOS
+  // SOLICITAR PERMISOS
   private async requestPermission(): Promise<boolean> {
     try {
       if (!('Notification' in window)) {
-        console.warn(' Notificaciones no soportadas en este navegador');
+        console.warn('🔔 Notificaciones no soportadas en este navegador');
         return false;
       }
 
@@ -117,7 +127,7 @@ export class NotificationService {
       }
 
       if (Notification.permission === 'denied') {
-        console.warn(' Permisos de notificación denegados permanentemente');
+        console.warn('🔔 Permisos de notificación denegados permanentemente');
         return false;
       }
 
@@ -125,15 +135,14 @@ export class NotificationService {
       return permission === 'granted';
 
     } catch (error) {
-      console.error(' Error solicitando permisos:', error);
+      console.error('🛑 Error solicitando permisos:', error);
       return false;
     }
   }
 
-  // NUEVO: MANEJAR MENSAJES EN PRIMER PLANO
+  // MANEJAR MENSAJES EN PRIMER PLANO
   private handleForegroundMessage(payload: any): void {
     try {
-      // NUEVO: MOSTRAR NOTIFICACIÓN LOCAL
       const title = payload.notification?.title || 'FitNova - Alerta';
       const options = {
         body: payload.notification?.body || 'Nueva notificación',
@@ -145,11 +154,11 @@ export class NotificationService {
       new Notification(title, options);
 
     } catch (error) {
-      console.error(' Error mostrando notificación:', error);
+      console.error('🛑 Error mostrando notificación:', error);
     }
   }
 
-  // ENVIAR ALERTA CRÍTICA AL ENTRENADOR (MÉTODO EXISTENTE MEJORADO)
+  // ✅ ENVIAR ALERTA CRÍTICA (CORREGIDO)
   async sendCriticalAlert(
     errorType: string,
     exercise: string,
@@ -162,20 +171,20 @@ export class NotificationService {
     try {
       const user = await firstValueFrom(this.auth.user$);
       if (!user) {
-        console.warn(' No hay usuario autenticado para enviar alerta');
+        console.warn('🔔 No hay usuario autenticado para enviar alerta');
         return false;
       }
 
       // VERIFICAR SUPRESIÓN TEMPORAL
       const suppressionKey = `${errorType}_${user.uid}`;
       if (this.isErrorSuppressed(suppressionKey)) {
-        console.log(` Error ${errorType} suprimido temporalmente para ${user.uid}`);
+        console.log(`🔔 Error ${errorType} suprimido temporalmente para ${user.uid}`);
         return false;
       }
 
       // VERIFICAR LÍMITES POR HORA
       if (!this.canSendAlert(user.uid)) {
-        console.log(` Límite de alertas por hora alcanzado para ${user.uid}`);
+        console.log(`🔔 Límite de alertas por hora alcanzado para ${user.uid}`);
         return false;
       }
 
@@ -196,14 +205,14 @@ export class NotificationService {
         trainerNotified: false
       };
 
-      // GUARDAR ALERTA EN FIRESTORE
-      const alertRef = await this.firestore.collection('notifications').add(alert);
+      // ✅ USAR REFERENCIA DE COLECCIÓN PRECONFIGURADA
+      const alertRef = await this.notificationsCollection.add(alert);
       
-      // NUEVO: LLAMAR CLOUD FUNCTION PARA PROCESAR ALERTA (MEJORADA CON FCM)
+      // LLAMAR CLOUD FUNCTION PARA PROCESAR ALERTA
       const sendNotification = this.functions.httpsCallable('sendTrainerNotification');
       const result = await firstValueFrom(sendNotification({
         alertId: alertRef.id,
-        fcmToken: this.fcmToken, // NUEVO: INCLUIR TOKEN FCM
+        fcmToken: this.fcmToken,
         ...alert
       }));
 
@@ -221,47 +230,48 @@ export class NotificationService {
         // INCREMENTAR CONTADOR POR HORA
         this.incrementHourlyCount(user.uid);
 
-        console.log(` Alerta crítica enviada exitosamente: ${errorType}`);
+        console.log(`✅ Alerta crítica enviada exitosamente: ${errorType}`);
         return true;
       } else {
-        console.error(' Error enviando alerta:', result.error);
+        console.error('🛑 Error enviando alerta:', result.error);
         return false;
       }
 
     } catch (error) {
-      console.error(' Error en sendCriticalAlert:', error);
+      console.error('🛑 Error en sendCriticalAlert:', error);
       await this.errorHandler.handleGeneralError(error, 'Error enviando alerta');
       return false;
     }
   }
 
-  // NUEVO: OBTENER TOKEN FCM ACTUAL
+  // OBTENER TOKEN FCM ACTUAL
   getCurrentFCMToken(): string | null {
     return this.fcmToken;
   }
 
-  // NUEVO: VERIFICAR SI FCM ESTÁ INICIALIZADO
+  // VERIFICAR SI FCM ESTÁ INICIALIZADO
   isFCMInitialized(): boolean {
     return this.isInitialized;
   }
 
-  // REGISTRAR TOKEN FCM (MÉTODO EXISTENTE MEJORADO)
+  // ✅ REGISTRAR TOKEN FCM (CORREGIDO)
   async registerFCMToken(token: string): Promise<void> {
     try {
       const user = await firstValueFrom(this.auth.user$);
       if (!user) return;
 
-      await this.firestore.collection('fcmTokens').doc(user.uid).set({
+      // ✅ USAR REFERENCIA DE COLECCIÓN PRECONFIGURADA
+      await this.fcmTokensCollection.doc(user.uid).set({
         token,
         platform: 'web',
         updatedAt: new Date(),
-        userId: user.uid, // NUEVO: Para identificar usuario
-        userEmail: user.email // NUEVO: Para identificar usuario
+        userId: user.uid,
+        userEmail: user.email
       }, { merge: true });
 
-      console.log(' Token FCM registrado exitosamente');
+      console.log('✅ Token FCM registrado exitosamente');
     } catch (error) {
-      console.error(' Error registrando token FCM:', error);
+      console.error('🛑 Error registrando token FCM:', error);
     }
   }
 
@@ -300,7 +310,7 @@ export class NotificationService {
     const suppressedUntil = new Date(Date.now() + suppressionMinutes * 60 * 1000);
     this.suppressionMap.set(suppressionKey, suppressedUntil);
     
-    console.log(` Supresión aplicada para ${suppressionKey} hasta ${suppressedUntil.toLocaleTimeString()}`);
+    console.log(`🔔 Supresión aplicada para ${suppressionKey} hasta ${suppressedUntil.toLocaleTimeString()}`);
   }
 
   // VERIFICAR LÍMITES DE ALERTAS POR HORA
@@ -332,24 +342,24 @@ export class NotificationService {
     }
   }
 
-  // CONFIGURAR PREFERENCIAS DE NOTIFICACIÓN
+  // ✅ CONFIGURAR PREFERENCIAS (CORREGIDO)
   async updateNotificationPreferences(preferences: NotificationPreferences): Promise<void> {
     try {
-      await this.firestore.collection('notificationPreferences')
+      await this.notificationPreferencesCollection
         .doc(preferences.uid)
         .set(preferences, { merge: true });
       
-      console.log(' Preferencias de notificación actualizadas');
+      console.log('✅ Preferencias de notificación actualizadas');
     } catch (error) {
-      console.error(' Error actualizando preferencias:', error);
+      console.error('🛑 Error actualizando preferencias:', error);
       throw error;
     }
   }
 
-  // OBTENER PREFERENCIAS DEL USUARIO
+  // ✅ OBTENER PREFERENCIAS (CORREGIDO)
   async getUserPreferences(uid: string): Promise<NotificationPreferences | null> {
     try {
-      const doc = await firstValueFrom(this.firestore.collection('notificationPreferences')
+      const doc = await firstValueFrom(this.notificationPreferencesCollection
         .doc(uid)
         .get());
       
@@ -371,27 +381,26 @@ export class NotificationService {
         };
       }
     } catch (error) {
-      console.error(' Error obteniendo preferencias:', error);
+      console.error('🛑 Error obteniendo preferencias:', error);
       return null;
     }
   }
 
-  // OBTENER HISTORIAL DE ALERTAS
+  // ✅ OBTENER HISTORIAL (CORREGIDO)
   async getAlertHistory(uid: string, limit: number = 50): Promise<NotificationAlert[]> {
     try {
-      const snapshot = await firstValueFrom(this.firestore.collection<NotificationAlert>('notifications',
-        ref => ref
-          .where('uid', '==', uid)
-          .orderBy('timestamp', 'desc')
-          .limit(limit)
-      ).get());
+      const snapshot = await this.notificationsCollection
+        .ref.where('uid', '==', uid)
+        .orderBy('timestamp', 'desc')
+        .limit(limit)
+        .get();
 
-      return snapshot?.docs.map(doc => ({
+      return snapshot.docs.map((doc: any) => ({
         id: doc.id,
         ...doc.data()
-      } as NotificationAlert)) || [];
+      } as NotificationAlert));
     } catch (error) {
-      console.error(' Error obteniendo historial de alertas:', error);
+      console.error('🛑 Error obteniendo historial de alertas:', error);
       return [];
     }
   }

@@ -1,0 +1,442 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ================================================================================
+    // 🔐 FUNCIONES DE VALIDACIÓN
+    // ================================================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isTrainer() {
+      return isAuthenticated() && getUserRole() == 'trainer';
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    function isTrainerOrAdmin() {
+      return isTrainer() || isAdmin();
+    }
+    
+    // ================================================================================
+    // 👤 USUARIOS - Solo pueden leer/escribir su propia información
+    // ================================================================================
+    
+    match /users/{userId} {
+      // Usuario puede leer y escribir solo su propia información
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      
+      // Entrenadores y admins pueden leer todos los usuarios
+      allow read: if isTrainerOrAdmin();
+      
+      // Solo admins pueden crear/eliminar usuarios
+      allow create, delete: if isAdmin();
+    }
+    
+    // ================================================================================
+    // 📋 PERFILES - Acceso controlado por roles
+    // ================================================================================
+    
+    match /profiles/{userId} {
+      // Usuario puede leer y escribir solo su propio perfil
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      
+      // Entrenadores pueden leer todos los perfiles (para supervisión)
+      allow read: if isTrainerOrAdmin();
+      
+      // Entrenadores pueden actualizar perfiles de sus usuarios asignados
+      allow update: if isTrainer() && 
+                       resource.data.assignedTrainer == request.auth.uid;
+      
+      // Validaciones de datos del perfil
+      allow write: if isAuthenticated() && isOwner(userId) && 
+                      validateProfileData(request.resource.data);
+    }
+    
+    // ================================================================================
+    // 🚨 ERRORES CRÍTICOS - Sistema de alertas prioritarias
+    // ================================================================================
+    
+    match /critical-errors/{errorId} {
+      // Usuarios pueden crear errores críticos de sus propias sesiones
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       validateCriticalError(request.resource.data);
+      
+      // Usuario puede leer sus propios errores
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Entrenadores pueden leer todos los errores críticos
+      allow read: if isTrainerOrAdmin();
+      
+      // Solo entrenadores pueden marcar errores como "revisados"
+      allow update: if isTrainer() && 
+                       request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['reviewed', 'trainerNotes', 'reviewedAt']);
+      
+      // Solo admins pueden eliminar errores críticos
+      allow delete: if isAdmin();
+    }
+    
+    // ================================================================================
+    // 🔥 NUEVAS: ALERTAS CRÍTICAS PARA CLOUD FUNCTIONS
+    // ================================================================================
+    
+    match /criticalAlerts/{alertId} {
+      // Usuarios pueden crear alertas de sus propias sesiones
+      allow create: if isAuthenticated() && 
+                       request.resource.data.uid == request.auth.uid;
+      
+      // Usuario puede leer sus propias alertas
+      allow read: if isAuthenticated() && 
+                     resource.data.uid == request.auth.uid;
+      
+      // Entrenadores y admins pueden leer todas las alertas
+      allow read: if isTrainerOrAdmin();
+      
+      // Solo entrenadores pueden actualizar alertas (procesamiento)
+      allow update: if isTrainerOrAdmin();
+      
+      // Solo admins pueden eliminar alertas
+      allow delete: if isAdmin();
+    }
+    
+    // ================================================================================
+    // 📊 DASHBOARD DEL ENTRENADOR (NUEVA)
+    // ================================================================================
+    
+    match /trainerDashboard/{dashboardId} {
+      // Solo entrenadores y admins pueden acceder al dashboard
+      allow read, write: if isTrainerOrAdmin();
+      
+      // Validar datos del dashboard
+      allow create: if isTrainerOrAdmin();
+    }
+    
+    // ================================================================================
+    // 📸 CAPTURAS DE ERRORES - Almacenamiento de evidencia
+    // ================================================================================
+    
+    match /error-captures/{captureId} {
+      // Usuarios pueden crear capturas de sus errores
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       validateCaptureData(request.resource.data);
+      
+      // Usuario puede leer sus propias capturas
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Entrenadores pueden leer todas las capturas
+      allow read: if isTrainerOrAdmin();
+      
+      // Nadie puede modificar capturas (solo lectura después de creación)
+      allow update: if false;
+      
+      // Solo admins pueden eliminar capturas (para gestión de almacenamiento)
+      allow delete: if isAdmin();
+    }
+    
+    // ================================================================================
+    // 🏋️ RUTINAS - Generación y asignación de entrenamientos
+    // ================================================================================
+    
+    match /routines/{routineId} {
+      // Usuario puede leer solo sus rutinas asignadas
+      allow read: if isAuthenticated() && 
+                     resource.data.assignedUserId == request.auth.uid;
+      
+      // Entrenadores pueden crear y asignar rutinas
+      allow create: if isTrainer() && 
+                       validateRoutineData(request.resource.data);
+      
+      // Entrenadores pueden leer y modificar rutinas
+      allow read, update: if isTrainerOrAdmin();
+      
+      // Usuario puede actualizar progreso de su rutina
+      allow update: if isAuthenticated() && 
+                       resource.data.assignedUserId == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['progress', 'completedSessions', 'lastSessionAt']);
+      
+      // Solo admins pueden eliminar rutinas
+      allow delete: if isAdmin();
+    }
+    
+    // ================================================================================
+    // 🔥 NUEVAS: RUTINAS GENERADAS POR IA
+    // ================================================================================
+    
+    match /generatedRoutines/{routineId} {
+      // Usuario puede leer sus rutinas generadas
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Usuario puede crear solicitudes de rutinas
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Entrenadores pueden leer, aprobar y modificar rutinas generadas
+      allow read, update: if isTrainerOrAdmin();
+      
+      // Solo admins pueden eliminar rutinas generadas
+      allow delete: if isAdmin();
+    }
+    
+    // ================================================================================
+    // 📊 SESIONES DE ENTRENAMIENTO - Historial de actividad
+    // ================================================================================
+    
+    match /training-sessions/{sessionId} {
+      // Usuario puede crear y leer solo sus propias sesiones
+      allow create, read: if isAuthenticated() && 
+                             request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Entrenadores pueden leer todas las sesiones
+      allow read: if isTrainerOrAdmin();
+      
+      // Usuario puede actualizar solo el estado de finalización de su sesión
+      allow update: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['endTime', 'completed', 'finalStats']);
+      
+      // Validar datos de sesión
+      allow write: if validateSessionData(request.resource.data);
+    }
+    
+    // ================================================================================
+    // 🔥 NUEVAS: SESIONES ACTIVAS PARA CLOUD FUNCTIONS
+    // ================================================================================
+    
+    match /activeSessions/{userId} {
+      // Usuario puede leer y escribir solo su sesión activa
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      
+      // Entrenadores pueden leer todas las sesiones activas
+      allow read: if isTrainerOrAdmin();
+    }
+    
+    // ================================================================================
+    // 🔔 NOTIFICACIONES - Sistema de alertas push
+    // ================================================================================
+    
+    match /notifications/{notificationId} {
+      // Usuario puede leer solo sus propias notificaciones
+      allow read: if isAuthenticated() && 
+                     resource.data.uid == request.auth.uid;
+      
+      // Usuario puede crear notificaciones (para alertas críticas)
+      allow create: if isAuthenticated() && 
+                       request.resource.data.uid == request.auth.uid;
+      
+      // Usuario puede marcar como leída su notificación
+      allow update: if isAuthenticated() && 
+                       resource.data.uid == request.auth.uid;
+      
+      // Entrenadores pueden leer y crear notificaciones
+      allow read, create: if isTrainerOrAdmin();
+      
+      // Auto-eliminar notificaciones después de 30 días
+      allow delete: if isAuthenticated() && 
+                       resource.data.uid == request.auth.uid;
+    }
+    
+    // ================================================================================
+    // 🔥 NUEVAS: NOTIFICACIONES PARA ENTRENADORES
+    // ================================================================================
+    
+    match /trainerNotifications/{notificationId} {
+      // Solo entrenadores y admins pueden leer notificaciones de entrenadores
+      allow read, write: if isTrainerOrAdmin();
+      
+      // Sistema puede crear notificaciones para entrenadores
+      allow create: if isAuthenticated();
+    }
+    
+    // ================================================================================
+    // 📈 MÉTRICAS Y ANALYTICS - Datos agregados
+    // ================================================================================
+    
+    match /analytics/{analyticsId} {
+      // Solo lectura para usuarios (sus propias métricas)
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      // Entrenadores pueden leer métricas de todos
+      allow read: if isTrainerOrAdmin();
+      
+      // Solo sistema puede crear/actualizar métricas
+      allow write: if false; // Solo Cloud Functions
+    }
+    
+    // ================================================================================
+    // 🔥 NUEVAS: MÉTRICAS DE USUARIO PARA CLOUD FUNCTIONS
+    // ================================================================================
+    
+    match /userStats/{userId} {
+      // Usuario puede leer solo sus estadísticas
+      allow read: if isAuthenticated() && isOwner(userId);
+      
+      // Entrenadores pueden leer estadísticas de todos
+      allow read: if isTrainerOrAdmin();
+      
+      // Cloud Functions pueden escribir estadísticas
+      allow write: if isTrainerOrAdmin();
+    }
+    
+    match /userMetrics/{userId} {
+      // Usuario puede leer y escribir solo sus métricas
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      
+      // Entrenadores pueden leer métricas de todos
+      allow read: if isTrainerOrAdmin();
+      
+      // Cloud Functions pueden escribir métricas
+      allow write: if isTrainerOrAdmin();
+    }
+    
+    // ================================================================================
+    // 🔥 NUEVAS: CONFIGURACIONES DE USUARIO
+    // ================================================================================
+    
+    match /userSettings/{userId} {
+      // Usuario puede leer y escribir solo sus configuraciones
+      allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // ================================================================================
+    // 🔥 NUEVAS: DISPOSITIVOS DE USUARIO (PARA FCM)
+    // ================================================================================
+    
+    match /userDevices/{userId} {
+      // Usuario puede leer y escribir solo sus dispositivos
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      
+      // Entrenadores pueden leer dispositivos (para notificaciones)
+      allow read: if isTrainerOrAdmin();
+    }
+    
+    // ================================================================================
+    // 🔥 NUEVAS: TOKENS FCM
+    // ================================================================================
+    
+    match /fcmTokens/{userId} {
+      // Usuario puede leer y escribir solo sus tokens FCM
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      
+      // Entrenadores pueden leer tokens (para notificaciones)
+      allow read: if isTrainerOrAdmin();
+    }
+    
+    // ================================================================================
+    // 🔥 NUEVAS: PREFERENCIAS DE NOTIFICACIÓN
+    // ================================================================================
+    
+    match /notificationPreferences/{userId} {
+      // Usuario puede leer y escribir solo sus preferencias
+      allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // ================================================================================
+    // 🔥 NUEVAS: ENTRENADORES
+    // ================================================================================
+    
+    match /trainers/{trainerId} {
+      // Cualquier usuario autenticado puede leer información básica de entrenadores
+      allow read: if isAuthenticated();
+      
+      // Entrenador puede escribir solo su propia información
+      allow write: if isAuthenticated() && isOwner(trainerId);
+      
+      // Admins pueden gestionar todos los entrenadores
+      allow read, write: if isAdmin();
+    }
+    
+    // ================================================================================
+    // ⚙️ CONFIGURACIONES DE SISTEMA
+    // ================================================================================
+    
+    match /system-config/{configId} {
+      // Solo lectura para usuarios autenticados
+      allow read: if isAuthenticated();
+      
+      // Solo admins pueden modificar configuración del sistema
+      allow write: if isAdmin();
+    }
+    
+    match /systemConfig/{configId} {
+      // Solo lectura para usuarios autenticados
+      allow read: if isAuthenticated();
+      
+      // Solo admins pueden modificar configuración del sistema
+      allow write: if isAdmin();
+    }
+    
+    // ================================================================================
+    // 🔧 FUNCIONES DE VALIDACIÓN DE DATOS
+    // ================================================================================
+    
+    function validateProfileData(data) {
+      return data.keys().hasAll(['uid']) &&
+             data.uid is string &&
+             data.uid.size() > 0;
+    }
+    
+    function validateCriticalError(data) {
+      return data.keys().hasAll(['userId', 'errorType', 'severity', 'timestamp']) &&
+             data.userId is string &&
+             data.errorType is string &&
+             data.severity is number &&
+             data.severity >= 1 && data.severity <= 10 &&
+             data.timestamp is timestamp;
+    }
+    
+    function validateCaptureData(data) {
+      return data.keys().hasAll(['userId', 'errorId', 'captureUrl', 'timestamp']) &&
+             data.userId is string &&
+             data.errorId is string &&
+             data.captureUrl is string &&
+             data.timestamp is timestamp;
+    }
+    
+    function validateRoutineData(data) {
+      return data.keys().hasAll(['assignedUserId', 'exercises', 'createdBy']) &&
+             data.assignedUserId is string &&
+             data.exercises is list &&
+             data.exercises.size() > 0 &&
+             data.createdBy is string;
+    }
+    
+    function validateSessionData(data) {
+      return data.keys().hasAll(['userId', 'exerciseType', 'startTime']) &&
+             data.userId is string &&
+             data.exerciseType is string &&
+             data.startTime is timestamp;
+    }
+    
+    // ================================================================================
+    // 🚫 REGLAS DE SEGURIDAD ADICIONALES
+    // ================================================================================
+    
+    // Bloquear acceso a colecciones no definidas
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

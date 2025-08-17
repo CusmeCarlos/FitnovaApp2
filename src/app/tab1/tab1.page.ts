@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 import { User } from '../interfaces/user.interface';
+
 @Component({
   selector: 'app-tab1',
   templateUrl: 'tab1.page.html',
