@@ -1,248 +1,336 @@
-// src/app/interfaces/profile.interface.ts
-// ✅ EXPANDIDA - HISTORIAL MÉDICO COMPLETO SEGÚN DOCUMENTO
+// src/app/services/profile.service.ts
+// ✅ PROFILESERVICE SIMPLIFICADO - SIN NG0203
 
-export interface PersonalInfo {
-  // ✅ DATOS PERSONALES BÁSICOS
-  age?: number;
-  gender?: 'male' | 'female' | 'other';
-  weight?: number; // kg
-  height?: number; // cm
-  
-  // ✅ DATOS ADICIONALES
-  dateOfBirth?: Date;
-  phoneNumber?: string;
-  emergencyContact?: {
-    name: string;
-    phone: string;
-    relationship: string;
-  };
-  
-  // ✅ INFORMACIÓN FÍSICA
-  bodyMassIndex?: number; // Calculado automáticamente
-  bodyFatPercentage?: number;
-  muscleMassPercentage?: number;
-}
+import { Injectable } from '@angular/core';
+import { AngularFirestore } from '@angular/fire/compat/firestore';
+import { AuthService } from './auth.service';
+import { Observable, BehaviorSubject, of } from 'rxjs';
+import { map, switchMap, catchError, take } from 'rxjs/operators';
+import { Profile } from '../interfaces/profile.interface';
+import firebase from 'firebase/compat/app';
 
-export interface MedicalHistory {
-  // ✅ CONDICIONES MÉDICAS ACTUALES
-  currentConditions?: string[];
-  chronicDiseases?: string[];
-  allergies?: string[];
-  medications?: string[];
+@Injectable({
+  providedIn: 'root'
+})
+export class ProfileService {
+  private readonly COLLECTION = 'profiles';
+  private profileSubject = new BehaviorSubject<Profile | null>(null);
   
-  // ✅ HISTORIAL DE LESIONES
-  previousInjuries?: {
-    type: string;
-    date: Date;
-    affectedArea: string;
-    severity: 'mild' | 'moderate' | 'severe';
-    recovered: boolean;
-    notes?: string;
-  }[];
-  
-  // ✅ LIMITACIONES FÍSICAS ACTUALES
-  physicalLimitations?: {
-    type: string;
-    description: string;
-    affectedMovements: string[];
-    severity: 'mild' | 'moderate' | 'severe';
-  }[];
-  
-  // ✅ EVALUACIONES MÉDICAS
-  lastMedicalCheckup?: Date;
-  doctorClearance?: boolean;
-  doctorNotes?: string;
-  
-  // ✅ HISTORIAL CARDIOVASCULAR
-  heartConditions?: string[];
-  bloodPressure?: {
-    systolic: number;
-    diastolic: number;
-    date: Date;
-  };
-  restingHeartRate?: number;
-  
-  // ✅ OTROS
-  surgeries?: {
-    type: string;
-    date: Date;
-    notes?: string;
-  }[];
-  
-  lastUpdated?: Date;
-}
+  public profile$ = this.profileSubject.asObservable();
+  public profileComplete$ = this.profile$.pipe(
+    map(profile => profile?.profileComplete || false)
+  );
 
-export interface FitnessGoals {
-  // ✅ OBJETIVOS PRINCIPALES
-  primaryGoals: ('weight_loss' | 'muscle_gain' | 'strength' | 'endurance' | 'flexibility' | 'general_fitness')[];
-  
-  // ✅ OBJETIVOS ESPECÍFICOS
-  targetWeight?: number;
-  targetBodyFat?: number;
-  targetMuscle?: number;
-  
-  // ✅ OBJETIVOS DE RENDIMIENTO
-  strengthGoals?: {
-    exercise: string;
-    currentMax: number;
-    targetMax: number;
-    unit: 'kg' | 'lbs' | 'reps';
-  }[];
-  
-  // ✅ PLAZOS
-  shortTermGoals?: string[]; // 1-3 meses
-  mediumTermGoals?: string[]; // 3-6 meses
-  longTermGoals?: string[]; // 6+ meses
-  
-  // ✅ MOTIVACIÓN
-  motivationFactors?: string[];
-  rewardSystem?: string[];
-  
-  // ✅ PREFERENCIAS DE ENTRENAMIENTO
-  preferredWorkoutTypes?: ('strength' | 'cardio' | 'flexibility' | 'sports' | 'group_classes')[];
-  preferredWorkoutDuration?: number; // minutos
-  preferredWorkoutFrequency?: number; // días por semana
-  
-  createdAt?: Date;
-  lastUpdated?: Date;
-}
+  constructor(
+    private firestore: AngularFirestore,
+    private auth: AuthService
+  ) {
+    this.initializeProfileListener();
+  }
 
-export interface FitnessLevel {
-  // ✅ NIVEL GENERAL
-  overallLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert';
-  
-  // ✅ EXPERIENCIA POR CATEGORÍA
-  strengthTraining?: 'none' | 'beginner' | 'intermediate' | 'advanced';
-  cardioTraining?: 'none' | 'beginner' | 'intermediate' | 'advanced';
-  flexibilityTraining?: 'none' | 'beginner' | 'intermediate' | 'advanced';
-  sportsExperience?: 'none' | 'beginner' | 'intermediate' | 'advanced';
-  
-  // ✅ EXPERIENCIA TEMPORAL
-  yearsOfTraining?: number;
-  monthsOfTraining?: number;
-  previousGymExperience?: boolean;
-  
-  // ✅ DEPORTES PRACTICADOS
-  sportsPracticed?: {
-    sport: string;
-    level: 'recreational' | 'competitive' | 'professional';
-    yearsOfPractice: number;
-    stillPracticing: boolean;
-  }[];
-  
-  // ✅ EVALUACIONES INICIALES
-  initialFitnessAssessment?: {
-    date: Date;
-    assessedBy: string; // ID del entrenador
-    cardiovascularScore: number; // 1-10
-    strengthScore: number; // 1-10
-    flexibilityScore: number; // 1-10
-    balanceScore: number; // 1-10
-    overallScore: number; // 1-10
-    notes: string;
-  };
-  
-  lastUpdated?: Date;
-}
+  private initializeProfileListener(): void {
+    this.auth.user$.subscribe(user => {
+      if (user?.uid) {
+        this.loadUserProfile(user.uid);
+      } else {
+        this.profileSubject.next(null);
+      }
+    });
+  }
 
-export interface TrainingPreferences {
-  // ✅ DISPONIBILIDAD
-  availableDays?: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[];
-  preferredTimeSlots?: ('early_morning' | 'morning' | 'afternoon' | 'evening' | 'late_evening')[];
-  maxSessionDuration?: number; // minutos
-  
-  // ✅ PREFERENCIAS DE EJERCICIO
-  likedExercises?: string[];
-  dislikedExercises?: string[];
-  exercisesToAvoid?: string[]; // Por lesiones o limitaciones
-  
-  // ✅ ENTORNO DE ENTRENAMIENTO
-  preferredEnvironment?: ('home' | 'gym' | 'outdoor' | 'online')[];
-  availableEquipment?: string[];
-  spaceConstraints?: string;
-  
-  // ✅ ESTILO DE ENTRENAMIENTO
-  preferredIntensity?: 'low' | 'moderate' | 'high' | 'variable';
-  preferredMusicGenre?: string[];
-  needsMotivation?: boolean;
-  prefersGroupWorkouts?: boolean;
-  
-  // ✅ RETROALIMENTACIÓN
-  feedbackPreferences?: {
-    audioFeedback: boolean;
-    visualFeedback: boolean;
-    hapticFeedback: boolean;
-    realTimeCorrections: boolean;
-    postWorkoutAnalysis: boolean;
-  };
-  
-  lastUpdated?: Date;
-}
+  private async loadUserProfile(uid: string): Promise<void> {
+    try {
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(uid);
+      const doc = await docRef.get();
+      
+      if (doc.exists) {
+        const profile = { uid, ...doc.data() } as Profile;
+        this.profileSubject.next(profile);
+      } else {
+        this.profileSubject.next(null);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      this.profileSubject.next(null);
+    }
+  }
 
-export interface Profile {
-  uid: string;
-  
-  // ✅ INFORMACIÓN EXPANDIDA
-  personalInfo: PersonalInfo;
-  medicalHistory: MedicalHistory;
-  fitnessGoals?: FitnessGoals;
-  fitnessLevel: FitnessLevel | 'beginner' | 'intermediate' | 'advanced'; // Retrocompatibilidad
-  trainingPreferences?: TrainingPreferences;
-  
-  // ✅ ASIGNACIONES DEL ENTRENADOR
-  assignedTrainer?: string; // UID del entrenador
-  trainerNotes?: string;
-  lastTrainerReview?: Date;
-  
-  // ✅ ESTADO DEL PERFIL
-  profileComplete: boolean;
-  profileCompletionPercentage?: number;
-  sectionsCompleted?: {
-    personalInfo: boolean;
-    medicalHistory: boolean;
-    fitnessGoals: boolean;
-    fitnessLevel: boolean;
-    trainingPreferences: boolean;
-  };
-  
-  // ✅ CONFIGURACIONES DE LA APP
-  appSettings?: {
-    audioEnabled: boolean;
-    autoDetectionEnabled: boolean;
-    pushNotificationsEnabled: boolean;
-    dataShareWithTrainer: boolean;
-    privacyLevel: 'public' | 'trainer_only' | 'private';
-  };
-  
-  // ✅ METADATOS
-  createdAt?: Date;
-  lastUpdated?: Date;
-  profileVersion?: number; // Para futuras migraciones
-}
+  getCurrentProfile(): Observable<Profile | null> {
+    return this.profile$;
+  }
 
-// ✅ TIPOS AUXILIARES PARA FACILITAR EL USO
-export type FitnessLevelString = 'beginner' | 'intermediate' | 'advanced' | 'expert';
-export type PrimaryGoal = 'weight_loss' | 'muscle_gain' | 'strength' | 'endurance' | 'flexibility' | 'general_fitness';
-export type WorkoutType = 'strength' | 'cardio' | 'flexibility' | 'sports' | 'group_classes';
+  async updatePersonalInfo(personalInfo: Partial<Profile['personalInfo']>): Promise<boolean> {
+    try {
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user?.uid) throw new Error('Usuario no autenticado');
 
-// ✅ INTERFAZ PARA CREACIÓN DE PERFIL INICIAL
-export interface InitialProfileData {
-  personalInfo: {
-    age: number;
-    gender: 'male' | 'female' | 'other';
-    weight: number;
-    height: number;
-  };
-  medicalHistory: {
-    currentConditions?: string[];
-    previousInjuries?: string[];
-    physicalLimitations?: string[];
-  };
-  fitnessLevel: FitnessLevelString;
-  primaryGoals: PrimaryGoal[];
-}
+      console.log('💾 Guardando información personal:', personalInfo);
 
-// ✅ INTERFAZ PARA ACTUALIZACIONES PARCIALES
-export interface ProfileUpdate extends Partial<Omit<Profile, 'uid' | 'createdAt'>> {
-  lastUpdated: Date;
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      
+      await docRef.update({
+        personalInfo: personalInfo,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      console.log('✅ Información personal guardada');
+      
+      // Recargar perfil para actualizar UI
+      await this.loadUserProfile(user.uid);
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error guardando información personal:', error);
+      return false;
+    }
+  }
+
+  async updateMedicalHistory(medicalHistory: Partial<Profile['medicalHistory']>): Promise<boolean> {
+    try {
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user?.uid) throw new Error('Usuario no autenticado');
+
+      console.log('💾 Guardando historial médico:', medicalHistory);
+
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      
+      await docRef.update({
+        medicalHistory: {
+          ...medicalHistory,
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        },
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      console.log('✅ Historial médico guardado');
+      
+      // Recargar perfil
+      await this.loadUserProfile(user.uid);
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error guardando historial médico:', error);
+      return false;
+    }
+  }
+
+  async updateFitnessGoals(fitnessGoals: any): Promise<boolean> {
+    try {
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user?.uid) throw new Error('Usuario no autenticado');
+
+      console.log('💾 Guardando objetivos fitness:', fitnessGoals);
+
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      
+      await docRef.update({
+        fitnessGoals: {
+          ...fitnessGoals,
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        },
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      console.log('✅ Objetivos fitness guardados');
+      
+      // Recargar perfil
+      await this.loadUserProfile(user.uid);
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error guardando objetivos fitness:', error);
+      return false;
+    }
+  }
+
+  async updateFitnessLevel(fitnessLevel: any): Promise<boolean> {
+    try {
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user?.uid) throw new Error('Usuario no autenticado');
+
+      console.log('💾 Guardando nivel fitness:', fitnessLevel);
+
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      
+      await docRef.update({
+        fitnessLevel: fitnessLevel,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      console.log('✅ Nivel fitness guardado');
+      
+      // Recargar perfil
+      await this.loadUserProfile(user.uid);
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error guardando nivel fitness:', error);
+      return false;
+    }
+  }
+
+  async updateTrainingPreferences(preferences: any): Promise<boolean> {
+    try {
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user?.uid) throw new Error('Usuario no autenticado');
+
+      console.log('💾 Guardando preferencias:', preferences);
+
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      
+      await docRef.update({
+        trainingPreferences: {
+          ...preferences,
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        },
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      console.log('✅ Preferencias guardadas');
+      
+      // Recargar perfil
+      await this.loadUserProfile(user.uid);
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Error guardando preferencias:', error);
+      return false;
+    }
+  }
+
+  async markProfileComplete(): Promise<boolean> {
+    try {
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user?.uid) throw new Error('Usuario no autenticado');
+
+      const currentProfile = this.profileSubject.value;
+      if (!currentProfile) throw new Error('Perfil no encontrado');
+
+      const completionPercentage = this.calculateCompletionPercentage(currentProfile);
+      const isComplete = completionPercentage >= 80;
+
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      
+      await docRef.update({
+        profileComplete: isComplete,
+        profileCompletionPercentage: completionPercentage,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      // Recargar perfil
+      await this.loadUserProfile(user.uid);
+
+      return true;
+    } catch (error) {
+      console.error('❌ Error marcando perfil completo:', error);
+      return false;
+    }
+  }
+
+  async createInitialProfile(data: {
+    personalInfo: {
+      age: number;
+      gender: string;
+      weight: number;
+      height: number;
+    };
+    medicalHistory: {
+      conditions?: string[];
+      injuries?: string[];
+      limitations?: string[];
+    };
+    fitnessLevel: 'beginner' | 'intermediate' | 'advanced';
+    goals: string[];
+  }): Promise<boolean> {
+    try {
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user?.uid) throw new Error('Usuario no autenticado');
+
+      const initialProfile: Profile = {
+        uid: user.uid,
+        personalInfo: {
+          ...data.personalInfo,
+          bodyMassIndex: this.calculateBMI(data.personalInfo.weight, data.personalInfo.height)
+        },
+        medicalHistory: {
+          ...data.medicalHistory,
+          lastUpdated: new Date()
+        },
+        fitnessLevel: data.fitnessLevel,
+        goals: data.goals,
+        profileComplete: false,
+        profileCompletionPercentage: this.calculateBasicCompletionPercentage(data),
+        createdAt: new Date(),
+        lastUpdated: new Date(),
+        profileVersion: 1
+      };
+
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      await docRef.set(initialProfile);
+
+      this.profileSubject.next(initialProfile);
+      return true;
+    } catch (error) {
+      console.error('❌ Error creando perfil inicial:', error);
+      return false;
+    }
+  }
+
+  private calculateBMI(weight: number, height: number): number {
+    if (!weight || !height) return 0;
+    const heightInMeters = height / 100;
+    return Math.round((weight / (heightInMeters * heightInMeters)) * 10) / 10;
+  }
+
+  private calculateBasicCompletionPercentage(data: any): number {
+    let completedSections = 0;
+    const totalSections = 4;
+
+    if (data.personalInfo?.age && data.personalInfo?.gender && 
+        data.personalInfo?.weight && data.personalInfo?.height) {
+      completedSections++;
+    }
+
+    if (data.medicalHistory) {
+      completedSections++;
+    }
+
+    if (data.fitnessLevel) {
+      completedSections++;
+    }
+
+    if (data.goals?.length) {
+      completedSections++;
+    }
+
+    return Math.round((completedSections / totalSections) * 100);
+  }
+
+  private calculateCompletionPercentage(profile: Profile): number {
+    let completedSections = 0;
+    const totalSections = 5;
+
+    if (profile.personalInfo?.age && profile.personalInfo?.gender && 
+        profile.personalInfo?.weight && profile.personalInfo?.height) {
+      completedSections++;
+    }
+
+    if (profile.medicalHistory) {
+      completedSections++;
+    }
+
+    if (profile.fitnessGoals || profile.goals?.length) {
+      completedSections++;
+    }
+
+    if (profile.fitnessLevel) {
+      completedSections++;
+    }
+
+    if (profile.trainingPreferences) {
+      completedSections++;
+    }
+
+    return Math.round((completedSections / totalSections) * 100);
+  }
 }
