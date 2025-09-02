@@ -72,8 +72,11 @@ export class Tab2Page implements OnInit, OnDestroy {
     duration: 0,
     errorsDetected: 0,
     correctionsGiven: 0,
-    averageQuality: 0
+    suggestionsGiven: 0,
+    corrections: 0,
   };
+
+  
 
   // ✅ DATOS ACTUALES
   showCamera = false;
@@ -81,11 +84,12 @@ export class Tab2Page implements OnInit, OnDestroy {
   todayStats = {
     duration: '0:00',
     repetitions: 0,
-    avgQuality: 0
+    suggestions: 0,
+    corrections: 0  
   };
   sessionData = {
     repetitions: 0,
-    avgQuality: 0,
+    suggestionsGiven: 0,
     errors: [] as PostureError[],
     currentPhase: RepetitionPhase.IDLE
   };
@@ -162,7 +166,8 @@ export class Tab2Page implements OnInit, OnDestroy {
       duration: 0,
       errorsDetected: 0,
       correctionsGiven: 0,
-      averageQuality: 0
+      suggestionsGiven: 0,
+      corrections: 0
     };
 
     // Configurar ejercicio en el componente de cámara
@@ -236,30 +241,33 @@ export class Tab2Page implements OnInit, OnDestroy {
   }
 
   // 🚨 MANEJAR ERRORES DETECTADOS
-  onErrorDetected(errors: PostureError[]): void {
-    this.sessionData.errors = errors;
-    this.sessionStats.errorsDetected += errors.length;
-    this.sessionStats.correctionsGiven += errors.length;
+onErrorDetected(errors: PostureError[]): void {
+  this.sessionData.errors = errors;
+  this.sessionStats.errorsDetected += errors.length;
+  this.sessionStats.correctionsGiven += errors.length;
+  this.sessionStats.suggestionsGiven += errors.length;
+  this.loadTodayStats(); // AGREGAR SOLO ESTA LÍNEA
 
-    // Log para debugging
-    console.log('🚨 Errores detectados:', errors.map(e => ({
-      type: e.type,
-      severity: e.severity,
-      description: e.description
-    })));
+  // Log para debugging
+  console.log('🚨 Errores detectados:', errors.map(e => ({
+    type: e.type,
+    severity: e.severity,
+    description: e.description
+  })));
 
-    // Mostrar toast para errores críticos
-    const criticalErrors = errors.filter(e => e.severity >= 7);
-    if (criticalErrors.length > 0) {
-      this.showErrorToast(`¡Atención! ${criticalErrors[0].description}`);
-    }
+  // Mostrar toast para errores críticos
+  const criticalErrors = errors.filter(e => e.severity >= 7);
+  if (criticalErrors.length > 0) {
+    this.showErrorToast(`¡Atención! ${criticalErrors[0].description}`);
   }
+}
 
   // 🔢 MANEJAR REPETICIÓN CONTADA
   onRepetitionCounted(count: number): void {
     this.totalRepetitions = count;
     this.sessionData.repetitions = count;
     this.todayStats.repetitions = count;
+    this.loadTodayStats();
 
     console.log('🎉 Repetición contada. Total:', count);
 
@@ -271,11 +279,11 @@ export class Tab2Page implements OnInit, OnDestroy {
 
   // 📊 CARGAR ESTADÍSTICAS DEL DÍA
   private loadTodayStats(): void {
-    // En una implementación real, cargarías esto de Firebase
     this.todayStats = {
-      duration: '0:00',
-      repetitions: 0,
-      avgQuality: 0
+      duration: this.formatDuration(this.sessionDuration),
+      repetitions: this.totalRepetitions,
+      suggestions: this.sessionStats.suggestionsGiven, // CAMBIAR esta línea
+      corrections: this.sessionStats.correctionsGiven
     };
   }
 

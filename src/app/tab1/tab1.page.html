@@ -1,9 +1,14 @@
-<!-- HTML Template - tab1.page.html -->
+<!-- src/app/tab1/tab1.page.html -->
+<!-- 📊 TAB1 DASHBOARD AVANZADO - UI CORREGIDA COMPLETA -->
+
 <ion-header [translucent]="true">
   <ion-toolbar color="dark" class="custom-toolbar">
     <ion-title class="custom-title">Dashboard</ion-title>
     <ion-buttons slot="end">
-      <ion-button fill="clear" class="profile-btn">
+      <ion-button fill="clear" class="refresh-btn" (click)="refreshMetrics()" [disabled]="isLoading">
+        <ion-icon name="refresh-outline" [class.spinning]="isLoading"></ion-icon>
+      </ion-button>
+      <ion-button fill="clear" class="profile-btn" (click)="navigateToProfile()">
         <ion-icon name="person-circle-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -14,27 +19,43 @@
   <!-- Background overlay -->
   <div class="background-overlay"></div>
   
-  <div class="dashboard-container">
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="loading-content">
+      <ion-spinner name="crescent" color="primary"></ion-spinner>
+      <p>Cargando métricas...</p>
+    </div>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div *ngIf="!isLoading && metrics" class="dashboard-container">
     
     <!-- Welcome Section -->
     <div class="welcome-section">
       <div class="gymshark-brand">
-        <img src="assets/gymshark-logo.png" alt="Gymshark" class="gymshark-mini">
-        <span class="powered-text">POWERED BY</span>
+        <img src="assets/gymshark-logo.png" alt="Gymshark" class="gymshark-mini" 
+             onerror="this.style.display='none'">
+        <span class="powered-text">POWERED BY IA</span>
       </div>
-      <h1 class="welcome-title">¡Bienvenido {{ user?.displayName || 'Atleta' }}!</h1>
+      <h1 class="welcome-title">¡Hola {{ user?.displayName || 'Atleta' }}!</h1>
       <p class="welcome-subtitle">Tu asistente de entrenamiento con IA está listo</p>
+      <div class="last-updated">
+        Actualizado: {{ lastUpdated | date:'short':'es-ES' }}
+      </div>
     </div>
 
-    <!-- Stats Grid -->
+    <!-- Main Stats Grid -->
     <div class="stats-grid">
-      <div class="stat-card primary">
+      <div class="stat-card primary" (click)="navigateToTraining()">
         <div class="stat-icon">
           <ion-icon name="fitness-outline"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number">127</span>
+          <span class="stat-number">{{ formatNumber(metrics?.totalWorkouts) }}</span>
           <span class="stat-label">Entrenamientos</span>
+        </div>
+        <div class="stat-trend positive" *ngIf="metrics?.weeklyImprovement && metrics.weeklyImprovement > 0">
+          <ion-icon name="trending-up-outline"></ion-icon>
         </div>
       </div>
 
@@ -43,8 +64,16 @@
           <ion-icon name="trophy-outline"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number">94%</span>
+          <span class="stat-number" [style.color]="getAccuracyColor(metrics?.accuracy)">
+            {{ metrics?.accuracy || 0 }}%
+          </span>
           <span class="stat-label">Precisión</span>
+        </div>
+        <div class="accuracy-bar">
+          <div class="accuracy-fill" 
+               [style.width.%]="metrics?.accuracy || 0"
+               [style.background-color]="getAccuracyColor(metrics?.accuracy)">
+          </div>
         </div>
       </div>
 
@@ -53,120 +82,207 @@
           <ion-icon name="time-outline"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number">45</span>
-          <span class="stat-label">Horas</span>
+          <span class="stat-number">{{ formatTime(metrics?.totalHours) }}</span>
+          <span class="stat-label">Tiempo Total</span>
         </div>
       </div>
 
       <div class="stat-card quaternary">
         <div class="stat-icon">
-          <ion-icon name="trending-up-outline"></ion-icon>
+          <ion-icon [name]="metrics && metrics.weeklyImprovement >= 0 ? 'trending-up-outline' : 'trending-down-outline'"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number">+15%</span>
-          <span class="stat-label">Mejora</span>
+          <span class="stat-number" [style.color]="getImprovementColor(metrics?.weeklyImprovement)">
+            {{ (metrics?.weeklyImprovement ?? 0) > 0 ? '+' : '' }}{{ metrics?.weeklyImprovement ?? 0 }}%
+          </span>
+          <span class="stat-label">Mejora Semanal</span>
         </div>
       </div>
     </div>
 
-    <!-- Progress Section -->
-    <div class="progress-section">
-      <h3 class="section-title">Tu Progreso Semanal</h3>
-      <div class="progress-card">
-        <div class="progress-header">
-          <span class="progress-text">Objetivo Semanal</span>
-          <span class="progress-value">4/5 días</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: 80%"></div>
-        </div>
-        <div class="progress-days">
-          <div class="day completed">L</div>
-          <div class="day completed">M</div>
-          <div class="day completed">M</div>
-          <div class="day completed">J</div>
-          <div class="day pending">V</div>
-          <div class="day rest">S</div>
-          <div class="day rest">D</div>
+    <!-- Weekly Progress Section -->
+    <div class="section-card">
+      <div class="section-header">
+        <h3 class="section-title">
+          <ion-icon name="calendar-outline"></ion-icon>
+          Tu Progreso Semanal
+        </h3>
+        <div class="section-badge">
+          {{ metrics?.weeklyGoalProgress || 0 }}% completado
         </div>
       </div>
-    </div>
-
-    <!-- Features Section -->
-    <div class="features-section">
-      <h3 class="section-title">Características FitNova</h3>
       
-      <div class="feature-card">
-        <div class="feature-icon ai">
-          <ion-icon name="eye-outline"></ion-icon>
+      <div class="progress-summary">
+        <div class="progress-info">
+          <span class="progress-text">Objetivo Semanal</span>
+          <span class="progress-value">
+            {{ getCompletedDaysCount() }}/5 días
+          </span>
         </div>
-        <div class="feature-content">
-          <h4>Detección IA en Tiempo Real</h4>
-          <p>Análisis postural instantáneo con MediaPipe Pose para corrección inmediata</p>
+        
+        <div class="progress-bar-container">
+          <div class="progress-bar">
+            <div class="progress-fill" 
+                 [style.width.%]="metrics?.weeklyGoalProgress || 0">
+            </div>
+          </div>
         </div>
-        <div class="feature-status active">
-          <ion-icon name="checkmark-circle"></ion-icon>
-        </div>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon trainer">
-          <ion-icon name="people-outline"></ion-icon>
-        </div>
-        <div class="feature-content">
-          <h4>Supervisión Profesional</h4>
-          <p>Conexión directa con entrenadores certificados de Gymshark</p>
-        </div>
-        <div class="feature-status active">
-          <ion-icon name="checkmark-circle"></ion-icon>
-        </div>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon safety">
-          <ion-icon name="shield-checkmark-outline"></ion-icon>
-        </div>
-        <div class="feature-content">
-          <h4>Prevención de Lesiones</h4>
-          <p>Reduce hasta 40% el riesgo de lesiones mediante corrección postural</p>
-        </div>
-        <div class="feature-status active">
-          <ion-icon name="checkmark-circle"></ion-icon>
+        
+        <div class="progress-days">
+          <div class="day" 
+               *ngFor="let day of weeklyGoalDays"
+               [class.completed]="day.completed"
+               [class.pending]="!day.completed">
+            {{ day.label }}
+          </div>
         </div>
       </div>
 
-      <div class="feature-card">
-        <div class="feature-icon adaptive">
-          <ion-icon name="fitness-outline"></ion-icon>
-        </div>
-        <div class="feature-content">
-          <h4>Rutinas Adaptativas</h4>
-          <p>Personalización basada en historial médico y progreso individual</p>
-        </div>
-        <div class="feature-status active">
-          <ion-icon name="checkmark-circle"></ion-icon>
+      <!-- Progress Chart -->
+      <div class="chart-container">
+        <h4 class="chart-title">Entrenamientos vs Errores</h4>
+        <div class="chart-wrapper">
+          <canvas #progressChart></canvas>
         </div>
       </div>
     </div>
 
-    <!-- Quick Actions -->
+    <!-- Accuracy Trend Section -->
+    <div class="section-card">
+      <div class="section-header">
+        <h3 class="section-title">
+          <ion-icon name="analytics-outline"></ion-icon>
+          Tendencia de Precisión
+        </h3>
+        <div class="section-badge accuracy" [style.color]="getAccuracyColor(metrics?.accuracy)">
+          {{ metrics?.accuracy || 0 }}% promedio
+        </div>
+      </div>
+      
+      <div class="chart-container">
+        <div class="chart-wrapper">
+          <canvas #accuracyChart></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Analysis Section -->
+    <div class="section-card">
+      <div class="section-header">
+        <h3 class="section-title">
+          <ion-icon name="warning-outline"></ion-icon>
+          Análisis de Errores
+        </h3>
+        <div class="section-badge" 
+             [class.success]="metrics?.criticalErrorsToday === 0"
+             [class.warning]="metrics && metrics.criticalErrorsToday > 0">
+          {{ metrics?.criticalErrorsToday || 0 }} hoy
+        </div>
+      </div>
+
+      <!-- Error Distribution Chart -->
+      <div class="error-analysis-content">
+        <div class="chart-container small">
+          <div class="chart-wrapper">
+            <canvas #errorsChart></canvas>
+          </div>
+        </div>
+        
+        <div class="error-summary">
+          <div class="error-most-common" *ngIf="metrics?.mostCommonError && metrics.mostCommonError !== 'NONE'">
+            <h4>Error más común</h4>
+            <p class="error-name" *ngIf="metrics?.mostCommonError">{{ getErrorTypeLabel(metrics.mostCommonError) }}</p>
+            <p class="error-tip">💡 Tip: Mantén la alineación de las rodillas durante las sentadillas</p>
+          </div>
+          
+          <div class="error-streak" *ngIf="metrics?.currentStreak">
+            <h4>Racha actual</h4>
+            <div class="streak-display">
+              <ion-icon name="flame-outline"></ion-icon>
+              <span>{{ metrics?.currentStreak ?? 0 }} días</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Alerts Section -->
+    <div class="section-card" *ngIf="metrics?.recentAlerts && metrics.recentAlerts.length > 0">
+      <div class="section-header">
+        <h3 class="section-title">
+          <ion-icon name="notifications-outline"></ion-icon>
+          Alertas Recientes
+        </h3>
+        <div class="section-badge">
+          {{ metrics?.recentAlerts?.length ?? 0 }} alertas
+        </div>
+      </div>
+
+      <div class="alerts-list">
+        <div class="alert-item" 
+             *ngFor="let alert of metrics.recentAlerts.slice(0, 3); trackBy: trackAlert">
+          <div class="alert-icon" [class]="'severity-' + alert.severity">
+            <ion-icon name="warning-outline"></ion-icon>
+          </div>
+          <div class="alert-content">
+            <h4>{{ getErrorTypeLabel(alert.errorType) }}</h4>
+            <p>{{ alert.exercise }} - {{ alert.processedAt | date:'short':'es-ES' }}</p>
+            <div class="alert-confidence">
+              Confianza: {{ ((alert.confidence ?? 0) * 100) | number:'1.0-0' }}%
+            </div>
+          </div>
+          <div class="alert-severity">
+            <span class="severity-badge" [class]="'severity-' + alert.severity">
+              {{ alert.severity.toUpperCase() }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Exercise Stats Section -->
+    <div class="section-card" *ngIf="metrics?.exerciseStats && metrics.exerciseStats.length > 0">
+      <div class="section-header">
+        <h3 class="section-title">
+          <ion-icon name="barbell-outline"></ion-icon>
+          Estadísticas por Ejercicio
+        </h3>
+      </div>
+
+      <div class="exercise-stats-list">
+        <div class="exercise-item" 
+             *ngFor="let exercise of metrics.exerciseStats; trackBy: trackExercise">
+          <div class="exercise-info">
+            <h4>{{ exercise.exercise }}</h4>
+            <p>{{ exercise.count }} sesiones</p>
+          </div>
+          <div class="exercise-accuracy">
+            <div class="accuracy-circle" 
+                 [style.background]="'conic-gradient(#4caf50 ' + exercise.avgAccuracy * 3.6 + 'deg, rgba(255,255,255,0.1) 0deg)'">
+              <span>{{ exercise.avgAccuracy }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions Section -->
     <div class="actions-section">
       <h3 class="section-title">Acciones Rápidas</h3>
-      
-      <div class="action-buttons">
-        <ion-button expand="block" class="action-btn primary" routerLink="/tabs/tab2">
+      <div class="actions-grid">
+        <ion-button class="action-btn primary" (click)="navigateToTraining()">
           <ion-icon name="play-outline" slot="start"></ion-icon>
-          <span>Comenzar Entrenamiento</span>
+          Nuevo Entrenamiento
         </ion-button>
-
-        <ion-button expand="block" class="action-btn secondary" routerLink="/progress">
-          <ion-icon name="bar-chart-outline" slot="start"></ion-icon>
-          <span>Ver Progreso Detallado</span>
+        
+        <ion-button class="action-btn secondary" (click)="navigateToHistory()">
+          <ion-icon name="analytics-outline" slot="start"></ion-icon>
+          Ver Historial
         </ion-button>
-
-        <ion-button expand="block" class="action-btn tertiary" routerLink="/routines">
-          <ion-icon name="list-outline" slot="start"></ion-icon>
-          <span>Mis Rutinas</span>
+        
+        <ion-button class="action-btn tertiary" (click)="navigateToProfile()">
+          <ion-icon name="settings-outline" slot="start"></ion-icon>
+          Configuración
         </ion-button>
       </div>
     </div>
@@ -174,12 +290,10 @@
     <!-- Research Banner -->
     <div class="research-banner">
       <div class="research-content">
-        <div class="research-icon">
-          <ion-icon name="school-outline"></ion-icon>
-        </div>
+        <ion-icon name="school-outline" class="research-icon"></ion-icon>
         <div class="research-text">
-          <h4>Proyecto de Investigación UPSE</h4>
-          <p>Contribuyendo al desarrollo de tecnología fitness en Ecuador</p>
+          <h4>Proyecto de Investigación</h4>
+          <p>Contribuyes al estudio sobre precisión postural en ejercicios físicos</p>
         </div>
       </div>
     </div>

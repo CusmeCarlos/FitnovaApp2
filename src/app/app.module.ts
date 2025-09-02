@@ -18,6 +18,9 @@ import { AngularFireMessagingModule } from '@angular/fire/compat/messaging';
 // ✅ IMPORTAR LOS SERVICIOS DE POSE
 import { PoseDetectionEngine } from './core/pose-engine/pose-detection.engine';
 import { BiomechanicsAnalyzer } from './core/pose-engine/biomechanics.analyzer';
+import { DashboardService } from './services/dashboard.service';
+import { AuthService } from './services/auth.service';
+import { ErrorHandlerService } from './services/error-handler.service';
 
 @NgModule({
   declarations: [AppComponent],
@@ -35,7 +38,10 @@ import { BiomechanicsAnalyzer } from './core/pose-engine/biomechanics.analyzer';
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     // ✅ AGREGAR LOS PROVIDERS
     PoseDetectionEngine,
-    BiomechanicsAnalyzer
+    BiomechanicsAnalyzer,
+    DashboardService,
+    AuthService,
+    ErrorHandlerService
   ],
   bootstrap: [AppComponent]
 })

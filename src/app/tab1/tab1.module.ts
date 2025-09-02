@@ -1,10 +1,9 @@
-// ✅ VERSIÓN LIMPIA
+// src/app/tab1/tab1.module.ts - REEMPLAZAR COMPLETO:
 import { IonicModule } from '@ionic/angular';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Tab1Page } from './tab1.page';
-// 🗑️ ELIMINADO: import { ExploreContainerComponentModule } from '../explore-container/explore-container.module';
 
 import { Tab1PageRoutingModule } from './tab1-routing.module';
 
@@ -13,7 +12,6 @@ import { Tab1PageRoutingModule } from './tab1-routing.module';
     IonicModule,
     CommonModule,
     FormsModule,
-    // 🗑️ ELIMINADO: ExploreContainerComponentModule,
     Tab1PageRoutingModule
   ],
   declarations: [Tab1Page]

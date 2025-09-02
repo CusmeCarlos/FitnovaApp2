@@ -42,31 +42,39 @@
       </ion-card>
     </div>
 
-    <!-- 📊 ESTADÍSTICAS DE HOY -->
-    <ion-card class="stats-card">
-      <ion-card-header>
-        <ion-card-title>Estadísticas de Hoy</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <ion-icon name="time-outline"></ion-icon>
-            <span class="stat-label">Duración</span>
-            <span class="stat-value">{{ todayStats.duration }}</span>
-          </div>
-          <div class="stat-item">
-            <ion-icon name="fitness-outline"></ion-icon>
-            <span class="stat-label">Repeticiones</span>
-            <span class="stat-value">{{ todayStats.repetitions }}</span>
-          </div>
-          <div class="stat-item">
-            <ion-icon name="trophy-outline"></ion-icon>
-            <span class="stat-label">Calidad Promedio</span>
-            <span class="stat-value">{{ todayStats.avgQuality }}%</span>
-          </div>
-        </div>
-      </ion-card-content>
-    </ion-card>
+    <!-- Buscar en tab2.page.html la sección "Estadísticas de Hoy" y REEMPLAZAR con: -->
+
+<!-- 📊 ESTADÍSTICAS DE HOY - VERSIÓN MEJORADA -->
+<ion-card class="stats-card-improved">
+  <ion-card-header>
+    <ion-card-title class="stats-title">Estadísticas de Hoy</ion-card-title>
+  </ion-card-header>
+  <ion-card-content>
+    <div class="stats-grid-enhanced">
+      <div class="stat-item-enhanced">
+        <ion-icon name="time-outline" class="stat-icon-enhanced"></ion-icon>
+        <span class="stat-label-enhanced">Duración</span>
+        <span class="stat-value-enhanced">{{ todayStats.duration }}</span>
+      </div>
+      <div class="stat-item-enhanced">
+        <ion-icon name="repeat-outline" class="stat-icon-enhanced"></ion-icon>
+        <span class="stat-label-enhanced">Repeticiones</span>
+        <span class="stat-value-enhanced">{{ todayStats.repetitions }}</span>
+      </div>
+      <div class="stat-item-enhanced">
+        <ion-icon name="bulb-outline" class="stat-icon-enhanced"></ion-icon>
+        <span class="stat-label-enhanced">Sugerencias</span>
+        <span class="stat-value-enhanced">{{ todayStats.suggestions || 0 }}</span>
+      </div>
+      <!-- NUEVA MÉTRICA: Correcciones -->
+      <div class="stat-item-enhanced">
+        <ion-icon name="checkmark-circle-outline" class="stat-icon-enhanced"></ion-icon>
+        <span class="stat-label-enhanced">Correcciones</span>
+        <span class="stat-value-enhanced">{{ todayStats.corrections || 0 }}</span>
+      </div>
+    </div>
+  </ion-card-content>
+</ion-card>
 
     <!-- 🎛️ CONFIGURACIONES -->
     <ion-card class="settings-card">
