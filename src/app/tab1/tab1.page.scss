@@ -846,3 +846,595 @@
 .text-warning { color: #ff9800; }
 .text-danger { color: #f44336; }
 .text-primary { color: #2196f3; }
+
+/* src/app/tab1/tab1.page.scss - AGREGAR ESTILOS NUEVOS */
+/* 📊 TAB1 DASHBOARD AVANZADO - ESTILOS PARA ESTADO VACÍO */
+
+// ================================================================================
+// 🆕 ESTADO VACÍO - PRIMER USO
+// ================================================================================
+
+.empty-state-container {
+  position: relative;
+  z-index: 2;
+  padding: 2rem 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .empty-state-content {
+    text-align: center;
+    color: #ffffff;
+    
+    .gymshark-brand {
+      margin-bottom: 2rem;
+      
+      .gymshark-mini {
+        height: 30px;
+        margin-right: 0.5rem;
+        filter: brightness(1.2);
+      }
+      
+      .powered-text {
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: #ff5722;
+        vertical-align: middle;
+      }
+    }
+    
+    .empty-state-icon {
+      margin-bottom: 1.5rem;
+      
+      ion-icon {
+        font-size: 4rem;
+        color: #ff5722;
+        opacity: 0.8;
+      }
+    }
+    
+    .empty-state-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #ff5722, #ff9800);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .empty-state-subtitle {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 1.5rem;
+      line-height: 1.4;
+    }
+    
+    .empty-state-tip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 87, 34, 0.1);
+      border: 1px solid rgba(255, 87, 34, 0.3);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 2rem;
+      
+      ion-icon {
+        font-size: 1.2rem;
+        color: #ff9800;
+        margin-right: 0.5rem;
+      }
+      
+      span {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.9);
+      }
+    }
+    
+    .empty-state-actions {
+      margin-bottom: 2rem;
+      
+      .start-training-btn {
+        margin-bottom: 1rem;
+        --border-radius: 12px;
+        font-weight: 600;
+        
+        ion-icon {
+          font-size: 1.2rem;
+        }
+      }
+      
+      .setup-profile-btn {
+        --border-radius: 12px;
+        font-weight: 500;
+        
+        ion-icon {
+          font-size: 1.1rem;
+        }
+      }
+    }
+    
+    .empty-state-features {
+      h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 1rem;
+      }
+      
+      .feature-list {
+        .feature-item {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0.5rem 0;
+          color: rgba(255, 255, 255, 0.8);
+          
+          ion-icon {
+            font-size: 1.2rem;
+            color: #ff9800;
+            margin-right: 0.75rem;
+            width: 20px;
+            flex-shrink: 0;
+          }
+          
+          span {
+            font-size: 0.9rem;
+            text-align: left;
+          }
+        }
+      }
+    }
+  }
+}
+
+// ================================================================================
+// 🆕 MEJORAS A ESTILOS EXISTENTES
+// ================================================================================
+
+// Stats Grid - Hacer clickeable
+.stats-grid {
+  .stat-card {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      
+      .stat-icon ion-icon {
+        transform: scale(1.1);
+      }
+    }
+    
+    &:active {
+      transform: translateY(0);
+    }
+    
+    .stat-badge {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #ffffff;
+      text-transform: uppercase;
+    }
+  }
+}
+
+// Quick Actions Section
+.quick-actions {
+  margin-top: 2rem;
+  padding: 0 1rem;
+  
+  .action-button {
+    --border-radius: 12px;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    
+    ion-icon {
+      font-size: 1.2rem;
+    }
+  }
+  
+  .action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    
+    .action-button-small {
+      --border-radius: 10px;
+      font-weight: 500;
+      font-size: 0.9rem;
+      
+      ion-icon {
+        font-size: 1rem;
+      }
+    }
+  }
+}
+
+// Exercise Stats - Círculos de precisión
+.exercise-stats {
+  .exercise-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    .exercise-info {
+      h4 {
+        color: #ffffff;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        font-size: 0.95rem;
+      }
+      
+      span {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.8rem;
+      }
+    }
+    
+    .exercise-accuracy {
+      .accuracy-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        
+        span {
+          color: #ffffff;
+          font-weight: 700;
+          font-size: 0.8rem;
+          z-index: 2;
+        }
+        
+        &::before {
+          content: '';
+          position: absolute;
+          width: 42px;
+          height: 42px;
+          background: #1a1a1a;
+          border-radius: 50%;
+          z-index: 1;
+        }
+      }
+    }
+  }
+}
+
+// Alerts List - Mejorar iconos de severidad
+.alerts-list {
+  .alert-item {
+    .alert-icon {
+      &.severity-low {
+        background: rgba(76, 175, 80, 0.2);
+        border: 1px solid rgba(76, 175, 80, 0.4);
+        
+        ion-icon {
+          color: #4caf50;
+        }
+      }
+      
+      &.severity-medium {
+        background: rgba(255, 152, 0, 0.2);
+        border: 1px solid rgba(255, 152, 0, 0.4);
+        
+        ion-icon {
+          color: #ff9800;
+        }
+      }
+      
+      &.severity-high {
+        background: rgba(255, 87, 34, 0.2);
+        border: 1px solid rgba(255, 87, 34, 0.4);
+        
+        ion-icon {
+          color: #ff5722;
+        }
+      }
+      
+      &.severity-critical {
+        background: rgba(244, 67, 54, 0.2);
+        border: 1px solid rgba(244, 67, 54, 0.4);
+        animation: pulse-critical 2s infinite;
+        
+        ion-icon {
+          color: #f44336;
+        }
+      }
+    }
+    
+    .alert-content {
+      .alert-confidence {
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.5);
+        
+        &::before {
+          content: '🎯 ';
+        }
+      }
+    }
+  }
+}
+
+@keyframes pulse-critical {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(244, 67, 54, 0);
+  }
+}
+
+// View All Button
+.view-all-btn {
+  margin-top: 1rem;
+  --border-radius: 10px;
+  font-weight: 500;
+}
+
+// Error Analysis - Mejorar diseño
+.error-analysis {
+  .most-common-error {
+    background: linear-gradient(135deg, rgba(255, 87, 34, 0.1), rgba(255, 152, 0, 0.1));
+    border: 1px solid rgba(255, 87, 34, 0.3);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    
+    h4 {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #ff9800;
+      letter-spacing: 1px;
+      margin-bottom: 0.5rem;
+    }
+    
+    .error-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+    
+    .error-tip {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin: 0;
+      
+      &::before {
+        content: '💡 ';
+        margin-right: 0.25rem;
+      }
+    }
+  }
+}
+
+// Chart Containers - Mejorar responsividad
+.chart-container {
+  margin-top: 1.5rem;
+  
+  h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  
+  .chart-wrapper {
+    position: relative;
+    height: 200px;
+    width: 100%;
+    
+    canvas {
+      max-width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+// Weekly Goal - Mejorar visualización
+.weekly-goal {
+  .goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    
+    span:first-child {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    span:last-child {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #ff5722;
+    }
+  }
+  
+  .goal-progress {
+    margin-bottom: 1.5rem;
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff5722, #ff9800);
+        border-radius: 4px;
+        transition: width 0.8s ease;
+        position: relative;
+        
+        &::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 20px;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3));
+          animation: shine 2s infinite;
+        }
+      }
+    }
+  }
+  
+  .goal-days {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    
+    .day-item {
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid transparent;
+      transition: all 0.3s ease;
+      
+      .day-letter {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.6);
+      }
+      
+      &.completed {
+        background: linear-gradient(135deg, #4caf50, #66bb6a);
+        border-color: #4caf50;
+        transform: scale(1.05);
+        
+        .day-letter {
+          color: #ffffff;
+        }
+        
+        &::after {
+          content: '✓';
+          position: absolute;
+          font-size: 0.7rem;
+          color: #ffffff;
+          font-weight: 700;
+        }
+      }
+    }
+  }
+}
+
+@keyframes shine {
+  0% { transform: translateX(-20px); }
+  100% { transform: translateX(100px); }
+}
+
+// Responsiveness mejoras
+@media (max-width: 480px) {
+  .empty-state-container {
+    padding: 1rem 0.75rem;
+    
+    .empty-state-content {
+      .empty-state-title {
+        font-size: 1.5rem;
+      }
+      
+      .empty-state-features {
+        .feature-list {
+          .feature-item {
+            padding: 0.4rem 0;
+            
+            span {
+              font-size: 0.85rem;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    
+    .stat-card {
+      .stat-number {
+        font-size: 1.5rem;
+      }
+      
+      .stat-label {
+        font-size: 0.7rem;
+      }
+    }
+  }
+  
+  .exercise-stats {
+    .exercise-item {
+      padding: 0.75rem;
+      
+      .exercise-accuracy .accuracy-circle {
+        width: 40px;
+        height: 40px;
+        
+        &::before {
+          width: 34px;
+          height: 34px;
+        }
+        
+        span {
+          font-size: 0.7rem;
+        }
+      }
+    }
+  }
+  
+  .quick-actions {
+    .action-row {
+      grid-template-columns: 1fr;
+      
+      .action-button-small {
+        margin-bottom: 0.5rem;
+      }
+    }
+  }
+}
+
+// Dark theme optimizations
+@media (prefers-color-scheme: dark) {
+  .dashboard-content {
+    --background: #000000;
+  }
+  
+  .section-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  
+  .stat-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}

@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { ToastController } from '@ionic/angular';
-import { FirebaseError } from 'firebase/app';
 
 @Injectable({
   providedIn: 'root'
@@ -53,19 +52,23 @@ export class ErrorHandlerService {
       message = error.message;
     }
 
-    const toast = await this.toastController.create({
-      message,
-      duration: 4000,
-      position: 'bottom',
-      color: 'danger',
-      buttons: [
-        {
-          text: 'Cerrar',
-          role: 'cancel'
-        }
-      ]
-    });
-    await toast.present();
+    try {
+      const toast = await this.toastController.create({
+        message,
+        duration: 4000,
+        position: 'bottom',
+        color: 'danger',
+        buttons: [
+          {
+            text: 'Cerrar',
+            role: 'cancel'
+          }
+        ]
+      });
+      await toast.present();
+    } catch (toastError) {
+      console.error('Error creando toast:', toastError);
+    }
   }
 
   async handleGeneralError(error: any, customMessage?: string): Promise<void> {
@@ -73,22 +76,30 @@ export class ErrorHandlerService {
     
     console.error('🛑 General Error:', error);
     
-    const toast = await this.toastController.create({
-      message,
-      duration: 3000,
-      position: 'bottom',
-      color: 'danger'
-    });
-    await toast.present();
+    try {
+      const toast = await this.toastController.create({
+        message,
+        duration: 3000,
+        position: 'bottom',
+        color: 'danger'
+      });
+      await toast.present();
+    } catch (toastError) {
+      console.error('Error creando toast:', toastError);
+    }
   }
 
   async showSuccess(message: string): Promise<void> {
-    const toast = await this.toastController.create({
-      message,
-      duration: 2000,
-      position: 'bottom',
-      color: 'success'
-    });
-    await toast.present();
+    try {
+      const toast = await this.toastController.create({
+        message,
+        duration: 2000,
+        position: 'bottom',
+        color: 'success'
+      });
+      await toast.present();
+    } catch (toastError) {
+      console.error('Error creando toast de éxito:', toastError);
+    }
   }
 }

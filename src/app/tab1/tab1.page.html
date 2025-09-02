@@ -1,5 +1,5 @@
-<!-- src/app/tab1/tab1.page.html -->
-<!-- 📊 TAB1 DASHBOARD AVANZADO - UI CORREGIDA COMPLETA -->
+<!-- src/app/tab1/tab1.page.html - REEMPLAZAR COMPLETO -->
+<!-- 📊 TAB1 DASHBOARD CORREGIDO - SIN ERRORES TYPESCRIPT -->
 
 <ion-header [translucent]="true">
   <ion-toolbar color="dark" class="custom-toolbar">
@@ -27,8 +27,70 @@
     </div>
   </div>
 
-  <!-- Dashboard Content -->
-  <div *ngIf="!isLoading && metrics" class="dashboard-container">
+  <!-- ESTADO VACÍO - PRIMER USO -->
+  <div *ngIf="!isLoading && metrics?.isEmpty" class="empty-state-container">
+    <div class="empty-state-content">
+      <div class="gymshark-brand">
+        <img src="assets/gymshark-logo.png" alt="Gymshark" class="gymshark-mini" 
+             onerror="this.style.display='none'">
+        <span class="powered-text">POWERED BY IA</span>
+      </div>
+      
+      <div class="empty-state-icon">
+        <ion-icon name="fitness-outline"></ion-icon>
+      </div>
+      
+      <h1 class="empty-state-title">¡Hola {{ user?.displayName || 'Atleta' }}!</h1>
+      <p class="empty-state-subtitle">{{ getMotivationalMessage() }}</p>
+      
+      <div class="empty-state-tip">
+        <ion-icon name="bulb-outline"></ion-icon>
+        <span>{{ getTrainingTip() }}</span>
+      </div>
+      
+      <div class="empty-state-actions">
+        <ion-button 
+          expand="block" 
+          color="primary" 
+          size="large"
+          (click)="navigateToTraining()"
+          class="start-training-btn">
+          <ion-icon name="play-outline" slot="start"></ion-icon>
+          Comenzar Entrenamiento
+        </ion-button>
+        
+        <ion-button 
+          fill="outline" 
+          color="medium"
+          (click)="navigateToProfile()"
+          class="setup-profile-btn">
+          <ion-icon name="person-outline" slot="start"></ion-icon>
+          Configurar Perfil
+        </ion-button>
+      </div>
+      
+      <div class="empty-state-features">
+        <h3>¿Qué hace nuestra IA?</h3>
+        <div class="feature-list">
+          <div class="feature-item">
+            <ion-icon name="eye-outline"></ion-icon>
+            <span>Análisis de postura en tiempo real</span>
+          </div>
+          <div class="feature-item">
+            <ion-icon name="warning-outline"></ion-icon>
+            <span>Correcciones instantáneas</span>
+          </div>
+          <div class="feature-item">
+            <ion-icon name="analytics-outline"></ion-icon>
+            <span>Seguimiento de progreso</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD CON DATOS REALES -->
+  <div *ngIf="!isLoading && metrics && !metrics.isEmpty" class="dashboard-container">
     
     <!-- Welcome Section -->
     <div class="welcome-section">
@@ -38,7 +100,7 @@
         <span class="powered-text">POWERED BY IA</span>
       </div>
       <h1 class="welcome-title">¡Hola {{ user?.displayName || 'Atleta' }}!</h1>
-      <p class="welcome-subtitle">Tu asistente de entrenamiento con IA está listo</p>
+      <p class="welcome-subtitle">{{ getMotivationalMessage() }}</p>
       <div class="last-updated">
         Actualizado: {{ lastUpdated | date:'short':'es-ES' }}
       </div>
@@ -51,49 +113,46 @@
           <ion-icon name="fitness-outline"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number">{{ formatNumber(metrics?.totalWorkouts) }}</span>
+          <span class="stat-number">{{ formatNumber(metrics.totalWorkouts) }}</span>
           <span class="stat-label">Entrenamientos</span>
         </div>
-        <div class="stat-trend positive" *ngIf="metrics?.weeklyImprovement && metrics.weeklyImprovement > 0">
+        <div class="stat-trend positive" *ngIf="metrics.weeklyImprovement && metrics.weeklyImprovement > 0">
           <ion-icon name="trending-up-outline"></ion-icon>
         </div>
       </div>
 
-      <div class="stat-card secondary">
+      <div class="stat-card secondary" (click)="navigateToProfile()">
         <div class="stat-icon">
-          <ion-icon name="trophy-outline"></ion-icon>
+          <ion-icon name="analytics-outline"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number" [style.color]="getAccuracyColor(metrics?.accuracy)">
-            {{ metrics?.accuracy || 0 }}%
-          </span>
+          <span class="stat-number">{{ metrics.accuracy }}%</span>
           <span class="stat-label">Precisión</span>
         </div>
-        <div class="accuracy-bar">
-          <div class="accuracy-fill" 
-               [style.width.%]="metrics?.accuracy || 0"
-               [style.background-color]="getAccuracyColor(metrics?.accuracy)">
-          </div>
+        <div class="stat-badge" [style.background-color]="getAccuracyBadgeColor(metrics.accuracy)">
+          {{ getAccuracyBadgeText(metrics.accuracy) }}
         </div>
       </div>
 
-      <div class="stat-card tertiary">
+      <div class="stat-card accent" (click)="navigateToHistory()">
         <div class="stat-icon">
           <ion-icon name="time-outline"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number">{{ formatTime(metrics?.totalHours) }}</span>
+          <span class="stat-number">{{ getTotalTimeFormatted() }}</span>
           <span class="stat-label">Tiempo Total</span>
         </div>
       </div>
 
-      <div class="stat-card quaternary">
+      <div class="stat-card success">
         <div class="stat-icon">
-          <ion-icon [name]="metrics && metrics.weeklyImprovement >= 0 ? 'trending-up-outline' : 'trending-down-outline'"></ion-icon>
+          <ion-icon name="trending-up-outline" 
+                    [style.color]="getImprovementColor(metrics.weeklyImprovement)"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number" [style.color]="getImprovementColor(metrics?.weeklyImprovement)">
-            {{ (metrics?.weeklyImprovement ?? 0) > 0 ? '+' : '' }}{{ metrics?.weeklyImprovement ?? 0 }}%
+          <span class="stat-number" 
+                [style.color]="getImprovementColor(metrics.weeklyImprovement)">
+            {{ getImprovementText(metrics.weeklyImprovement) }}
           </span>
           <span class="stat-label">Mejora Semanal</span>
         </div>
@@ -108,57 +167,79 @@
           Tu Progreso Semanal
         </h3>
         <div class="section-badge">
-          {{ metrics?.weeklyGoalProgress || 0 }}% completado
+          {{ (metrics.weeklyGoalProgress | number:'1.0-0') || 0 }}% completado
         </div>
       </div>
-      
-      <div class="progress-summary">
-        <div class="progress-info">
-          <span class="progress-text">Objetivo Semanal</span>
-          <span class="progress-value">
-            {{ getCompletedDaysCount() }}/5 días
-          </span>
+
+      <div class="weekly-goal">
+        <div class="goal-header">
+          <span>Objetivo Semanal</span>
+          <span>{{ getCompletedDaysCount() }}/5 días</span>
         </div>
         
-        <div class="progress-bar-container">
+        <div class="goal-progress">
           <div class="progress-bar">
             <div class="progress-fill" 
-                 [style.width.%]="metrics?.weeklyGoalProgress || 0">
+                 [style.width.%]="metrics.weeklyGoalProgress || 0">
             </div>
           </div>
         </div>
-        
-        <div class="progress-days">
-          <div class="day" 
-               *ngFor="let day of weeklyGoalDays"
-               [class.completed]="day.completed"
-               [class.pending]="!day.completed">
-            {{ day.label }}
+
+        <div class="goal-days">
+          <div class="day-item" 
+               *ngFor="let day of weeklyGoalDays" 
+               [class.completed]="day.completed">
+            <span class="day-letter">{{ day.label }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Progress Chart -->
-      <div class="chart-container">
-        <h4 class="chart-title">Entrenamientos vs Errores</h4>
+      <!-- Chart Container -->
+      <div class="chart-container" *ngIf="metrics.weeklyProgress">
+        <h4>Entrenamientos vs Errores</h4>
         <div class="chart-wrapper">
           <canvas #progressChart></canvas>
         </div>
       </div>
     </div>
 
-    <!-- Accuracy Trend Section -->
-    <div class="section-card">
+    <!-- Exercise Stats Section -->
+    <div class="section-card" *ngIf="metrics.exerciseStats && metrics.exerciseStats.length > 0">
       <div class="section-header">
         <h3 class="section-title">
-          <ion-icon name="analytics-outline"></ion-icon>
-          Tendencia de Precisión
+          <ion-icon name="barbell-outline"></ion-icon>
+          Estadísticas por Ejercicio
         </h3>
-        <div class="section-badge accuracy" [style.color]="getAccuracyColor(metrics?.accuracy)">
-          {{ metrics?.accuracy || 0 }}% promedio
+      </div>
+
+      <div class="exercise-stats">
+        <div class="exercise-item" *ngFor="let exercise of metrics.exerciseStats">
+          <div class="exercise-info">
+            <h4>{{ exercise.exercise }}</h4>
+            <span>{{ exercise.count }} sesiones</span>
+          </div>
+          <div class="exercise-accuracy">
+            <div class="accuracy-circle" 
+                 [style.background]="'conic-gradient(#4caf50 ' + exercise.avgAccuracy + '%, #2a2a2a 0)'">
+              <span>{{ exercise.avgAccuracy }}%</span>
+            </div>
+          </div>
         </div>
       </div>
-      
+    </div>
+
+    <!-- Accuracy Trend Section -->
+    <div class="section-card" *ngIf="metrics.accuracyTrend">
+      <div class="section-header">
+        <h3 class="section-title">
+          <ion-icon name="trending-up-outline"></ion-icon>
+          Tendencia de Precisión
+        </h3>
+        <div class="section-badge">
+          {{ metrics.accuracy }}% promedio
+        </div>
+      </div>
+
       <div class="chart-container">
         <div class="chart-wrapper">
           <canvas #accuracyChart></canvas>
@@ -166,55 +247,15 @@
       </div>
     </div>
 
-    <!-- Error Analysis Section -->
-    <div class="section-card">
-      <div class="section-header">
-        <h3 class="section-title">
-          <ion-icon name="warning-outline"></ion-icon>
-          Análisis de Errores
-        </h3>
-        <div class="section-badge" 
-             [class.success]="metrics?.criticalErrorsToday === 0"
-             [class.warning]="metrics && metrics.criticalErrorsToday > 0">
-          {{ metrics?.criticalErrorsToday || 0 }} hoy
-        </div>
-      </div>
-
-      <!-- Error Distribution Chart -->
-      <div class="error-analysis-content">
-        <div class="chart-container small">
-          <div class="chart-wrapper">
-            <canvas #errorsChart></canvas>
-          </div>
-        </div>
-        
-        <div class="error-summary">
-          <div class="error-most-common" *ngIf="metrics?.mostCommonError && metrics.mostCommonError !== 'NONE'">
-            <h4>Error más común</h4>
-            <p class="error-name" *ngIf="metrics?.mostCommonError">{{ getErrorTypeLabel(metrics.mostCommonError) }}</p>
-            <p class="error-tip">💡 Tip: Mantén la alineación de las rodillas durante las sentadillas</p>
-          </div>
-          
-          <div class="error-streak" *ngIf="metrics?.currentStreak">
-            <h4>Racha actual</h4>
-            <div class="streak-display">
-              <ion-icon name="flame-outline"></ion-icon>
-              <span>{{ metrics?.currentStreak ?? 0 }} días</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Recent Alerts Section -->
-    <div class="section-card" *ngIf="metrics?.recentAlerts && metrics.recentAlerts.length > 0">
+    <div class="section-card" *ngIf="metrics.recentAlerts && metrics.recentAlerts.length > 0">
       <div class="section-header">
         <h3 class="section-title">
           <ion-icon name="notifications-outline"></ion-icon>
           Alertas Recientes
         </h3>
         <div class="section-badge">
-          {{ metrics?.recentAlerts?.length ?? 0 }} alertas
+          {{ metrics.recentAlerts.length || 0 }} alertas
         </div>
       </div>
 
@@ -228,75 +269,94 @@
             <h4>{{ getErrorTypeLabel(alert.errorType) }}</h4>
             <p>{{ alert.exercise }} - {{ alert.processedAt | date:'short':'es-ES' }}</p>
             <div class="alert-confidence">
-              Confianza: {{ ((alert.confidence ?? 0) * 100) | number:'1.0-0' }}%
+              Confianza: {{ getConfidencePercentage(alert.confidence) }}%
             </div>
-          </div>
-          <div class="alert-severity">
-            <span class="severity-badge" [class]="'severity-' + alert.severity">
-              {{ alert.severity.toUpperCase() }}
-            </span>
           </div>
         </div>
       </div>
+
+      <ion-button 
+        fill="outline" 
+        expand="block" 
+        color="medium"
+        (click)="viewAllAlerts()"
+        class="view-all-btn">
+        Ver Todas las Alertas
+      </ion-button>
     </div>
 
-    <!-- Exercise Stats Section -->
-    <div class="section-card" *ngIf="metrics?.exerciseStats && metrics.exerciseStats.length > 0">
+    <!-- Error Analysis Section -->
+    <div class="section-card" *ngIf="hasErrorsByType(metrics)">
       <div class="section-header">
         <h3 class="section-title">
-          <ion-icon name="barbell-outline"></ion-icon>
-          Estadísticas por Ejercicio
+          <ion-icon name="analytics-outline"></ion-icon>
+          Análisis de Errores
         </h3>
+        <div class="section-badge">
+          {{ metrics.criticalErrorsToday || 0 }} hoy
+        </div>
       </div>
 
-      <div class="exercise-stats-list">
-        <div class="exercise-item" 
-             *ngFor="let exercise of metrics.exerciseStats; trackBy: trackExercise">
-          <div class="exercise-info">
-            <h4>{{ exercise.exercise }}</h4>
-            <p>{{ exercise.count }} sesiones</p>
-          </div>
-          <div class="exercise-accuracy">
-            <div class="accuracy-circle" 
-                 [style.background]="'conic-gradient(#4caf50 ' + exercise.avgAccuracy * 3.6 + 'deg, rgba(255,255,255,0.1) 0deg)'">
-              <span>{{ exercise.avgAccuracy }}%</span>
-            </div>
+      <div class="error-analysis">
+        <div class="most-common-error" *ngIf="metrics.mostCommonError">
+          <h4>ERROR MÁS COMÚN</h4>
+          <h3 class="error-title">{{ getErrorTypeLabel(metrics.mostCommonError) }}</h3>
+          <p class="error-tip">{{ getTrainingTip() }}</p>
+        </div>
+
+        <div class="chart-container">
+          <h4>Distribución de Errores</h4>
+          <div class="chart-wrapper">
+            <canvas #errorsChart></canvas>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Quick Actions Section -->
-    <div class="actions-section">
-      <h3 class="section-title">Acciones Rápidas</h3>
-      <div class="actions-grid">
-        <ion-button class="action-btn primary" (click)="navigateToTraining()">
-          <ion-icon name="play-outline" slot="start"></ion-icon>
-          Nuevo Entrenamiento
-        </ion-button>
-        
-        <ion-button class="action-btn secondary" (click)="navigateToHistory()">
-          <ion-icon name="analytics-outline" slot="start"></ion-icon>
-          Ver Historial
-        </ion-button>
-        
-        <ion-button class="action-btn tertiary" (click)="navigateToProfile()">
-          <ion-icon name="settings-outline" slot="start"></ion-icon>
-          Configuración
-        </ion-button>
-      </div>
-    </div>
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <ion-button 
+        expand="block" 
+        color="primary" 
+        size="large"
+        (click)="navigateToTraining()"
+        class="action-button">
+        <ion-icon name="play-outline" slot="start"></ion-icon>
+        Entrenar Ahora
+      </ion-button>
 
-    <!-- Research Banner -->
-    <div class="research-banner">
-      <div class="research-content">
-        <ion-icon name="school-outline" class="research-icon"></ion-icon>
-        <div class="research-text">
-          <h4>Proyecto de Investigación</h4>
-          <p>Contribuyes al estudio sobre precisión postural en ejercicios físicos</p>
-        </div>
+      <div class="action-row">
+        <ion-button 
+          fill="outline" 
+          color="medium"
+          (click)="navigateToHistory()"
+          class="action-button-small">
+          <ion-icon name="time-outline" slot="start"></ion-icon>
+          Historial
+        </ion-button>
+
+        <ion-button 
+          fill="outline" 
+          color="medium"
+          (click)="navigateToProfile()"
+          class="action-button-small">
+          <ion-icon name="person-outline" slot="start"></ion-icon>
+          Perfil
+        </ion-button>
       </div>
     </div>
+         <!-- 🆕 BOTÓN TEMPORAL DE RESET -->
+         <ion-button 
+         fill="outline" 
+         color="danger"
+         size="small"
+         (click)="resetDashboard()"
+         class="action-button-small"
+         style="margin-top: 1rem;">
+         <ion-icon name="refresh-outline" slot="start"></ion-icon>
+         Reset Dashboard
+       </ion-button>
 
   </div>
+
 </ion-content>
