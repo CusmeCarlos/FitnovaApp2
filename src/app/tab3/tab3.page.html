@@ -921,44 +921,31 @@
         </form>
       </ion-card-content>
     </ion-card>
+<!-- ✅ FOOTER LIMPIO SIN TEXTO RELLENO -->
+<div class="profile-footer" *ngIf="profileCompletionPercentage >= 80">
+  <div class="success-message">
+    <ion-icon name="checkmark-circle-outline" color="success"></ion-icon>
+    <h3>¡Perfil Completo!</h3>
+    <p>Tu perfil está listo para generar rutinas personalizadas con IA</p>
+    
+    <ion-button 
+      expand="block" 
+      color="primary" 
+      fill="solid"
+      (click)="navigateToTraining()">
+      <ion-icon name="fitness-outline" slot="start"></ion-icon>
+      Comenzar Entrenamiento
+    </ion-button>
+  </div>
+</div>
 
-    <!-- Información sobre el Proyecto -->
-    <div class="research-section">
-      <div class="research-header">
-        <ion-icon name="school-outline"></ion-icon>
-        <div>
-          <h3>Proyecto de Titulación UPSE</h3>
-          <p>Carlos Cusme - Tecnología de la Información</p>
-        </div>
-      </div>
-      <div class="research-content">
-        <h4>Variable Principal: Precisión Postural</h4>
-        <p>
-          Este historial médico completo permite al sistema de IA generar rutinas
-          adaptativas personalizadas, considerando limitaciones físicas, objetivos
-          específicos y preferencias de entrenamiento para mejorar la precisión
-          postural en la ejecución de ejercicios físicos.
-        </p>
-        <div class="research-features">
-          <div class="feature">
-            <ion-icon name="eye-outline"></ion-icon>
-            <span>Detección MediaPipe</span>
-          </div>
-          <div class="feature">
-            <ion-icon name="analytics-outline"></ion-icon>
-            <span>Análisis Biomecánico</span>
-          </div>
-          <div class="feature">
-            <ion-icon name="notifications-outline"></ion-icon>
-            <span>Alertas FCM</span>
-          </div>
-          <div class="feature">
-            <ion-icon name="cloud-outline"></ion-icon>
-            <span>Cloud Functions</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
+<!-- ✅ MENSAJE MOTIVACIONAL CUANDO EL PERFIL NO ESTÁ COMPLETO -->
+<div class="profile-footer" *ngIf="profileCompletionPercentage < 80">
+  <div class="completion-message">
+    <ion-icon name="information-circle-outline" color="primary"></ion-icon>
+    <h3>Completa tu Perfil</h3>
+    <p>{{ profileCompletionPercentage }}% completado. Completa todas las secciones para obtener rutinas más personalizadas.</p>
+  </div>
+</div>   
   </div>
 </ion-content>

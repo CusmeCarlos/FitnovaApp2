@@ -1,14 +1,16 @@
 // src/app/tab1/tab1.page.ts - REEMPLAZAR COMPLETO
-// 📊 TAB1 DASHBOARD AVANZADO - CON DATOS REALES Y BOTONES FUNCIONALES
+// TAB1 DASHBOARD AVANZADO - CON DATOS REALES Y BOTONES FUNCIONALES
 
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
-import { Router } from '@angular/router'; // 🆕 Para navegación
+import { Router } from '@angular/router'; // Para navegación
 import { AuthService } from '../services/auth.service';
 import { DashboardService, DashboardMetrics } from '../services/dashboard.service';
 import { User } from '../interfaces/user.interface';
 import { Subscription } from 'rxjs';
 import { Chart, registerables, ChartConfiguration, ChartTypeRegistry } from 'chart.js';
-import { AlertController, ToastController } from '@ionic/angular'; // 🆕 Para alertas
+import { AlertController, ToastController } from '@ionic/angular'; // Para alertas
+import { ModalController } from '@ionic/angular';
+import { TrainingHistoryModalComponent } from './components/training-history-modal.component';
 
 // Registrar todos los componentes de Chart.js
 Chart.register(...registerables);
@@ -24,21 +26,21 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('accuracyChart', { static: false }) accuracyChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('errorsChart', { static: false }) errorsChartRef!: ElementRef<HTMLCanvasElement>;
 
-  // ✅ DATOS DEL USUARIO Y MÉTRICAS
+  // DATOS DEL USUARIO Y MÉTRICAS
   user: User | null = null;
   metrics: DashboardMetrics | null = null;
   isLoading = true;
   lastUpdated: Date = new Date();
   
-  // ✅ CHARTS
+  // CHARTS
   private progressChart: Chart | null = null;
   private accuracyChart: Chart | null = null;
   private errorsChart: Chart | null = null;
 
-  // ✅ SUBSCRIPCIONES
+  // SUBSCRIPCIONES
   private subscriptions = new Subscription();
 
-  // ✅ DATOS CALCULADOS PARA LA UI
+  // DATOS CALCULADOS PARA LA UI
   weeklyGoalDays = [
     { label: 'L', completed: false },
     { label: 'M', completed: false },
@@ -52,37 +54,38 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
   constructor(
     private auth: AuthService,
     private dashboardService: DashboardService,
-    private router: Router, // 🆕
-    private alertController: AlertController, // 🆕
-    private toastController: ToastController // 🆕
+    private router: Router, // 
+    private alertController: AlertController, // 
+    private toastController: ToastController, // 
+    private modalController: ModalController,
   ) {}
 
   ngOnInit() {
-    console.log('📊 Inicializando Tab1 Dashboard Avanzado...');
+    console.log(' Inicializando Tab1 Dashboard Avanzado...');
     this.loadUserData();
     this.loadDashboardMetrics();
   }
 
   ngAfterViewInit() {
     // Los charts se inicializan cuando se cargan las métricas
-    console.log('🎨 Tab1 Vista inicializada, esperando datos para charts...');
+    console.log(' Tab1 Vista inicializada, esperando datos para charts...');
   }
 
   ngOnDestroy() {
-    console.log('🧹 Limpiando Tab1 Dashboard...');
+    console.log(' Limpiando Tab1 Dashboard...');
     this.subscriptions.unsubscribe();
     this.destroyCharts();
   }
 
-  // ✅ CARGAR DATOS DEL USUARIO
+  // CARGAR DATOS DEL USUARIO
   private loadUserData(): void {
     const userSub = this.auth.user$.subscribe({
       next: (user) => {
         this.user = user;
-        console.log('👤 Usuario cargado en Dashboard:', user?.displayName);
+        console.log(' Usuario cargado en Dashboard:', user?.displayName);
       },
       error: (error) => {
-        console.error('🛑 Error cargando usuario:', error);
+        console.error(' Error cargando usuario:', error);
         this.isLoading = false;
       }
     });
@@ -90,13 +93,13 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     this.subscriptions.add(userSub);
   }
 
-  // ✅ CARGAR MÉTRICAS DEL DASHBOARD
+  // CARGAR MÉTRICAS DEL DASHBOARD
   private loadDashboardMetrics(): void {
     this.isLoading = true;
 
     const metricsSub = this.dashboardService.getDashboardMetrics().subscribe({
       next: (metrics) => {
-        console.log('📊 Métricas Dashboard cargadas:', metrics);
+        console.log(' Métricas Dashboard cargadas:', metrics);
         this.metrics = metrics;
         this.updateWeeklyGoalDays();
         this.isLoading = false;
@@ -108,10 +111,10 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
         }, 100);
       },
       error: (error) => {
-        console.error('🛑 Error cargando métricas:', error);
+        console.error(' Error cargando métricas:', error);
         this.isLoading = false;
         
-        // 🆕 NO usar métricas por defecto, solo mostrar error
+        // NO usar métricas por defecto, solo mostrar error
         this.showError('Error cargando datos del dashboard');
       }
     });
@@ -119,7 +122,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     this.subscriptions.add(metricsSub);
   }
 
-  // ✅ ACTUALIZAR DÍAS DE META SEMANAL
+  // ACTUALIZAR DÍAS DE META SEMANAL
   private updateWeeklyGoalDays(): void {
     if (!this.metrics) return;
 
@@ -129,14 +132,14 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     }));
   }
 
-  // ✅ INICIALIZAR TODOS LOS GRÁFICOS
+  // INICIALIZAR TODOS LOS GRÁFICOS
   private initializeCharts(): void {
     if (!this.metrics || this.metrics.isEmpty) {
-      console.log('📊 Dashboard vacío, no se inicializan gráficos');
+      console.log(' Dashboard vacío, no se inicializan gráficos');
       return;
     }
 
-    console.log('🎨 Inicializando gráficos Chart.js...');
+    console.log(' Inicializando gráficos Chart.js...');
     
     this.destroyCharts(); // Limpiar charts existentes
     
@@ -144,13 +147,13 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
       this.initProgressChart();
       this.initAccuracyChart();
       this.initErrorsChart();
-      console.log('✅ Todos los gráficos inicializados correctamente');
+      console.log(' Todos los gráficos inicializados correctamente');
     } catch (error) {
-      console.error('🛑 Error inicializando gráficos:', error);
+      console.error(' Error inicializando gráficos:', error);
     }
   }
 
-  // ✅ GRÁFICO DE PROGRESO SEMANAL
+  // GRÁFICO DE PROGRESO SEMANAL
   private initProgressChart(): void {
     if (!this.progressChartRef || !this.metrics) return;
 
@@ -206,7 +209,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  // ✅ GRÁFICO DE TENDENCIA DE PRECISIÓN
+  // GRÁFICO DE TENDENCIA DE PRECISIÓN
   private initAccuracyChart(): void {
     if (!this.accuracyChartRef || !this.metrics) return;
 
@@ -259,7 +262,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  // ✅ GRÁFICO DE ANÁLISIS DE ERRORES
+  // GRÁFICO DE ANÁLISIS DE ERRORES
   private initErrorsChart(): void {
     if (!this.errorsChartRef || !this.metrics) return;
 
@@ -270,7 +273,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     const errorCounts = Object.values(this.metrics.errorsByType);
 
     if (errorTypes.length === 0) {
-      console.log('📊 No hay errores para mostrar en el gráfico');
+      console.log(' No hay errores para mostrar en el gráfico');
       return;
     }
 
@@ -309,7 +312,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  // ✅ DESTRUIR GRÁFICOS EXISTENTES
+  // DESTRUIR GRÁFICOS EXISTENTES
   private destroyCharts(): void {
     if (this.progressChart) {
       this.progressChart.destroy();
@@ -325,13 +328,13 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  // ✅ FORMATEAR NÚMEROS PARA DISPLAY
+  // FORMATEAR NÚMEROS PARA DISPLAY
   formatNumber(value: number | undefined): string {
     if (!value || value === 0) return '0';
     return value.toLocaleString('es-ES');
   }
 
-  // ✅ OBTENER ETIQUETA DE TIPO DE ERROR
+  // OBTENER ETIQUETA DE TIPO DE ERROR
   getErrorTypeLabel(errorType: string): string {
     const errorLabels: { [key: string]: string } = {
       'KNEE_VALGUS': 'Valgo de rodilla',
@@ -429,22 +432,22 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
       const remainingSecs = seconds % 60;
       return remainingSecs > 0 ? `${minutes}m ${remainingSecs}s` : `${minutes}m`;
     }
-  // ✅ OBTENER COLOR DE MEJORA
+  // OBTENER COLOR DE MEJORA
   getImprovementColor(improvement: number | undefined): string {
     if (!improvement || improvement === 0) return '#ff9800'; // Naranja para neutro
     if (improvement > 0) return '#4caf50'; // Verde para mejora
     return '#ff5722'; // Rojo para empeoramiento
   }
 
-  // ✅ REFRESCAR MÉTRICAS MANUALMENTE
+  // REFRESCAR MÉTRICAS MANUALMENTE
   refreshMetrics(): void {
-    console.log('🔄 Refrescando métricas dashboard...');
+    console.log(' Refrescando métricas dashboard...');
     this.loadDashboardMetrics();
   }
 
-  // 🆕 NAVEGACIÓN FUNCIONAL - BOTONES DEL DASHBOARD
+  // NAVEGACIÓN FUNCIONAL - BOTONES DEL DASHBOARD
   async navigateToTraining(): Promise<void> {
-    console.log('🎯 Navegando a entrenamiento...');
+    console.log(' Navegando a entrenamiento...');
     
     const alert = await this.alertController.create({
       header: 'Iniciar Entrenamiento',
@@ -469,14 +472,14 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
   }
 
   navigateToProfile(): void {
-    console.log('👤 Navegando a perfil...');
+    console.log(' Navegando a perfil...');
     this.router.navigate(['/tabs/tab3']).then(() => {
       this.showToast('Accediendo a tu perfil', 'primary');
     });
   }
 
   async navigateToHistory(): Promise<void> {
-    console.log('📈 Navegando a historial...');
+    console.log(' Abriendo historial...');
     
     if (!this.metrics || this.metrics.isEmpty) {
       const alert = await this.alertController.create({
@@ -495,50 +498,80 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
           }
         ]
       });
-
+  
       await alert.present();
       return;
     }
-
-    // Aquí podrías navegar a una página de historial si la tienes
-    this.showToast('Historial de entrenamientos', 'primary');
+  
+    // Mostrar modal de historial con datos reales
+    await this.showHistoryModal();
   }
-
-  // 🆕 ACCIÓN PARA VER MÁS ALERTAS
-  async viewAllAlerts(): Promise<void> {
-    if (!this.metrics || this.metrics.recentAlerts.length === 0) {
-      const alert = await this.alertController.create({
-        header: 'Sin Alertas',
-        message: 'No tienes alertas recientes. ¡Esto significa que estás entrenando muy bien!',
-        buttons: ['OK']
+  async showHistoryModal(): Promise<void> {
+    try {
+      // Obtener datos reales de entrenamientos
+      const historyData = await this.dashboardService.getTrainingHistory();
+      
+      const modal = await this.modalController.create({
+        component: TrainingHistoryModalComponent,
+        componentProps: {
+          historyData: historyData,
+          userMetrics: this.metrics
+        },
+        cssClass: 'history-modal'
       });
+  
+      modal.onDidDismiss().then((result) => {
+        if (result.data?.action === 'startTraining') {
+          this.navigateToTraining();
+        }
+      });
+  
+      await modal.present();
+      
+    } catch (error) {
+      console.error('Error cargando historial:', error);
+      await this.showToast('Error cargando historial', 'danger');
+    }
+  }
+  // Ver todas las alertas recientes
+  async viewAllAlerts(): Promise<void> {
+    const alerts = this.metrics?.recentAlerts || [];
 
-      await alert.present();
+    if (!alerts.length) {
+      await this.showToast('No hay alertas recientes', 'medium');
       return;
     }
 
-    // Aquí podrías navegar a una página de alertas detalladas
-    this.showToast(`Tienes ${this.metrics.recentAlerts.length} alertas recientes`, 'primary');
-  }
+    const message = alerts
+      .map(a => `• ${this.getErrorTypeLabel(a.errorType)} - ${a.exercise} - ${new Date(a.processedAt).toLocaleString('es-ES')}`)
+      .join('<br>');
 
-  // 🆕 OBTENER MENSAJE MOTIVACIONAL SEGÚN EL ESTADO
+    const alert = await this.alertController.create({
+      header: 'Todas las Alertas',
+      message,
+      buttons: ['Cerrar']
+    });
+
+    await alert.present();
+  }
+  // OBTENER MENSAJE MOTIVACIONAL SEGÚN EL ESTADO
   getMotivationalMessage(): string {
     if (!this.metrics || this.metrics.isEmpty) {
       return '¡Comienza tu primer entrenamiento con IA!';
     }
 
     if (this.metrics.accuracy >= 90) {
-      return '¡Excelente técnica! Sigue así 💪';
+      return '¡Excelente técnica! Sigue así ';
     }
 
     if (this.metrics.accuracy >= 75) {
-      return '¡Buen progreso! Puedes mejorar aún más 🎯';
+      return '¡Buen progreso! Puedes mejorar aún más ';
     }
 
-    return '¡Cada entrenamiento te hace mejor! 🚀';
+    return '¡Cada entrenamiento te hace mejor! ';
   }
 
-  // 🆕 OBTENER CONSEJO SEGÚN LOS DATOS
+  // OBTENER CONSEJO SEGÚN LOS DATOS
   getTrainingTip(): string {
     if (!this.metrics || this.metrics.isEmpty) {
       return 'Tip: La IA analizará tu postura en tiempo real';
@@ -550,13 +583,13 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     }
 
     if (this.metrics.currentStreak > 0) {
-      return `¡Llevas ${this.metrics.currentStreak} días consecutivos! 🔥`;
+      return `¡Llevas ${this.metrics.currentStreak} días consecutivos! `;
     }
 
     return 'Tip: La constancia es clave para el progreso';
   }
 
-  // ✅ UTILIDADES
+  // UTILIDADES
   getCompletedDaysCount(): number {
     return this.weeklyGoalDays.filter(day => day.completed).length;
   }
@@ -565,7 +598,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     return alert.id || index.toString();
   }
 
-  // 🆕 MÉTODOS AUXILIARES PARA EL HTML (CORRIGEN ERRORES TYPESCRIPT)
+  // MÉTODOS AUXILIARES PARA EL HTML (CORRIGEN ERRORES TYPESCRIPT)
   getAccuracyBadgeColor(accuracy: number): string {
     if (accuracy >= 90) return '#4caf50';
     if (accuracy >= 75) return '#ff9800';
@@ -592,7 +625,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     return metrics.errorsByType && Object.keys(metrics.errorsByType).length > 0;
   }
 
-  // 🆕 MOSTRAR MENSAJES AL USUARIO
+  // MOSTRAR MENSAJES AL USUARIO
   private async showToast(message: string, color: string = 'primary'): Promise<void> {
     const toast = await this.toastController.create({
       message,

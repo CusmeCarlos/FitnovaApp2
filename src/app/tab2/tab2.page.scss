@@ -293,3 +293,300 @@
     }
   }
 }
+
+// 🎨 ESTADÍSTICAS MEJORADAS - DISEÑO MODERNO
+.stats-card-improved {
+  margin: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  padding: 1.5rem;
+  color: white;
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+
+  .stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+
+    h3 {
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      ion-icon {
+        font-size: 1.5rem;
+        color: #ffc107;
+      }
+    }
+
+    .today-badge {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 0.3rem 0.8rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+  }
+
+  .improved-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+
+    .stat-card-mini {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+
+      .stat-icon {
+        font-size: 2rem;
+        color: #ffc107;
+        margin-bottom: 0.5rem;
+        display: block;
+      }
+
+      .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: white;
+        margin: 0.2rem 0;
+      }
+
+      .stat-label {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.8);
+        text-transform: uppercase;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+      }
+    }
+  }
+}
+
+// 🏃 EJERCICIOS - DISEÑO MODERNO CON ANIMACIONES
+.exercises-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  padding: 1rem;
+
+  ion-card {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 8px 32px rgba(240, 147, 251, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    &:hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 20px 40px rgba(240, 147, 251, 0.4);
+    }
+
+    &.selected {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 16px 32px rgba(245, 87, 108, 0.5);
+      
+      &::after {
+        content: '✓';
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: #4caf50;
+        color: white;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.1rem;
+      }
+    }
+
+    ion-card-header {
+      padding: 1.5rem;
+
+      .exercise-icon {
+        text-align: center;
+        margin-bottom: 1rem;
+
+        ion-icon {
+          font-size: 3.5rem;
+          color: white;
+          filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        }
+      }
+
+      ion-card-title {
+        color: white;
+        font-size: 1.4rem;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      ion-card-subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        text-align: center;
+        font-weight: 500;
+        font-size: 0.95rem;
+      }
+    }
+
+    ion-card-content {
+      padding: 0 1.5rem 1.5rem;
+      
+      p {
+        color: rgba(255, 255, 255, 0.8);
+        text-align: center;
+        font-size: 0.9rem;
+        line-height: 1.4;
+        margin: 0;
+      }
+    }
+  }
+}
+
+// 👋 SECCIÓN DE BIENVENIDA MEJORADA
+.welcome-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  padding: 2rem;
+  margin: 1rem;
+  text-align: center;
+  color: white;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    animation: floating 6s ease-in-out infinite;
+  }
+
+  h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0;
+    position: relative;
+    z-index: 2;
+  }
+}
+
+// 🎬 ANIMACIONES SUAVES
+@keyframes floating {
+  0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+  50% { transform: translate(-50%, -50%) rotate(180deg); }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.exercise-selection > * {
+  animation: slideInUp 0.6s ease-out forwards;
+}
+
+.exercise-selection > *:nth-child(1) { animation-delay: 0.1s; }
+.exercise-selection > *:nth-child(2) { animation-delay: 0.2s; }
+.exercise-selection > *:nth-child(3) { animation-delay: 0.3s; }
+
+// 🎯 BOTONES DE ENTRENAMIENTO MEJORADOS
+.training-controls {
+  padding: 1rem;
+  
+  ion-button {
+    --border-radius: 16px;
+    height: 56px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    
+    &.start-button {
+      --background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+      --box-shadow: 0 8px 24px rgba(76, 175, 80, 0.4);
+      
+      &:hover {
+        --box-shadow: 0 12px 32px rgba(76, 175, 80, 0.6);
+        transform: translateY(-2px);
+      }
+    }
+
+    &.stop-button {
+      --background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+      --box-shadow: 0 8px 24px rgba(244, 67, 54, 0.4);
+    }
+  }
+}
+
+// 📱 RESPONSIVE MEJORADO
+@media (max-width: 768px) {
+  .exercises-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 0.5rem;
+  }
+
+  .stats-card-improved {
+    margin: 0.5rem;
+    padding: 1rem;
+
+    .improved-stats-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+  }
+
+  .welcome-section {
+    margin: 0.5rem;
+    padding: 1.5rem;
+
+    h2 {
+      font-size: 1.6rem;
+    }
+  }
+}

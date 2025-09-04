@@ -4,12 +4,18 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../services/auth.service';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+import { ActionSheetController } from '@ionic/angular';
 import { ProfileService } from '../services/profile.service';
 import { User } from '../interfaces/user.interface';
 import { Profile } from '../interfaces/profile.interface';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
+import { Router } from '@angular/router';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/storage';
+import 'firebase/compat/firestore';
 import { 
   IonHeader, 
   IonToolbar, 
@@ -35,7 +41,6 @@ import {
   IonCheckbox,
   ToastController,
   AlertController,
-  ActionSheetController
 } from "@ionic/angular/standalone";
 
 @Component({
@@ -151,7 +156,8 @@ export class Tab3Page implements OnInit, OnDestroy {
     private formBuilder: FormBuilder,
     private toastController: ToastController,
     private alertController: AlertController,
-    private actionSheetController: ActionSheetController
+    private actionSheetController: ActionSheetController,
+    private router: Router,
   ) {
     this.initializeForms();
   }
@@ -581,60 +587,400 @@ export class Tab3Page implements OnInit, OnDestroy {
   async changeAvatar(): Promise<void> {
     const actionSheet = await this.actionSheetController.create({
       header: 'Cambiar foto de perfil',
+      cssClass: 'custom-action-sheet',
       buttons: [
         {
           text: 'Tomar foto',
-          icon: 'camera',
+          icon: 'camera-outline',
           handler: () => {
-            this.showToast('Funcionalidad próximamente', 'warning');
+            this.takePictureFromCamera();
           }
         },
         {
-          text: 'Elegir de galería',
-          icon: 'images',
+          text: 'Elegir de galería', 
+          icon: 'images-outline',
           handler: () => {
-            this.showToast('Funcionalidad próximamente', 'warning');
+            this.selectFromGallery();
           }
         },
         {
           text: 'Cancelar',
-          icon: 'close',
+          icon: 'close-outline',
           role: 'cancel'
         }
       ]
     });
     await actionSheet.present();
   }
+  private async takePictureFromCamera(): Promise<void> {
+    try {
+      console.log('📸 Abriendo cámara web...');
+      
+      // Crear elementos temporales para captura
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('No se pudo obtener contexto del canvas');
+      }
+      
+      // Obtener stream de cámara (igual que pose-camera)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
+        }
+      });
+      
+      console.log('✅ Stream de cámara obtenido');
+      
+      // Configurar video
+      video.srcObject = stream;
+      video.autoplay = true;
+      video.muted = true;
+      video.playsInline = true;
+      
+      // Esperar a que cargue
+      await new Promise<void>((resolve) => {
+        const onLoadedMetadata = () => {
+          console.log('✅ Video metadata cargada');
+          resolve();
+        };
+        
+        if (video.readyState >= 2) {
+          onLoadedMetadata();
+        } else {
+          video.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
+        }
+      });
+      
+      // Reproducir video
+      await video.play();
+      console.log('✅ Video reproduciendo');
+      
+      // Mostrar toast de preparación
+      await this.showToast('Preparando cámara...', 'warning');
+      
+      // Configurar canvas con dimensiones del video
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      
+      // Crear modal con preview de cámara
+      await this.showCameraModal(video, canvas, ctx, stream);
+      
+    } catch (error) {
+      console.error('❌ Error abriendo cámara:', error);
+      await this.showToast('Error al acceder a la cámara', 'danger');
+    }
+  }
+  // ✅ MODAL DE CÁMARA CON PREVIEW:
+private async showCameraModal(
+  video: HTMLVideoElement, 
+  canvas: HTMLCanvasElement, 
+  ctx: CanvasRenderingContext2D, 
+  stream: MediaStream
+): Promise<void> {
+  const alert = await this.alertController.create({
+    header: '📸 Capturar Foto',
+    message: `
+      <div style="text-align: center;">
+        <p>Posiciona tu rostro en el centro</p>
+        <div id="camera-preview" style="position: relative; width: 300px; height: 225px; margin: 10px auto; border: 2px solid #3880ff; border-radius: 8px; overflow: hidden;">
+          <video id="preview-video" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+        </div>
+      </div>
+    `,
+    buttons: [
+      {
+        text: 'Cancelar',
+        role: 'cancel',
+        handler: () => {
+          // Detener stream
+          stream.getTracks().forEach(track => track.stop());
+        }
+      },
+      {
+        text: '📸 Capturar',
+        handler: () => {
+          this.capturePhotoFromVideo(video, canvas, ctx, stream);
+        }
+      }
+    ],
+    cssClass: 'camera-modal'
+  });
+  
+  await alert.present();
+  
+  // Después de que el modal se muestre, insertar el video
+  setTimeout(() => {
+    const previewContainer = document.getElementById('camera-preview');
+    const previewVideo = document.getElementById('preview-video') as HTMLVideoElement;
+    
+    if (previewVideo && previewContainer) {
+      previewVideo.srcObject = stream;
+      previewVideo.play();
+      console.log('✅ Preview de cámara activo');
+    }
+  }, 200);
+}
+// ✅ CAPTURAR FOTO DEL VIDEO:
+private async capturePhotoFromVideo(
+  video: HTMLVideoElement,
+  canvas: HTMLCanvasElement, 
+  ctx: CanvasRenderingContext2D,
+  stream: MediaStream
+): Promise<void> {
+  try {
+    console.log('📸 Capturando foto...');
+    
+    // Dibujar frame actual en canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convertir a blob
+    const blob = await new Promise<Blob>((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve(blob!);
+      }, 'image/jpeg', 0.8);
+    });
+    
+    // Detener stream
+    stream.getTracks().forEach(track => track.stop());
+    console.log('✅ Stream detenido');
+    
+    // Subir foto
+    await this.uploadProfilePhoto(blob);
+    
+  } catch (error) {
+    console.error('❌ Error capturando foto:', error);
+    stream.getTracks().forEach(track => track.stop());
+    await this.showToast('Error capturando foto', 'danger');
+  }
+}
+  
+private async selectFromGallery(): Promise<void> {
+  try {
+    console.log('📁 Abriendo selector de archivos...');
+    
+    // Crear input file temporal
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    
+    // Promise para manejar selección
+    const fileSelected = new Promise<File | null>((resolve) => {
+      input.addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0] || null;
+        resolve(file);
+      });
+      
+      // Si se cancela
+      input.addEventListener('cancel', () => resolve(null));
+    });
+    
+    // Agregar al DOM y hacer click
+    document.body.appendChild(input);
+    input.click();
+    
+    // Esperar selección
+    const file = await fileSelected;
+    document.body.removeChild(input);
+    
+    if (file) {
+      console.log('✅ Archivo seleccionado:', file.name);
+      
+      // Validar que sea imagen
+      if (!file.type.startsWith('image/')) {
+        throw new Error('El archivo debe ser una imagen');
+      }
+      
+      // Validar tamaño (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('La imagen es muy grande (max 5MB)');
+      }
+      
+      // Subir foto
+      await this.uploadProfilePhoto(file);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error seleccionando de galería:', error);
+    await this.showToast(error instanceof Error ? error.message : 'Error seleccionando imagen', 'danger');
+  }
+}
+// ✅ MÉTODO CORREGIDO - SIN ACTUALIZAR AUTH
+private async uploadProfilePhoto(file: Blob | File): Promise<void> {
+  try {
+    this.isSaving = true;
+    await this.showToast('Procesando imagen...', 'warning');
+    
+    // Convertir a base64
+    const base64 = await this.fileToBase64(file);
+    
+    console.log('💾 Guardando en Firestore...');
+    
+    if (this.user?.uid) {
+      // Guardar en Firestore users
+      await firebase.firestore().collection('users').doc(this.user.uid).update({
+        photoURL: base64,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // También en profiles
+      const profileRef = firebase.firestore().collection('profiles').doc(this.user.uid);
+      const profileDoc = await profileRef.get();
+      if (profileDoc.exists) {
+        await profileRef.update({
+          photoURL: base64,
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      
+      // ✅ SOLO ACTUALIZAR INTERFAZ LOCAL (NO FIREBASE AUTH)
+      if (this.user) {
+        this.user.photoURL = base64;
+      }
+      
+      console.log('✅ Foto guardada correctamente');
+      await this.showToast('✅ Foto actualizada correctamente', 'success');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error guardando foto:', error);
+    await this.showToast('Error al guardar la foto', 'danger');
+  } finally {
+    this.isSaving = false;
+  }
+}
+
+// ✅ MÉTODO AUXILIAR PARA CONVERTIR A BASE64
+private fileToBase64(file: Blob | File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+  
+private async updateUserPhotoProfile(photoURL: string): Promise<void> {
+  try {
+    // Actualizar Firebase Auth
+    const currentUser = firebase.auth().currentUser;
+    if (currentUser) {
+      await currentUser.updateProfile({ photoURL });
+      console.log('✅ Foto actualizada en Auth');
+    }
+    
+    // Actualizar interfaz local
+    if (this.user) {
+      this.user.photoURL = photoURL;
+    }
+    
+    // Actualizar en Firestore users
+    if (this.user?.uid) {
+      await firebase.firestore().collection('users').doc(this.user.uid)
+        .update({ 
+          photoURL,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      console.log('✅ Foto actualizada en Firestore users');
+    }
+    
+    // Actualizar en profiles si existe
+    if (this.user?.uid) {
+      const profileRef = firebase.firestore().collection('profiles').doc(this.user.uid);
+      const profileDoc = await profileRef.get();
+      
+      if (profileDoc.exists) {
+        await profileRef.update({ 
+          photoURL,
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('✅ Foto actualizada en Firestore profiles');
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Error actualizando perfil:', error);
+  }
+}
+
+  
+  private async updateUserPhoto(photoURL: string): Promise<void> {
+    try {
+      if (this.user?.uid) {
+        const userRef = firebase.firestore().collection('users').doc(this.user.uid);
+        await userRef.update({ photoURL });
+        
+        // También actualizar en profiles si existe
+        const profileRef = firebase.firestore().collection('profiles').doc(this.user.uid);
+        const profileDoc = await profileRef.get();
+        if (profileDoc.exists) {
+          await profileRef.update({ photoURL });
+        }
+      }
+    } catch (error) {
+      console.error('Error actualizando foto en Firestore:', error);
+    }
+  }
 
   async verifyEmail(): Promise<void> {
-    this.showToast('Verificación de email próximamente', 'warning');
+    try {
+      const currentUser = firebase.auth().currentUser;
+      
+      if (currentUser && !currentUser.emailVerified) {
+        await currentUser.sendEmailVerification();
+        
+        const alert = await this.alertController.create({
+          header: '📧 Verificación Enviada',
+          message: 'Se ha enviado un correo de verificación a tu email. Revisa tu bandeja de entrada y spam.',
+          buttons: [
+            {
+              text: 'OK',
+              handler: () => {
+                this.showToast('Revisa tu correo para verificar tu cuenta', 'success');
+              }
+            },
+            {
+              text: 'Reenviar',
+              handler: async () => {
+                try {
+                  await currentUser.sendEmailVerification();
+                  this.showToast('Correo reenviado', 'success');
+                } catch (error) {
+                  this.showToast('Error reenviando correo', 'danger');
+                }
+              }
+            }
+          ]
+        });
+        
+        await alert.present();
+      } else if (currentUser?.emailVerified) {
+        await this.showToast('Tu email ya está verificado ✓', 'success');
+      } else {
+        await this.showToast('No hay usuario autenticado', 'warning');
+      }
+    } catch (error) {
+      console.error('Error enviando verificación:', error);
+      await this.showToast('Error enviando verificación. Inténtalo más tarde', 'danger');
+    }
   }
-
-  getSectionIcon(section: string): string {
-    const icons = {
-      personal: 'person-outline',
-      medical: 'medical-outline',
-      goals: 'trophy-outline',
-      level: 'fitness-outline',
-      preferences: 'settings-outline'
-    };
-    return icons[section as keyof typeof icons] || 'ellipse-outline';
-  }
-
-  getSectionTitle(section: string): string {
-    const titles = {
-      personal: 'Información Personal',
-      medical: 'Historial Médico',
-      goals: 'Objetivos Fitness',
-      level: 'Nivel Fitness',
-      preferences: 'Preferencias'
-    };
-    return titles[section as keyof typeof titles] || 'Sección';
-  }
-
   // Agrega este método a tab3.page.ts (al final, antes del último })
 
 // ✅ MÉTODO PARA CALCULAR EL ANCHO DE LA BARRA DE PROGRESO
+
+navigateToTraining(): void {
+  console.log('🏃‍♂️ Navegando a entrenamiento desde perfil...');
+  this.router.navigate(['/tabs/tab2']).then(() => {
+    this.showToast('¡Redirigiéndote al entrenamiento!', 'success');
+  });
+}
+
 getProgressWidth(): number {
   const sections = ['personal', 'medical', 'goals', 'level', 'preferences'];
   const currentIndex = sections.indexOf(this.currentSection);
@@ -652,5 +998,6 @@ getProgressWidth(): number {
   }
   
   return baseProgress;
+  
 }
 }
