@@ -491,37 +491,37 @@ export class Tab2Page implements OnInit, OnDestroy {
     const targetDuration = 15 * 60; 
     return Math.min((this.sessionDuration / targetDuration) * 100, 100);
   }
-
-  // Método para testing rápido (opcional)
-  async startQuickTest(): Promise<void> {
-    console.log('Iniciando test rápido...');
+// Método para testing rápido (opcional)
+async startQuickTest(): Promise<void> {
+  console.log('Iniciando test rápido...');
+  
+  // Simular sesión de entrenamiento para testing
+  this.initializeTraining();
+  
+  // Simular datos después de 2 segundos
+  setTimeout(async () => {
+    // Simular repeticiones
+    this.onRepetitionCounted(5);
     
-    // Simular sesión de entrenamiento para testing
-    this.initializeTraining();
+    // Simular errores
+    const fakeError: PostureError = {
+      type: PostureErrorType.KNEE_VALGUS,
+      severity: 8,
+      description: 'Mantén las rodillas alineadas durante la sentadilla',
+      recommendation: 'Separar más los pies',
+      confidence: 0.9,
+      timestamp: Date.now(),
+      affectedJoints: ['knee'],
+      correctionCues: ['Separar más los pies', 'Activar glúteos']
+    };
+    this.onErrorDetected([fakeError]);
     
-    // Simular datos después de 2 segundos
-    setTimeout(async () => {
-      // Simular repeticiones
-      this.onRepetitionCounted(5);
-      
-      // Simular errores
-      const fakeError: PostureError = {
-        type: PostureErrorType.KNEE_VALGUS,
-        severity: 8,
-        description: 'Mantén las rodillas alineadas durante la sentadilla',
-        recommendation: 'Separar más los pies',
-        confidence: 0.9,
-        timestamp: Date.now(),
-        affectedJoints: ['knee'],
-        correctionCues: ['Separar más los pies', 'Activar glúteos']
-      };
-      this.onErrorDetected([fakeError]);
-      
-      // Terminar sesión después de otros 2 segundos
-      setTimeout(() => {
-        this.stopTraining();
-      }, 2000);
-      
+    // Terminar sesión después de otros 2 segundos
+    setTimeout(() => {
+      this.stopTraining();
     }, 2000);
-  }
+    
+  }, 2000);
+}
+
 }

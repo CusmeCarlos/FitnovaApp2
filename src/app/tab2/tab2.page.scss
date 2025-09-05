@@ -1,523 +1,800 @@
 // src/app/tab2/tab2.page.scss
-// ✅ ESTILOS PARA LA PÁGINA DE ENTRENAMIENTO
+// TAB2 ULTRA LIMPIO - OCULTAR TODOS LOS DUPLICADOS
+
+// Variables base
+:root {
+  --training-primary: #ff5722;
+  --training-secondary: #2196f3;
+  --training-success: #4caf50;
+  --training-warning: #ff9800;
+  --training-danger: #f44336;
+  --training-dark: #1a1a1a;
+  --training-light: rgba(255, 255, 255, 0.1);
+  --training-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --ai-gradient: linear-gradient(135deg, #ff5722 0%, #ff8a50 100%);
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+// Toolbar personalizado
+.custom-toolbar {
+  --background: var(--training-dark);
+  --color: white;
+  --border-color: transparent;
+  
+  .custom-title {
+    font-weight: 700;
+    font-size: 1.2rem;
+  }
+}
+
+// Contenido principal
+.training-content {
+  --background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  position: relative;
+}
+
+.background-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+  z-index: -1;
+  
+  &.training-active {
+    background: #000;
+  }
+}
+
+// === VISTA SELECCIÓN DE EJERCICIO (MANTENER) ===
 
 .exercise-selection {
-  padding: 20px;
+  padding: 1rem;
+  animation: fadeInUp 0.6s ease-out;
 }
 
+// Sección de bienvenida
 .welcome-section {
-  text-align: center;
-  margin-bottom: 30px;
+  background: var(--training-gradient);
+  border-radius: 24px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
   
-  h2 {
-    color: var(--ion-color-primary);
-    margin-bottom: 10px;
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    animation: floating 8s ease-in-out infinite;
   }
   
-  p {
-    color: var(--ion-color-medium);
-    font-size: 16px;
-  }
-}
-
-.exercises-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 15px;
-  margin-bottom: 30px;
-  
-  ion-card {
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
+  .welcome-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    position: relative;
+    z-index: 2;
     
-    &:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    }
-    
-    &.selected {
-      border-color: var(--ion-color-primary);
-      background: var(--ion-color-primary-tint);
-    }
-    
-    .exercise-icon {
-      text-align: center;
-      margin-bottom: 10px;
+    .user-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid rgba(255, 255, 255, 0.3);
       
-      ion-icon {
-        font-size: 48px;
-      }
-    }
-  }
-}
-
-.stats-card {
-  margin-bottom: 20px;
-  
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-    
-    .stat-item {
-      text-align: center;
-      
-      ion-icon {
-        font-size: 24px;
-        color: var(--ion-color-primary);
-        margin-bottom: 8px;
-        display: block;
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
       
-      .stat-label {
-        display: block;
-        font-size: 12px;
-        color: var(--ion-color-medium);
-        margin-bottom: 4px;
-      }
-      
-      .stat-value {
-        display: block;
-        font-size: 18px;
-        font-weight: bold;
-        color: var(--ion-color-dark);
-      }
-    }
-  }
-}
-
-.settings-card {
-  margin-bottom: 30px;
-  
-  ion-item {
-    --inner-padding-end: 0;
-    
-    ion-icon {
-      margin-right: 16px;
-    }
-  }
-}
-
-.start-button-container {
-  margin-top: 20px;
-  margin-bottom: 40px;
-  
-  ion-button {
-    height: 56px;
-    font-size: 18px;
-    font-weight: 600;
-  }
-}
-
-// 📹 VISTA DE ENTRENAMIENTO
-.training-view {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.training-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  background: var(--ion-color-light);
-  border-bottom: 1px solid var(--ion-color-light-shade);
-  
-  .training-info {
-    h3 {
-      margin: 0;
-      color: var(--ion-color-primary);
-      font-size: 20px;
-    }
-    
-    .training-stats {
-      display: flex;
-      gap: 15px;
-      margin-top: 5px;
-      
-      span {
-        font-size: 14px;
-        color: var(--ion-color-medium);
+      .avatar-placeholder {
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         
-        &.repetitions {
-          font-weight: bold;
-          color: var(--ion-color-success);
+        ion-icon {
+          font-size: 2.5rem;
+          color: white;
+        }
+      }
+    }
+    
+    .welcome-text {
+      flex: 1;
+      
+      .welcome-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: white;
+        margin: 0 0 0.5rem 0;
+      }
+      
+      .welcome-subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.1rem;
+        margin: 0 0 1rem 0;
+        line-height: 1.4;
+      }
+      
+      .ai-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        color: white;
+        font-size: 0.8rem;
+        font-weight: 600;
+        
+        ion-icon {
+          font-size: 1rem;
         }
       }
     }
   }
 }
 
-.camera-container {
-  flex: 1;
-  background: #000;
-  position: relative;
-  min-height: 400px;
-}
-
-.session-stats {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 15px;
-  background: var(--ion-color-light);
-  border-top: 1px solid var(--ion-color-light-shade);
-  
-  .stat-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    
-    ion-icon {
-      font-size: 18px;
-      color: var(--ion-color-primary);
-    }
-  }
-}
-
-// 📱 RESPONSIVE
-@media (max-width: 768px) {
-  .exercises-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr !important;
-    gap: 15px !important;
-  }
-  
-  .session-stats {
-    flex-direction: column;
-    gap: 10px;
-  }
-}
-
-// 🎨 ANIMACIONES
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.exercise-selection, .training-view {
-  animation: fadeIn 0.5s ease-out;
-}
-// Agregar al final de tab2.page.scss:
-
-// Estadísticas Mejoradas
-.stats-card-improved {
-  margin: 1rem;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  
-  .stats-title {
-    color: #ffffff;
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-  }
-  
-  .stats-grid-enhanced {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    
-    .stat-item-enhanced {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      padding: 1rem 0.5rem;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      
-      .stat-icon-enhanced {
-        font-size: 1.5rem;
-        color: #2196f3;
-        margin-bottom: 0.5rem;
-      }
-      
-      .stat-label-enhanced {
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 0.8rem;
-        font-weight: 500;
-        margin-bottom: 0.25rem;
-        text-align: center;
-      }
-      
-      .stat-value-enhanced {
-        color: #ffffff;
-        font-size: 1.2rem;
-        font-weight: 700;
-      }
-      
-      // Colores específicos por tipo
-      &:nth-child(1) .stat-icon-enhanced { color: #2196f3; } // Duración - Azul
-      &:nth-child(2) .stat-icon-enhanced { color: #ff9800; } // Repeticiones - Naranja
-      &:nth-child(3) .stat-icon-enhanced { color: #4caf50; } // Calidad - Verde
-      &:nth-child(4) .stat-icon-enhanced { color: #9c27b0; } // Correcciones - Púrpura
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .stats-grid-enhanced {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-    
-    .stat-item-enhanced {
-      padding: 0.75rem 0.5rem;
-      
-      .stat-icon-enhanced {
-        font-size: 1.3rem;
-      }
-      
-      .stat-value-enhanced {
-        font-size: 1.1rem;
-      }
-      
-      .stat-label-enhanced {
-        font-size: 0.75rem;
-      }
-    }
-  }
-}
-
-// 🎨 ESTADÍSTICAS MEJORADAS - DISEÑO MODERNO
-.stats-card-improved {
-  margin: 1rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+// Estadísticas mejoradas
+.stats-card-enhanced {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
   border-radius: 20px;
   padding: 1.5rem;
-  color: white;
-  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-
+  margin-bottom: 2rem;
+  
   .stats-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
-
-    h3 {
-      color: white;
-      font-size: 1.3rem;
-      font-weight: 700;
-      margin: 0;
+    
+    .stats-title {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-
+      color: white;
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 0;
+      
       ion-icon {
-        font-size: 1.5rem;
-        color: #ffc107;
+        color: var(--training-secondary);
       }
     }
-
-    .today-badge {
-      background: rgba(255, 255, 255, 0.2);
-      padding: 0.3rem 0.8rem;
-      border-radius: 12px;
-      font-size: 0.85rem;
-      font-weight: 600;
+    
+    .stats-date {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.9rem;
     }
   }
-
-  .improved-stats-grid {
+  
+  .stats-grid-enhanced {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
-
-    .stat-card-mini {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 1rem;
-      text-align: center;
+    
+    .stat-item-enhanced {
+      background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.1);
-
-      .stat-icon {
+      border-radius: 16px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      
+      &:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--training-secondary);
+      }
+      
+      .stat-icon-enhanced {
         font-size: 2rem;
-        color: #ffc107;
-        margin-bottom: 0.5rem;
-        display: block;
+        color: var(--training-secondary);
+        margin-bottom: 1rem;
       }
-
-      .stat-value {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: white;
-        margin: 0.2rem 0;
-      }
-
-      .stat-label {
-        font-size: 0.9rem;
-        color: rgba(255, 255, 255, 0.8);
-        text-transform: uppercase;
-        font-weight: 500;
-        letter-spacing: 0.5px;
+      
+      .stat-content {
+        .stat-label-enhanced {
+          display: block;
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 0.8rem;
+          font-weight: 500;
+          margin-bottom: 0.5rem;
+        }
+        
+        .stat-value-enhanced {
+          display: block;
+          color: white;
+          font-size: 1.8rem;
+          font-weight: 700;
+        }
       }
     }
   }
 }
 
-// 🏃 EJERCICIOS - DISEÑO MODERNO CON ANIMACIONES
-.exercises-grid {
+// Resto de estilos de selección (ejercicios, configuraciones, botón inicio)
+.exercises-section, .settings-section {
+  margin-bottom: 2rem;
+  
+  .section-header {
+    margin-bottom: 1.5rem;
+    
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin: 0 0 0.5rem 0;
+      
+      ion-icon {
+        color: var(--training-primary);
+      }
+    }
+    
+    .section-subtitle {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 1rem;
+      margin: 0;
+    }
+  }
+}
+
+.exercises-grid-enhanced {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1.5rem;
-  padding: 1rem;
-
-  ion-card {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  
+  .exercise-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 2px solid transparent;
     border-radius: 20px;
-    border: none;
-    box-shadow: 0 8px 32px rgba(240, 147, 251, 0.3);
-    transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
+    padding: 1.5rem;
     cursor: pointer;
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
-      pointer-events: none;
-    }
-
+    transition: all 0.4s ease;
+    position: relative;
+    
     &:hover {
-      transform: translateY(-8px) scale(1.02);
-      box-shadow: 0 20px 40px rgba(240, 147, 251, 0.4);
+      transform: translateY(-8px);
+      border-color: var(--training-primary);
+      box-shadow: 0 15px 40px rgba(255, 87, 34, 0.3);
     }
-
+    
     &.selected {
-      transform: translateY(-4px) scale(1.05);
-      box-shadow: 0 16px 32px rgba(245, 87, 108, 0.5);
-      
-      &::after {
-        content: '✓';
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        background: #4caf50;
-        color: white;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        font-size: 1.1rem;
-      }
+      border-color: var(--training-primary);
+      background: rgba(255, 87, 34, 0.1);
+      transform: translateY(-5px);
     }
-
-    ion-card-header {
-      padding: 1.5rem;
-
-      .exercise-icon {
-        text-align: center;
-        margin-bottom: 1rem;
-
-        ion-icon {
-          font-size: 3.5rem;
+    
+    .exercise-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+      
+      .exercise-icon-wrapper {
+        position: relative;
+        width: 60px;
+        height: 60px;
+        
+        .exercise-icon-bg {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          background: var(--ai-gradient);
+          opacity: 0.3;
+        }
+        
+        .exercise-icon {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 2rem;
           color: white;
-          filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+          z-index: 2;
         }
       }
-
-      ion-card-title {
-        color: white;
-        font-size: 1.4rem;
-        font-weight: 700;
-        text-align: center;
-        margin-bottom: 0.5rem;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-      }
-
-      ion-card-subtitle {
-        color: rgba(255, 255, 255, 0.9);
-        text-align: center;
-        font-weight: 500;
-        font-size: 0.95rem;
+      
+      .exercise-difficulty {
+        .difficulty-badge {
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          font-size: 0.7rem;
+          font-weight: 600;
+          background: var(--training-success);
+          color: white;
+        }
       }
     }
-
-    ion-card-content {
-      padding: 0 1.5rem 1.5rem;
+    
+    .exercise-content {
+      .exercise-name {
+        color: white;
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+      }
       
-      p {
+      .exercise-description {
         color: rgba(255, 255, 255, 0.8);
-        text-align: center;
         font-size: 0.9rem;
         line-height: 1.4;
-        margin: 0;
+        margin: 0 0 1rem 0;
+      }
+      
+      .exercise-stats {
+        display: flex;
+        gap: 1rem;
+        
+        .exercise-stat {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 0.8rem;
+          
+          ion-icon {
+            font-size: 1rem;
+            color: var(--training-secondary);
+          }
+        }
+      }
+    }
+    
+    .exercise-selection-indicator {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      
+      ion-icon {
+        font-size: 1.5rem;
+        color: var(--training-success);
       }
     }
   }
 }
 
-// 👋 SECCIÓN DE BIENVENIDA MEJORADA
-.welcome-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 20px;
-  padding: 2rem;
-  margin: 1rem;
-  text-align: center;
-  color: white;
-  position: relative;
+.settings-grid {
+  display: grid;
+  gap: 1rem;
+  
+  .setting-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: translateX(5px);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--training-secondary);
+    }
+    
+    &.active {
+      border-color: var(--training-success);
+      background: rgba(76, 175, 80, 0.1);
+    }
+    
+    .setting-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      ion-icon {
+        font-size: 1.5rem;
+        color: var(--training-secondary);
+      }
+    }
+    
+    .setting-content {
+      flex: 1;
+      
+      .setting-label {
+        display: block;
+        color: white;
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+      
+      .setting-description {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.8rem;
+      }
+    }
+    
+    .setting-toggle {
+      ion-toggle {
+        --background: rgba(255, 255, 255, 0.2);
+        --background-checked: var(--training-success);
+        --handle-background: white;
+        --handle-background-checked: white;
+      }
+    }
+  }
+}
+
+.start-training-section {
+  margin-top: 2rem;
+  
+  .start-button-container {
+    margin-bottom: 1.5rem;
+    
+    .start-training-btn {
+      --background: var(--ai-gradient);
+      --color: white;
+      --border-radius: 20px;
+      --box-shadow: 0 8px 32px rgba(255, 87, 34, 0.4);
+      height: 70px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        --box-shadow: 0 12px 40px rgba(255, 87, 34, 0.6);
+        transform: translateY(-3px);
+      }
+      
+      .start-button-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 0 1rem;
+        
+        .start-icon {
+          font-size: 2rem;
+        }
+        
+        .start-text {
+          flex: 1;
+          text-align: center;
+          
+          .start-label {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 700;
+          }
+          
+          .start-exercise {
+            display: block;
+            font-size: 0.9rem;
+            opacity: 0.9;
+          }
+        }
+        
+        .start-indicator {
+          font-size: 1.5rem;
+          opacity: 0.8;
+        }
+      }
+    }
+  }
+  
+  .training-tips {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    
+    .tip-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 0.9rem;
+      
+      ion-icon {
+        color: var(--training-success);
+        font-size: 1.2rem;
+      }
+    }
+  }
+}
+
+// === VISTA ENTRENAMIENTO ULTRA LIMPIA ===
+
+.training-view-ultra-clean {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #000;
   overflow: hidden;
+}
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-    animation: floating 6s ease-in-out infinite;
+// Header ultra minimalista
+.training-header-ultra {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+  z-index: 20;
+  
+  .exercise-name-ultra {
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
   }
-
-  h2 {
-    font-size: 2rem;
+  
+  .timer-ultra {
+    color: #ff6b35;
+    font-size: 16px;
     font-weight: 700;
-    margin-bottom: 0.5rem;
-    position: relative;
-    z-index: 2;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 8px rgba(255, 107, 53, 0.3);
   }
-
-  p {
-    font-size: 1.1rem;
-    opacity: 0.9;
-    margin: 0;
-    position: relative;
-    z-index: 2;
+  
+  .stop-btn-ultra {
+    --color: #ffffff;
+    --background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    --border-radius: 6px;
+    --padding-start: 8px;
+    --padding-end: 8px;
+    --box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+    min-width: 32px;
+    height: 28px;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      --box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    ion-icon {
+      font-size: 14px;
+    }
   }
 }
 
-// 🎬 ANIMACIONES SUAVES
-@keyframes floating {
-  0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
-  50% { transform: translate(-50%, -50%) rotate(180deg); }
+// Zona de cámara PROTAGONISTA
+.camera-zone-ultra {
+  flex: 1;
+  position: relative;
+  background: #000;
+  overflow: hidden;
+  
+  app-pose-camera {
+    width: 100%;
+    height: 100%;
+    display: block;
+    
+    // OCULTAR TODOS LOS DUPLICADOS DEL POSE-CAMERA COMPONENT
+    ::ng-deep {
+      // OCULTAR TODAS LAS TARJETAS QUE APARECEN EN LA IMAGEN
+      .exercise-info,
+      .exercise-name,
+      .exercise-title,
+      .training-info,
+      .session-info,
+      .exercise-card,
+      .info-cards,
+      .side-panel,
+      .info-panel,
+      .stats-panel,
+      .metrics-panel,
+      .exercise-stats,
+      .session-stats,
+      .training-stats,
+      .repetition-counter,
+      .rep-counter-overlay,
+      .ai-quality-indicator,
+      .live-alerts,
+      .quality-indicator,
+      .status-cards,
+      .info-overlay,
+      .exercise-overlay,
+      .training-overlay {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      }
+      
+      // OCULTAR ESPECÍFICAMENTE LAS TARJETAS DE LA DERECHA
+      .stats-cards,
+      .metric-cards,
+      .info-box,
+      .exercise-box,
+      .status-box,
+      .rep-box,
+      .fps-box,
+      .error-box {
+        display: none !important;
+      }
+      
+      // Panel de controles ULTRA discreto
+      .controls-panel {
+        position: absolute !important;
+        bottom: 8px !important;
+        right: 8px !important;
+        left: auto !important;
+        transform: none !important;
+        padding: 4px !important;
+        gap: 4px !important;
+        background: rgba(0, 0, 0, 0.4) !important;
+        backdrop-filter: blur(6px) !important;
+        border-radius: 6px !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2) !important;
+        
+        ion-button {
+          width: 24px !important;
+          height: 24px !important;
+          min-width: 24px !important;
+          --border-radius: 4px !important;
+          --padding-start: 0 !important;
+          --padding-end: 0 !important;
+          --padding-top: 0 !important;
+          --padding-bottom: 0 !important;
+          border: none !important;
+          margin: 0 !important;
+          
+          ion-icon {
+            font-size: 12px !important;
+          }
+          
+          // Estados de color ultra sutiles
+          &[color="primary"] {
+            --background: rgba(59, 130, 246, 0.15) !important;
+            --color: rgba(147, 197, 253, 0.8) !important;
+          }
+          
+          &[color="medium"] {
+            --background: rgba(107, 114, 128, 0.15) !important;
+            --color: rgba(209, 213, 219, 0.8) !important;
+          }
+          
+          &[color="success"] {
+            --background: rgba(34, 197, 94, 0.15) !important;
+            --color: rgba(134, 239, 172, 0.8) !important;
+          }
+          
+          &[color="warning"] {
+            --background: rgba(245, 158, 11, 0.15) !important;
+            --color: rgba(253, 224, 71, 0.8) !important;
+          }
+          
+          &[color="danger"] {
+            --background: rgba(239, 68, 68, 0.15) !important;
+            --color: rgba(252, 165, 165, 0.8) !important;
+          }
+          
+          &:hover {
+            transform: scale(1.02) !important;
+            --box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+          }
+        }
+      }
+      
+      // Panel de estado MUY discreto
+      .readiness-panel {
+        top: 8px !important;
+        left: 8px !important;
+        right: auto !important;
+        transform: none !important;
+        background: rgba(0, 0, 0, 0.5) !important;
+        backdrop-filter: blur(6px) !important;
+        border-radius: 6px !important;
+        padding: 4px 8px !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        max-width: 150px !important;
+        font-size: 10px !important;
+        
+        .readiness-icon {
+          font-size: 12px !important;
+          margin-right: 4px !important;
+        }
+        
+        .readiness-message {
+          font-size: 10px !important;
+          font-weight: 400 !important;
+        }
+      }
+      
+      // OCULTAR CUALQUIER ELEMENTO QUE CONTENGA TEXTO "Sentadillas"
+      *:contains("Sentadillas"),
+      *:contains("Repeticiones"), 
+      *:contains("FPS"),
+      *:contains("0 FPS"),
+      *[class*="exercise"],
+      *[class*="rep"],
+      *[class*="fps"],
+      *[class*="stats"] {
+        display: none !important;
+      }
+    }
+  }
 }
 
-@keyframes slideInUp {
+// Stats bottom ÚNICOS
+.stats-bottom-ultra {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.98);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+  z-index: 20;
+  
+  .stat-ultra {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    
+    .stat-number-ultra {
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .stat-label-ultra {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    // Colores específicos por stat
+    &:nth-child(1) .stat-number-ultra {
+      color: #22d3ee; // Repeticiones - cyan
+    }
+    
+    &:nth-child(2) .stat-number-ultra {
+      color: #a78bfa; // Tiempo - purple
+    }
+    
+    &:nth-child(3) .stat-number-ultra {
+      color: #fb7185; // Errores - rose
+    }
+  }
+}
+
+// === ANIMACIONES ===
+
+@keyframes fadeInUp {
   from {
     opacity: 0;
     transform: translateY(30px);
@@ -528,65 +805,129 @@
   }
 }
 
-.exercise-selection > * {
-  animation: slideInUp 0.6s ease-out forwards;
+@keyframes floating {
+  0%, 100% { 
+    transform: translate(-50%, -50%) rotate(0deg); 
+  }
+  50% { 
+    transform: translate(-50%, -50%) rotate(180deg); 
+  }
 }
 
-.exercise-selection > *:nth-child(1) { animation-delay: 0.1s; }
-.exercise-selection > *:nth-child(2) { animation-delay: 0.2s; }
-.exercise-selection > *:nth-child(3) { animation-delay: 0.3s; }
+.exercise-selection {
+  animation: fadeInUp 0.6s ease-out;
+}
 
-// 🎯 BOTONES DE ENTRENAMIENTO MEJORADOS
-.training-controls {
-  padding: 1rem;
+.training-view-ultra-clean {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+// === RESPONSIVE DESIGN ===
+
+@media (max-width: 768px) {
+  .exercise-selection {
+    padding: 0.75rem;
+  }
   
-  ion-button {
-    --border-radius: 16px;
-    height: 56px;
-    font-weight: 600;
-    font-size: 1.1rem;
+  .welcome-section {
+    padding: 1.5rem;
     
-    &.start-button {
-      --background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-      --box-shadow: 0 8px 24px rgba(76, 175, 80, 0.4);
+    .welcome-content {
+      flex-direction: column;
+      text-align: center;
+      gap: 1rem;
       
-      &:hover {
-        --box-shadow: 0 12px 32px rgba(76, 175, 80, 0.6);
-        transform: translateY(-2px);
+      .welcome-text .welcome-title {
+        font-size: 1.6rem;
       }
     }
-
-    &.stop-button {
-      --background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
-      --box-shadow: 0 8px 24px rgba(244, 67, 54, 0.4);
+  }
+  
+  .exercises-grid-enhanced {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .stats-grid-enhanced {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .training-header-ultra {
+    padding: 6px 10px;
+    
+    .exercise-name-ultra {
+      font-size: 12px;
+    }
+    
+    .timer-ultra {
+      font-size: 14px;
+    }
+    
+    .stop-btn-ultra {
+      min-width: 28px;
+      height: 24px;
+      
+      ion-icon {
+        font-size: 12px;
+      }
+    }
+  }
+  
+  .camera-zone-ultra app-pose-camera ::ng-deep {
+    .controls-panel {
+      bottom: 6px !important;
+      right: 6px !important;
+      padding: 3px !important;
+      gap: 3px !important;
+      
+      ion-button {
+        width: 20px !important;
+        height: 20px !important;
+        min-width: 20px !important;
+        
+        ion-icon {
+          font-size: 10px !important;
+        }
+      }
+    }
+    
+    .readiness-panel {
+      top: 6px !important;
+      left: 6px !important;
+      padding: 3px 6px !important;
+      font-size: 9px !important;
+      
+      .readiness-icon {
+        font-size: 10px !important;
+      }
+      
+      .readiness-message {
+        font-size: 9px !important;
+      }
+    }
+  }
+  
+  .stats-bottom-ultra {
+    padding: 10px 12px;
+    
+    .stat-ultra {
+      .stat-number-ultra {
+        font-size: 16px;
+      }
+      
+      .stat-label-ultra {
+        font-size: 8px;
+      }
     }
   }
 }
 
-// 📱 RESPONSIVE MEJORADO
-@media (max-width: 768px) {
-  .exercises-grid {
+@media (max-width: 480px) {
+  .stats-grid-enhanced {
     grid-template-columns: 1fr;
-    gap: 1rem;
-    padding: 0.5rem;
   }
-
-  .stats-card-improved {
-    margin: 0.5rem;
-    padding: 1rem;
-
-    .improved-stats-grid {
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
-    }
-  }
-
-  .welcome-section {
-    margin: 0.5rem;
-    padding: 1.5rem;
-
-    h2 {
-      font-size: 1.6rem;
-    }
+  
+  .welcome-section .welcome-content .welcome-text .welcome-title {
+    font-size: 1.4rem;
   }
 }

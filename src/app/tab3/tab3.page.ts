@@ -204,8 +204,7 @@ export class Tab3Page implements OnInit, OnDestroy {
         phone: [''],
         relationship: ['']
       }),
-      bodyFatPercentage: [''],
-      muscleMassPercentage: ['']
+      
     });
 
     // Formulario historial médico
@@ -223,12 +222,6 @@ export class Tab3Page implements OnInit, OnDestroy {
       doctorClearance: [false],
       doctorNotes: [''],
       heartConditions: this.formBuilder.array([]),
-      bloodPressure: this.formBuilder.group({
-        systolic: [''],
-        diastolic: [''],
-        date: ['']
-      }),
-      restingHeartRate: ['']
     });
 
     // Formulario objetivos fitness
@@ -290,8 +283,7 @@ export class Tab3Page implements OnInit, OnDestroy {
           phone: profile.personalInfo.emergencyContact?.phone || '',
           relationship: profile.personalInfo.emergencyContact?.relationship || ''
         },
-        bodyFatPercentage: profile.personalInfo.bodyFatPercentage || '',
-        muscleMassPercentage: profile.personalInfo.muscleMassPercentage || ''
+      
       });
     }
 
@@ -308,16 +300,12 @@ export class Tab3Page implements OnInit, OnDestroy {
       this.populateStringArrays('medicalHistoryForm', 'allergies', profile.medicalHistory.allergies);
       this.populateStringArrays('medicalHistoryForm', 'medications', profile.medicalHistory.medications);
       this.populateStringArrays('medicalHistoryForm', 'heartConditions', profile.medicalHistory.heartConditions);
-      
-      if (profile.medicalHistory.bloodPressure) {
-        this.medicalHistoryForm.get('bloodPressure')?.patchValue(profile.medicalHistory.bloodPressure);
-      }
+    
       
       this.medicalHistoryForm.patchValue({
         lastMedicalCheckup: profile.medicalHistory.lastMedicalCheckup || '',
         doctorClearance: profile.medicalHistory.doctorClearance || false,
         doctorNotes: profile.medicalHistory.doctorNotes || '',
-        restingHeartRate: profile.medicalHistory.restingHeartRate || ''
       });
     }
 
@@ -378,7 +366,6 @@ export class Tab3Page implements OnInit, OnDestroy {
       const formValue = this.personalInfoForm.value;
       const personalInfo = {
         ...formValue,
-        bodyMassIndex: this.calculateBMI(formValue.weight, formValue.height)
       };
 
       const success = await this.profileService.updatePersonalInfo(personalInfo);
@@ -414,8 +401,7 @@ export class Tab3Page implements OnInit, OnDestroy {
         lastMedicalCheckup: formValue.lastMedicalCheckup || undefined,
         doctorClearance: formValue.doctorClearance,
         doctorNotes: formValue.doctorNotes || undefined,
-        restingHeartRate: formValue.restingHeartRate || undefined,
-        bloodPressure: formValue.bloodPressure.systolic ? formValue.bloodPressure : undefined
+
       };
 
       const success = await this.profileService.updateMedicalHistory(medicalHistory);
@@ -520,14 +506,6 @@ export class Tab3Page implements OnInit, OnDestroy {
       this.isSaving = false;
     }
   }
-
-  // ✅ MÉTODOS DE UTILIDAD
-  calculateBMI(weight: number, height: number): number {
-    if (!weight || !height) return 0;
-    const heightInMeters = height / 100;
-    return Math.round((weight / (heightInMeters * heightInMeters)) * 10) / 10;
-  }
-
   private populateStringArrays(formName: string, fieldName: string, values?: string[]): void {
     if (!values?.length) return;
     

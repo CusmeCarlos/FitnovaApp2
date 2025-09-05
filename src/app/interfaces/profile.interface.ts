@@ -54,14 +54,6 @@ export interface MedicalHistory {
   doctorClearance?: boolean;
   doctorNotes?: string;
   
-  // ✅ HISTORIAL CARDIOVASCULAR
-  heartConditions?: string[];
-  bloodPressure?: {
-    systolic: number;
-    diastolic: number;
-    date: Date;
-  };
-  restingHeartRate?: number;
   
   // ✅ OTROS
   surgeries?: {

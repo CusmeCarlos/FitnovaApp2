@@ -1,5 +1,5 @@
 <!-- src/app/tab3/tab3.page.html -->
-<!-- ✅ TAB3 EXPANDIDO - HISTORIAL MÉDICO COMPLETO UI -->
+<!-- TAB3 EXPANDIDO - HISTORIAL MÉDICO COMPLETO UI -->
 
 <ion-header [translucent]="true">
   <ion-toolbar color="dark" class="custom-toolbar">
@@ -57,7 +57,7 @@
         <div class="progress-fill" [style.width.%]="profileCompletionPercentage"></div>
       </div>
       <p class="progress-description">
-        {{ profileCompletionPercentage >= 80 ? 'Perfil completo ✓' : 'Completa tu perfil para mejores recomendaciones' }}
+        {{ profileCompletionPercentage >= 80 ? 'Perfil completo ' : 'Completa tu perfil para mejores recomendaciones' }}
       </p>
     </div>
 
@@ -248,45 +248,7 @@
             </ion-item>
           </div>
 
-          <!-- Información Física Adicional -->
-          <div class="form-section">
-            <h4>Información Física (Opcional)</h4>
-            
-            <div class="form-row">
-              <ion-item class="form-item">
-                <ion-label position="stacked">% Grasa Corporal</ion-label>
-                <ion-input 
-                  type="number" 
-                  formControlName="bodyFatPercentage" 
-                  placeholder="Porcentaje">
-                </ion-input>
-              </ion-item>
 
-              <ion-item class="form-item">
-                <ion-label position="stacked">% Masa Muscular</ion-label>
-                <ion-input 
-                  type="number" 
-                  formControlName="muscleMassPercentage" 
-                  placeholder="Porcentaje">
-                </ion-input>
-              </ion-item>
-            </div>
-
-            <!-- BMI Calculator Display -->
-            <div class="bmi-display" *ngIf="personalInfoForm.get('weight')?.value && personalInfoForm.get('height')?.value">
-              <div class="bmi-card">
-                <h5>IMC Calculado</h5>
-                <div class="bmi-value">
-                  {{ calculateBMI(personalInfoForm.get('weight')?.value, personalInfoForm.get('height')?.value) }}
-                </div>
-                <div class="bmi-category">
-                  {{ calculateBMI(personalInfoForm.get('weight')?.value, personalInfoForm.get('height')?.value) < 18.5 ? 'Bajo peso' :
-                     calculateBMI(personalInfoForm.get('weight')?.value, personalInfoForm.get('height')?.value) < 25 ? 'Normal' :
-                     calculateBMI(personalInfoForm.get('weight')?.value, personalInfoForm.get('height')?.value) < 30 ? 'Sobrepeso' : 'Obesidad' }}
-                </div>
-              </div>
-            </div>
-          </div>
 
           <div class="form-actions">
             <ion-button 
@@ -477,49 +439,7 @@
                 Agregar Condición Cardíaca
               </ion-button>
             </div>
-
-            <div class="form-section" formGroupName="bloodPressure">
-              <h5>Presión Arterial</h5>
-              <div class="form-row">
-                <ion-item class="form-item">
-                  <ion-label position="stacked">Sistólica</ion-label>
-                  <ion-input 
-                    type="number" 
-                    formControlName="systolic" 
-                    placeholder="120">
-                  </ion-input>
-                </ion-item>
-
-                <ion-item class="form-item">
-                  <ion-label position="stacked">Diastólica</ion-label>
-                  <ion-input 
-                    type="number" 
-                    formControlName="diastolic" 
-                    placeholder="80">
-                  </ion-input>
-                </ion-item>
-
-                <ion-item class="form-item">
-                  <ion-label position="stacked">Fecha</ion-label>
-                  <ion-datetime 
-                    formControlName="date" 
-                    presentation="date" 
-                    placeholder="Fecha de medición">
-                  </ion-datetime>
-                </ion-item>
-              </div>
-            </div>
-
-            <ion-item class="form-item">
-              <ion-label position="stacked">Frecuencia Cardíaca en Reposo (bpm)</ion-label>
-              <ion-input 
-                type="number" 
-                formControlName="restingHeartRate" 
-                placeholder="60-100 bpm">
-              </ion-input>
-            </ion-item>
           </div>
-
           <div class="form-actions">
             <ion-button 
               type="submit" 
@@ -921,7 +841,7 @@
         </form>
       </ion-card-content>
     </ion-card>
-<!-- ✅ FOOTER LIMPIO SIN TEXTO RELLENO -->
+<!-- FOOTER LIMPIO SIN TEXTO RELLENO -->
 <div class="profile-footer" *ngIf="profileCompletionPercentage >= 80">
   <div class="success-message">
     <ion-icon name="checkmark-circle-outline" color="success"></ion-icon>
@@ -939,7 +859,7 @@
   </div>
 </div>
 
-<!-- ✅ MENSAJE MOTIVACIONAL CUANDO EL PERFIL NO ESTÁ COMPLETO -->
+<!-- MENSAJE MOTIVACIONAL CUANDO EL PERFIL NO ESTÁ COMPLETO -->
 <div class="profile-footer" *ngIf="profileCompletionPercentage < 80">
   <div class="completion-message">
     <ion-icon name="information-circle-outline" color="primary"></ion-icon>

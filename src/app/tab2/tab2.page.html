@@ -1,168 +1,270 @@
 <!-- src/app/tab2/tab2.page.html -->
-<!-- ✅ TEMPLATE CORREGIDO PARA TAB2 -->
+<!-- TAB2 ULTRA LIMPIO - CERO DUPLICADOS -->
 
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Entrenamiento IA
-    </ion-title>
+<ion-header [translucent]="true" *ngIf="!showCamera">
+  <ion-toolbar color="dark" class="custom-toolbar">
+    <ion-title class="custom-title">Entrenamiento IA</ion-title>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
+<ion-content [fullscreen]="true" class="training-content">
+  <!-- Background overlay -->
+  <div class="background-overlay" [class.training-active]="showCamera"></div>
   
-  <!-- 📱 VISTA DE SELECCIÓN DE EJERCICIO (cuando no está entrenando) -->
+  <!-- VISTA SELECCIÓN DE EJERCICIO -->
   <div class="exercise-selection" *ngIf="!showCamera">
     
-    <!-- 👤 SALUDO AL USUARIO -->
+    <!-- Saludo usuario -->
     <div class="welcome-section" *ngIf="user">
-      <h2>¡Hola, {{ user.displayName }}!</h2>
-      <p>Selecciona un ejercicio para comenzar tu entrenamiento con IA</p>
-    </div>
-
-    <!-- 🏃 LISTA DE EJERCICIOS -->
-    <div class="exercises-grid">
-      <ion-card 
-        *ngFor="let exercise of availableExercises" 
-        [class.selected]="exercise.type === currentExercise"
-        (click)="selectExercise(exercise.type)">
-        
-        <ion-card-header>
-          <div class="exercise-icon">
-            <ion-icon [name]="exercise.icon" [color]="getExerciseColor(exercise.type)"></ion-icon>
+      <div class="welcome-content">
+        <div class="user-avatar">
+          <img *ngIf="user.photoURL" [src]="user.photoURL" [alt]="user.displayName">
+          <div *ngIf="!user.photoURL" class="avatar-placeholder">
+            <ion-icon name="person"></ion-icon>
           </div>
-          <ion-card-title>{{ exercise.name }}</ion-card-title>
-          <ion-card-subtitle>{{ exercise.difficulty }}</ion-card-subtitle>
-        </ion-card-header>
-        
-        <ion-card-content>
-          <p>{{ exercise.description }}</p>
-        </ion-card-content>
-        
-      </ion-card>
-    </div>
-
-    <!-- Buscar en tab2.page.html la sección "Estadísticas de Hoy" y REEMPLAZAR con: -->
-
-<!-- 📊 ESTADÍSTICAS DE HOY - VERSIÓN MEJORADA -->
-<ion-card class="stats-card-improved">
-  <ion-card-header>
-    <ion-card-title class="stats-title">Estadísticas de Hoy</ion-card-title>
-  </ion-card-header>
-  <ion-card-content>
-    <div class="stats-grid-enhanced">
-      <div class="stat-item-enhanced">
-        <ion-icon name="time-outline" class="stat-icon-enhanced"></ion-icon>
-        <span class="stat-label-enhanced">Duración</span>
-        <span class="stat-value-enhanced">{{ todayStats.duration }}</span>
-      </div>
-      <div class="stat-item-enhanced">
-        <ion-icon name="repeat-outline" class="stat-icon-enhanced"></ion-icon>
-        <span class="stat-label-enhanced">Repeticiones</span>
-        <span class="stat-value-enhanced">{{ todayStats.repetitions }}</span>
-      </div>
-      <div class="stat-item-enhanced">
-        <ion-icon name="bulb-outline" class="stat-icon-enhanced"></ion-icon>
-        <span class="stat-label-enhanced">Sugerencias</span>
-        <span class="stat-value-enhanced">{{ todayStats.suggestions || 0 }}</span>
-      </div>
-      <!-- NUEVA MÉTRICA: Correcciones -->
-      <div class="stat-item-enhanced">
-        <ion-icon name="checkmark-circle-outline" class="stat-icon-enhanced"></ion-icon>
-        <span class="stat-label-enhanced">Correcciones</span>
-        <span class="stat-value-enhanced">{{ todayStats.corrections || 0 }}</span>
-      </div>
-    </div>
-  </ion-card-content>
-</ion-card>
-
-    <!-- 🎛️ CONFIGURACIONES -->
-    <ion-card class="settings-card">
-      <ion-card-header>
-        <ion-card-title>Configuración</ion-card-title>
-      </ion-card-header>
-      <ion-card-content>
-        <ion-list>
-          <ion-item>
-            <ion-icon name="volume-high-outline" slot="start"></ion-icon>
-            <ion-label>Audio habilitado</ion-label>
-            <ion-toggle [(ngModel)]="audioEnabled" (ionChange)="toggleAudio()"></ion-toggle>
-          </ion-item>
-          <ion-item>
-            <ion-icon name="alert-circle-outline" slot="start"></ion-icon>
-            <ion-label>Detección de errores</ion-label>
-            <ion-toggle [(ngModel)]="detectionEnabled" (ionChange)="toggleDetection()"></ion-toggle>
-          </ion-item>
-          <ion-item>
-            <ion-icon name="body-outline" slot="start"></ion-icon>
-            <ion-label>Mostrar esqueleto</ion-label>
-            <ion-toggle [(ngModel)]="skeletonVisible" (ionChange)="toggleSkeleton()"></ion-toggle>
-          </ion-item>
-        </ion-list>
-      </ion-card-content>
-    </ion-card>
-
-    <!-- 🚀 BOTÓN DE INICIO -->
-    <div class="start-button-container">
-      <ion-button 
-        expand="block" 
-        size="large" 
-        color="primary"
-        (click)="startTraining()"
-        [disabled]="!currentExercise">
-        <ion-icon name="play-outline" slot="start"></ion-icon>
-        Comenzar {{ getExerciseName() }}
-      </ion-button>
-    </div>
-    
-  </div>
-
-  <!-- 📹 VISTA DE ENTRENAMIENTO (cuando está entrenando) -->
-  <div class="training-view" *ngIf="showCamera">
-    
-    <!-- 📊 HEADER DE ENTRENAMIENTO -->
-    <div class="training-header">
-      <div class="training-info">
-        <h3>{{ getExerciseName() }}</h3>
-        <div class="training-stats">
-          <span class="repetitions">{{ totalRepetitions }} reps</span>
-          <span class="duration">{{ todayStats.duration }}</span>
+        </div>
+        <div class="welcome-text">
+          <h1 class="welcome-title">¡Hola, {{ user.displayName }}!</h1>
+          <p class="welcome-subtitle">Selecciona un ejercicio para comenzar tu entrenamiento con IA</p>
+          <div class="ai-badge">
+            <ion-icon name="hardware-chip-outline"></ion-icon>
+            <span>POWERED BY AI</span>
+          </div>
         </div>
       </div>
-      <ion-button 
-        fill="clear" 
-        color="danger"
-        (click)="stopTraining()">
-        <ion-icon name="stop-outline" slot="icon-only"></ion-icon>
+    </div>
+
+    <!-- Estadísticas hoy -->
+    <div class="stats-card-enhanced">
+      <div class="stats-header">
+        <h3 class="stats-title">
+          <ion-icon name="today-outline"></ion-icon>
+          Estadísticas de Hoy
+        </h3>
+        <div class="stats-date">Hoy</div>
+      </div>
+      
+      <div class="stats-grid-enhanced">
+        <div class="stat-item-enhanced">
+          <div class="stat-icon-enhanced">
+            <ion-icon name="time-outline"></ion-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-label-enhanced">Tiempo</span>
+            <span class="stat-value-enhanced">{{ todayStats.duration }}</span>
+          </div>
+        </div>
+
+        <div class="stat-item-enhanced">
+          <div class="stat-icon-enhanced">
+            <ion-icon name="fitness-outline"></ion-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-label-enhanced">Repeticiones</span>
+            <span class="stat-value-enhanced">{{ todayStats.repetitions }}</span>
+          </div>
+        </div>
+
+        <div class="stat-item-enhanced">
+          <div class="stat-icon-enhanced">
+            <ion-icon name="bulb-outline"></ion-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-label-enhanced">Sugerencias</span>
+            <span class="stat-value-enhanced">{{ todayStats.suggestions }}</span>
+          </div>
+        </div>
+
+        <div class="stat-item-enhanced">
+          <div class="stat-icon-enhanced">
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-label-enhanced">Correcciones</span>
+            <span class="stat-value-enhanced">{{ todayStats.corrections }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selección ejercicios -->
+    <div class="exercises-section">
+      <div class="section-header">
+        <h3 class="section-title">
+          <ion-icon name="barbell-outline"></ion-icon>
+          Ejercicios Disponibles
+        </h3>
+        <div class="section-subtitle">Selecciona tu entrenamiento favorito</div>
+      </div>
+
+      <div class="exercises-grid-enhanced">
+        <div class="exercise-card" 
+             *ngFor="let exercise of availableExercises; let i = index"
+             [class.selected]="exercise.type === currentExercise"
+             [class.featured]="i === 0"
+             (click)="selectExercise(exercise.type)">
+          
+          <div class="exercise-header">
+            <div class="exercise-icon-wrapper">
+              <div class="exercise-icon-bg"></div>
+              <ion-icon [name]="exercise.icon" class="exercise-icon"></ion-icon>
+            </div>
+            <div class="exercise-difficulty">
+              <span class="difficulty-badge">{{ exercise.difficulty }}</span>
+            </div>
+          </div>
+
+          <div class="exercise-content">
+            <h4 class="exercise-name">{{ exercise.name }}</h4>
+            <p class="exercise-description">{{ exercise.description }}</p>
+            
+            <div class="exercise-stats">
+              <div class="exercise-stat">
+                <ion-icon name="flash-outline"></ion-icon>
+                <span>IA Activa</span>
+              </div>
+              <div class="exercise-stat">
+                <ion-icon name="eye-outline"></ion-icon>
+                <span>Tiempo Real</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="exercise-selection-indicator" *ngIf="exercise.type === currentExercise">
+            <ion-icon name="checkmark-circle"></ion-icon>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuraciones -->
+    <div class="settings-section">
+      <div class="section-header">
+        <h3 class="section-title">
+          <ion-icon name="options-outline"></ion-icon>
+          Configuraciones
+        </h3>
+      </div>
+
+      <div class="settings-grid">
+        <div class="setting-card" [class.active]="audioEnabled" (click)="toggleAudio()">
+          <div class="setting-icon">
+            <ion-icon name="volume-high-outline"></ion-icon>
+          </div>
+          <div class="setting-content">
+            <span class="setting-label">Audio</span>
+            <span class="setting-description">Retroalimentación por voz</span>
+          </div>
+          <div class="setting-toggle">
+            <ion-toggle [checked]="audioEnabled" (ionChange)="toggleAudio()"></ion-toggle>
+          </div>
+        </div>
+
+        <div class="setting-card" [class.active]="detectionEnabled" (click)="toggleDetection()">
+          <div class="setting-icon">
+            <ion-icon name="scan-outline"></ion-icon>
+          </div>
+          <div class="setting-content">
+            <span class="setting-label">Detección IA</span>
+            <span class="setting-description">Análisis postural automático</span>
+          </div>
+          <div class="setting-toggle">
+            <ion-toggle [checked]="detectionEnabled" (ionChange)="toggleDetection()"></ion-toggle>
+          </div>
+        </div>
+
+        <div class="setting-card" [class.active]="skeletonVisible" (click)="toggleSkeleton()">
+          <div class="setting-icon">
+            <ion-icon name="body-outline"></ion-icon>
+          </div>
+          <div class="setting-content">
+            <span class="setting-label">Esqueleto Visual</span>
+            <span class="setting-description">Mostrar puntos corporales</span>
+          </div>
+          <div class="setting-toggle">
+            <ion-toggle [checked]="skeletonVisible" (ionChange)="toggleSkeleton()"></ion-toggle>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botón inicio -->
+    <div class="start-training-section">
+      <div class="start-button-container">
+        <ion-button 
+          expand="block" 
+          size="large"
+          class="start-training-btn"
+          [disabled]="!currentExercise"
+          (click)="startTraining()">
+          
+          <div class="start-button-content">
+            <ion-icon name="play-circle-outline" class="start-icon"></ion-icon>
+            <div class="start-text">
+              <span class="start-label">Iniciar Entrenamiento</span>
+              <span class="start-exercise">{{ getExerciseName() }}</span>
+            </div>
+            <div class="start-indicator">
+              <ion-icon name="chevron-forward-outline"></ion-icon>
+            </div>
+          </div>
+        </ion-button>
+      </div>
+
+      <div class="training-tips">
+        <div class="tip-item">
+          <ion-icon name="checkmark-circle-outline"></ion-icon>
+          <span>Mantén buena iluminación</span>
+        </div>
+        <div class="tip-item">
+          <ion-icon name="checkmark-circle-outline"></ion-icon>
+          <span>Asegúrate de tener espacio suficiente</span>
+        </div>
+        <div class="tip-item">
+          <ion-icon name="checkmark-circle-outline"></ion-icon>
+          <span>La IA analizará tu postura en tiempo real</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISTA ENTRENAMIENTO ULTRA LIMPIA - CERO DUPLICADOS -->
+  <div class="training-view-ultra-clean" *ngIf="showCamera">
+    
+    <!-- Header mínimo: SOLO botón stop -->
+    <div class="training-header-ultra">
+      <div class="header-spacer"></div>
+      <div class="header-spacer"></div>
+      <ion-button fill="clear" size="small" (click)="stopTraining()" class="stop-btn-ultra">
+        <ion-icon name="stop-outline"></ion-icon>
       </ion-button>
     </div>
 
-    <!-- 📹 COMPONENTE DE CÁMARA -->
-    <div class="camera-container">
-      <app-pose-camera
-        [exerciseType]="selectedExercise"
-        [enableErrorDetection]="detectionEnabled"
-        [showSkeleton]="skeletonVisible"
+    <!-- Cámara PROTAGONISTA -->
+    <div class="camera-zone-ultra">
+      <app-pose-camera 
+        [exerciseType]="currentExercise"
         [enableAudio]="audioEnabled"
-        (poseDetected)="onPoseDetected($event)"
+        [enableErrorDetection]="detectionEnabled" 
+        [showSkeleton]="skeletonVisible"
         (errorDetected)="onErrorDetected($event)"
         (repetitionCounted)="onRepetitionCounted($event)">
       </app-pose-camera>
     </div>
 
-    <!-- 📊 STATS DE SESIÓN ACTUAL -->
-    <div class="session-stats" *ngIf="isTrainingActive">
-      <div class="stat-item">
-        <ion-icon name="fitness-outline"></ion-icon>
-        <span>{{ sessionData.repetitions }} reps</span>
+    <!-- Stats bottom ÚNICOS -->
+    <div class="stats-bottom-ultra">
+      <div class="stat-ultra">
+        <span class="stat-number-ultra">{{ sessionData.repetitions }}</span>
+        <span class="stat-label-ultra">REPS</span>
       </div>
-      <div class="stat-item">
-        <ion-icon name="alert-circle-outline"></ion-icon>
-        <span>{{ sessionStats.errorsDetected }} errores</span>
+      <div class="stat-ultra">
+        <span class="stat-number-ultra">{{ formatDuration(sessionStats.duration) }}</span>
+        <span class="stat-label-ultra">TIEMPO</span>
       </div>
-      <div class="stat-item">
-        <ion-icon name="checkmark-circle-outline"></ion-icon>
-        <span>{{ sessionStats.correctionsGiven }} correcciones</span>
+      <div class="stat-ultra">
+        <span class="stat-number-ultra">{{ sessionStats.errorsDetected }}</span>
+        <span class="stat-label-ultra">ERRORES</span>
       </div>
     </div>
 
