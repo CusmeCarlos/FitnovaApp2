@@ -1,13 +1,19 @@
 <!-- src/app/tab3/tab3.page.html -->
-<!-- TAB3 EXPANDIDO - HISTORIAL MÉDICO COMPLETO UI -->
+<!-- ✅ TAB3 COMPLETO CON RUTINAS ADAPTATIVAS IA -->
 
 <ion-header [translucent]="true">
   <ion-toolbar color="dark" class="custom-toolbar">
-    <ion-title class="custom-title">Mi Perfil Completo</ion-title>
+    <ion-title class="custom-title">Mi Perfil</ion-title>
     <ion-buttons slot="end">
-      <ion-button fill="clear" class="completion-btn">
-        <ion-icon name="analytics-outline"></ion-icon>
-        <span class="completion-text">{{ profileCompletionPercentage }}%</span>
+      <ion-button 
+        fill="clear" 
+        class="ai-progress-btn" 
+        (click)="showAIProgress()" 
+        [color]="isAIReady ? 'success' : 'warning'">
+        <ion-icon name="brain-outline"></ion-icon>
+      </ion-button>
+      <ion-button fill="clear" class="logout-btn" (click)="logout()">
+        <ion-icon name="log-out-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
@@ -16,39 +22,41 @@
 <ion-content [fullscreen]="true" class="profile-content">
   <!-- Background overlay -->
   <div class="background-overlay"></div>
-  
-  <div class="profile-container">
-    
-    <!-- Profile Header -->
-    <div class="profile-header" *ngIf="user">
-      <div class="avatar-section">
-        <div class="avatar-wrapper">
-          <img [src]="user.photoURL || 'assets/default-avatar.png'" 
-               [alt]="user.displayName" 
-               class="user-avatar">
-          <div class="status-indicator online"></div>
+    <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Mi Perfil</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <div class="container">
+    <!-- Header Section -->
+    <div class="header-section">
+      <div class="profile-info">
+        <div class="avatar-section" (click)="changeAvatar()">
+          <img 
+            [src]="user?.photoURL || 'assets/avatar-placeholder.png'" 
+            alt="Avatar"
+            class="profile-avatar">
+          <div class="avatar-overlay">
+            <ion-icon name="camera-outline"></ion-icon>
+          </div>
         </div>
-        <ion-button fill="clear" class="edit-avatar-btn" (click)="changeAvatar()">
-          <ion-icon name="camera-outline"></ion-icon>
-        </ion-button>
-      </div>
-      
-      <div class="user-info">
-        <h2 class="user-name">{{ user.displayName || 'Usuario FitNova' }}</h2>
-        <p class="user-email">{{ user.email }}</p>
-        <div class="verification-badge">
-          <ion-chip [color]="user.emailVerified ? 'success' : 'warning'" 
-                   class="verification-chip"
-                   (click)="!user.emailVerified && verifyEmail()">
-            <ion-icon [name]="user.emailVerified ? 'checkmark-circle' : 'warning'"></ion-icon>
-            <ion-label>{{ user.emailVerified ? 'Verificado' : 'Verificar email' }}</ion-label>
+        <div class="user-details">
+          <h2>{{ user?.displayName || 'Usuario' }}</h2>
+          <p>{{ user?.email }}</p>
+          <ion-chip 
+            [color]="user?.emailVerified ? 'success' : 'warning'"
+            (click)="!user?.emailVerified && sendEmailVerification()">
+            <ion-icon [name]="user?.emailVerified ? 'checkmark-circle' : 'alert-circle'"></ion-icon>
+            <ion-label>{{ user?.emailVerified ? 'Verificado' : 'Verificar email' }}</ion-label>
           </ion-chip>
         </div>
       </div>
     </div>
 
-    <!-- Progress Bar -->
+    <!-- Progress Bars Section -->
     <div class="progress-section" *ngIf="profile">
+      <!-- Progreso General -->
       <div class="progress-header">
         <h3>Completitud del Perfil</h3>
         <span class="progress-percentage">{{ profileCompletionPercentage }}%</span>
@@ -56,91 +64,142 @@
       <div class="progress-bar">
         <div class="progress-fill" [style.width.%]="profileCompletionPercentage"></div>
       </div>
-      <p class="progress-description">
-        {{ profileCompletionPercentage >= 80 ? 'Perfil completo ' : 'Completa tu perfil para mejores recomendaciones' }}
+      
+      <!-- ✅ PROGRESO PARA IA -->
+      <div class="progress-header ai-progress">
+        <h3>
+          <ion-icon name="brain-outline" [color]="isAIReady ? 'success' : 'warning'"></ion-icon>
+          Preparación para IA
+        </h3>
+        <span class="progress-percentage" [ngClass]="{'ready': isAIReady}">{{ aiReadinessPercentage }}%</span>
+      </div>
+      <div class="progress-bar ai-bar">
+        <div 
+          class="progress-fill ai-fill" 
+          [style.width.%]="aiReadinessPercentage"
+          [ngClass]="{'ready': isAIReady}">
+        </div>
+      </div>
+      <p class="progress-description ai-description" [ngClass]="{'ready': isAIReady}">
+        {{ isAIReady ? 
+            '✅ Listo para generar rutinas personalizadas' : 
+            '⚠️ Completa la información para rutinas IA' }}
       </p>
     </div>
 
-    <!-- Reemplaza la sección de navegación en tab3.page.html -->
-<!-- Busca esta parte y reemplázala: -->
-
-<!-- Section Navigation MEJORADA -->
-<div class="section-navigation-improved">
-  <div class="nav-container">
-    
-    <!-- Personal -->
-    <div 
-      class="nav-tab" 
-      [class.active]="currentSection === 'personal'"
-      (click)="changeSection('personal')">
-      <div class="nav-icon-wrapper">
-        <ion-icon name="person" class="nav-icon"></ion-icon>
-        <div class="nav-indicator"></div>
-      </div>
-      <span class="nav-label">Personal</span>
-      <div class="nav-step">1</div>
+    <!-- ✅ BOTÓN GENERAR RUTINA IA -->
+    <div class="ai-action-section" *ngIf="isAIReady && !isGeneratingRoutine">
+      <ion-button 
+        expand="block" 
+        color="secondary" 
+        size="large"
+        (click)="generateAIRoutine()"
+        class="ai-generate-button">
+        <ion-icon name="brain-outline" slot="start"></ion-icon>
+        🏋️ Generar Rutina con IA
+      </ion-button>
     </div>
 
-    <!-- Médico -->
-    <div 
-      class="nav-tab" 
-      [class.active]="currentSection === 'medical'"
-      (click)="changeSection('medical')">
-      <div class="nav-icon-wrapper">
-        <ion-icon name="medical" class="nav-icon"></ion-icon>
-        <div class="nav-indicator"></div>
-      </div>
-      <span class="nav-label">Médico</span>
-      <div class="nav-step">2</div>
+    <!-- ✅ LOADING ESTADO GENERANDO RUTINA -->
+    <div class="ai-action-section" *ngIf="isGeneratingRoutine">
+      <ion-button 
+        expand="block" 
+        color="secondary" 
+        size="large"
+        disabled="true"
+        class="ai-generating-button">
+        <ion-spinner slot="start"></ion-spinner>
+        🧠 Generando rutina personalizada...
+      </ion-button>
     </div>
 
-    <!-- Objetivos -->
-    <div 
-      class="nav-tab" 
-      [class.active]="currentSection === 'goals'"
-      (click)="changeSection('goals')">
-      <div class="nav-icon-wrapper">
-        <ion-icon name="trophy" class="nav-icon"></ion-icon>
-        <div class="nav-indicator"></div>
-      </div>
-      <span class="nav-label">Objetivos</span>
-      <div class="nav-step">3</div>
+    <!-- ✅ ACCIONES RÁPIDAS IA -->
+    <div class="quick-actions" *ngIf="isAIReady">
+      <ion-button fill="outline" size="small" (click)="showExistingRoutines()">
+        <ion-icon name="list-outline" slot="start"></ion-icon>
+        Mis Rutinas
+      </ion-button>
+      <ion-button fill="outline" size="small" (click)="goToRoutines()">
+        <ion-icon name="fitness-outline" slot="start"></ion-icon>
+        Dashboard
+      </ion-button>
     </div>
 
-    <!-- Nivel -->
-    <div 
-      class="nav-tab" 
-      [class.active]="currentSection === 'level'"
-      (click)="changeSection('level')">
-      <div class="nav-icon-wrapper">
-        <ion-icon name="fitness" class="nav-icon"></ion-icon>
-        <div class="nav-indicator"></div>
+    <!-- Section Navigation -->
+    <div class="section-navigation">
+      <div class="nav-container">
+        
+        <!-- Personal -->
+        <div 
+          class="nav-tab" 
+          [class.active]="currentSection === 'personal'"
+          (click)="changeSection('personal')">
+          <div class="nav-icon-wrapper">
+            <ion-icon name="person" class="nav-icon"></ion-icon>
+            <div class="nav-indicator"></div>
+          </div>
+          <span class="nav-label">Personal</span>
+          <div class="nav-step">1</div>
+        </div>
+
+        <!-- Médico -->
+        <div 
+          class="nav-tab" 
+          [class.active]="currentSection === 'medical'"
+          [class.ai-critical]="currentSection === 'medical'"
+          (click)="changeSection('medical')">
+          <div class="nav-icon-wrapper">
+            <ion-icon name="medical" class="nav-icon"></ion-icon>
+            <div class="nav-indicator"></div>
+          </div>
+          <span class="nav-label">Médico</span>
+          <div class="nav-step">2</div>
+          <ion-icon name="brain-outline" class="ai-indicator" *ngIf="currentSection === 'medical'"></ion-icon>
+        </div>
+
+        <!-- Objetivos -->
+        <div 
+          class="nav-tab" 
+          [class.active]="currentSection === 'goals'"
+          (click)="changeSection('goals')">
+          <div class="nav-icon-wrapper">
+            <ion-icon name="trophy" class="nav-icon"></ion-icon>
+            <div class="nav-indicator"></div>
+          </div>
+          <span class="nav-label">Objetivos</span>
+          <div class="nav-step">3</div>
+        </div>
+
+        <!-- Nivel -->
+        <div 
+          class="nav-tab" 
+          [class.active]="currentSection === 'level'"
+          (click)="changeSection('level')">
+          <div class="nav-icon-wrapper">
+            <ion-icon name="barbell" class="nav-icon"></ion-icon>
+            <div class="nav-indicator"></div>
+          </div>
+          <span class="nav-label">Nivel</span>
+          <div class="nav-step">4</div>
+        </div>
+
+        <!-- Preferencias -->
+        <div 
+          class="nav-tab" 
+          [class.active]="currentSection === 'preferences'"
+          (click)="changeSection('preferences')">
+          <div class="nav-icon-wrapper">
+            <ion-icon name="settings" class="nav-icon"></ion-icon>
+            <div class="nav-indicator"></div>
+          </div>
+          <span class="nav-label">Preferencias</span>
+          <div class="nav-step">5</div>
+        </div>
+
       </div>
-      <span class="nav-label">Nivel</span>
-      <div class="nav-step">4</div>
     </div>
 
-    <!-- Preferencias -->
-    <div 
-      class="nav-tab" 
-      [class.active]="currentSection === 'preferences'"
-      (click)="changeSection('preferences')">
-      <div class="nav-icon-wrapper">
-        <ion-icon name="settings" class="nav-icon"></ion-icon>
-        <div class="nav-indicator"></div>
-      </div>
-      <span class="nav-label">Preferencias</span>
-      <div class="nav-step">5</div>
-    </div>
-
-  </div>
-  
-  <!-- Progress line -->
-  <div class="progress-line">
-    <div class="progress-fill" [style.width.%]="getProgressWidth()"></div>
-  </div>
-</div>
-    <!-- Información Personal Section -->
+    <!-- ===== SECCIÓN INFORMACIÓN PERSONAL ===== -->
     <ion-card *ngIf="currentSection === 'personal'" class="section-card">
       <ion-card-header>
         <ion-card-title>
@@ -152,16 +211,17 @@
       <ion-card-content>
         <form [formGroup]="personalInfoForm" (ngSubmit)="savePersonalInfo()">
           
-          <!-- Datos Básicos -->
           <div class="form-section">
             <h4>Datos Básicos</h4>
             
             <ion-item class="form-item">
               <ion-label position="stacked">Edad *</ion-label>
               <ion-input 
-                type="number" 
                 formControlName="age" 
-                placeholder="Ingresa tu edad">
+                type="number" 
+                placeholder="Ej: 25"
+                min="13" 
+                max="100">
               </ion-input>
             </ion-item>
 
@@ -169,29 +229,33 @@
               <ion-label position="stacked">Género *</ion-label>
               <ion-select formControlName="gender" placeholder="Selecciona tu género">
                 <ion-select-option 
-                  *ngFor="let gender of genderOptions" 
-                  [value]="gender.value">
-                  {{ gender.label }}
+                  *ngFor="let option of genderOptions" 
+                  [value]="option.value">
+                  {{ option.label }}
                 </ion-select-option>
               </ion-select>
             </ion-item>
 
             <div class="form-row">
-              <ion-item class="form-item">
+              <ion-item class="form-item half">
                 <ion-label position="stacked">Peso (kg) *</ion-label>
                 <ion-input 
-                  type="number" 
                   formControlName="weight" 
-                  placeholder="Tu peso">
+                  type="number" 
+                  placeholder="Ej: 70"
+                  min="30" 
+                  max="300">
                 </ion-input>
               </ion-item>
 
-              <ion-item class="form-item">
+              <ion-item class="form-item half">
                 <ion-label position="stacked">Altura (cm) *</ion-label>
                 <ion-input 
-                  type="number" 
                   formControlName="height" 
-                  placeholder="Tu altura">
+                  type="number" 
+                  placeholder="Ej: 170"
+                  min="100" 
+                  max="250">
                 </ion-input>
               </ion-item>
             </div>
@@ -208,9 +272,9 @@
             <ion-item class="form-item">
               <ion-label position="stacked">Teléfono</ion-label>
               <ion-input 
-                type="tel" 
                 formControlName="phoneNumber" 
-                placeholder="Tu número de teléfono">
+                type="tel" 
+                placeholder="Ej: +593 99 123 4567">
               </ion-input>
             </ion-item>
           </div>
@@ -230,15 +294,15 @@
             <ion-item class="form-item">
               <ion-label position="stacked">Teléfono</ion-label>
               <ion-input 
-                type="tel" 
                 formControlName="phone" 
+                type="tel" 
                 placeholder="Teléfono del contacto">
               </ion-input>
             </ion-item>
 
             <ion-item class="form-item">
               <ion-label position="stacked">Relación</ion-label>
-              <ion-select formControlName="relationship" placeholder="Relación contigo">
+              <ion-select formControlName="relationship" placeholder="Tipo de relación">
                 <ion-select-option 
                   *ngFor="let relation of relationshipOptions" 
                   [value]="relation">
@@ -248,15 +312,11 @@
             </ion-item>
           </div>
 
-
-
           <div class="form-actions">
             <ion-button 
               type="submit" 
               expand="block" 
-              [disabled]="personalInfoForm.invalid || isSaving"
-              class="save-btn">
-              <ion-icon name="save-outline" slot="start"></ion-icon>
+              [disabled]="personalInfoForm.invalid || isSaving">
               {{ isSaving ? 'Guardando...' : 'Guardar Información Personal' }}
               <ion-spinner *ngIf="isSaving" slot="end"></ion-spinner>
             </ion-button>
@@ -265,27 +325,170 @@
       </ion-card-content>
     </ion-card>
 
-    <!-- Historial Médico Section -->
-    <ion-card *ngIf="currentSection === 'medical'" class="section-card">
+    <!-- ===== SECCIÓN HISTORIAL MÉDICO (EXPANDIDA PARA IA) ===== -->
+    <ion-card *ngIf="currentSection === 'medical'" class="section-card medical-card">
       <ion-card-header>
         <ion-card-title>
           <ion-icon name="medical-outline"></ion-icon>
           Historial Médico Completo
+          <ion-chip color="warning" size="small">
+            <ion-icon name="brain-outline"></ion-icon>
+            <ion-label>Crítico para IA</ion-label>
+          </ion-chip>
         </ion-card-title>
       </ion-card-header>
       
       <ion-card-content>
         <form [formGroup]="medicalHistoryForm" (ngSubmit)="saveMedicalHistory()">
           
-          <!-- Condiciones Médicas Actuales -->
+          <!-- ✅ SECCIÓN CRÍTICA PARA IA: LESIONES Y LIMITACIONES ACTUALES -->
+          <div class="form-section critical-section">
+            <h4>
+              <ion-icon name="warning-outline" color="danger"></ion-icon>
+              Limitaciones Actuales (Crítico para IA)
+            </h4>
+            <div class="critical-notice">
+              <p>Esta información es fundamental para que la IA genere rutinas seguras y personalizadas.</p>
+            </div>
+
+            <!-- Lesiones Actuales -->
+            <ion-item class="form-item">
+              <ion-label position="stacked">¿Tienes alguna lesión actual o dolor crónico?</ion-label>
+              <ion-textarea 
+                formControlName="currentInjuries" 
+                placeholder="Describe cualquier dolor, molestia o lesión que tengas actualmente..."
+                rows="3">
+              </ion-textarea>
+            </ion-item>
+
+            <!-- Áreas con Dolor -->
+            <div class="body-areas-section">
+              <ion-label class="section-label">¿Qué partes del cuerpo te duelen o molestan?</ion-label>
+              <div class="body-areas-grid">
+                <ion-item class="body-area-item" *ngFor="let area of bodyAreas">
+                  <ion-checkbox 
+                    [checked]="selectedBodyAreas.includes(area.value)"
+                    (ionChange)="onBodyAreaChange($event, area.value)">
+                  </ion-checkbox>
+                  <ion-label class="body-area-label">
+                    <ion-icon [name]="area.icon" [color]="area.color"></ion-icon>
+                    {{ area.label }}
+                  </ion-label>
+                </ion-item>
+              </div>
+            </div>
+
+            <!-- Ejercicios Prohibidos por Médico -->
+            <ion-item class="form-item">
+              <ion-label position="stacked">¿Hay ejercicios que tu médico te ha prohibido?</ion-label>
+              <ion-textarea 
+                formControlName="forbiddenExercises" 
+                placeholder="Ej: No puedo hacer sentadillas, mi médico me prohibió levantar peso..."
+                rows="3">
+              </ion-textarea>
+            </ion-item>
+
+            <!-- Limitaciones de Movimiento -->
+            <ion-item class="form-item">
+              <ion-label position="stacked">¿Hay movimientos que no puedes hacer o te causan dolor?</ion-label>
+              <ion-textarea 
+                formControlName="movementLimitations" 
+                placeholder="Ej: No puedo doblar completamente las rodillas, me duele rotar el hombro..."
+                rows="3">
+              </ion-textarea>
+            </ion-item>
+
+            <!-- Ejercicios a Evitar -->
+            <ion-item class="form-item">
+              <ion-label position="stacked">¿Hay ejercicios específicos que debes evitar?</ion-label>
+              <ion-textarea 
+                formControlName="exercisesToAvoid" 
+                placeholder="Ej: Peso muerto, burpees, cualquier ejercicio de impacto..."
+                rows="3">
+              </ion-textarea>
+            </ion-item>
+          </div>
+
+          <!-- ✅ SECCIÓN CRÍTICA PARA IA: CAPACIDAD FÍSICA ACTUAL -->
+          <div class="form-section capacity-section">
+            <h4>
+              <ion-icon name="fitness-outline" color="primary"></ion-icon>
+              Capacidad Física Actual (Crítico para IA)
+            </h4>
+
+            <!-- Capacidad Cardiovascular -->
+            <ion-item class="form-item">
+              <ion-label position="stacked">¿Cuánto tiempo puedes caminar sin cansarte? *</ion-label>
+              <ion-select formControlName="walkingCapacity" placeholder="Selecciona tu nivel">
+                <ion-select-option value="less_5min">Menos de 5 minutos</ion-select-option>
+                <ion-select-option value="5_15min">Entre 5-15 minutos</ion-select-option>
+                <ion-select-option value="15_30min">Entre 15-30 minutos</ion-select-option>
+                <ion-select-option value="30_60min">Entre 30-60 minutos</ion-select-option>
+                <ion-select-option value="more_60min">Más de 60 minutos</ion-select-option>
+              </ion-select>
+            </ion-item>
+
+            <!-- Capacidad de Escaleras -->
+            <ion-item class="form-item">
+              <ion-label position="stacked">¿Puedes subir escaleras sin dificultad? *</ion-label>
+              <ion-select formControlName="stairsCapacity" placeholder="Selecciona">
+                <ion-select-option value="no_difficulty">Sin ninguna dificultad</ion-select-option>
+                <ion-select-option value="mild_difficulty">Con poca dificultad</ion-select-option>
+                <ion-select-option value="moderate_difficulty">Con dificultad moderada</ion-select-option>
+                <ion-select-option value="high_difficulty">Con mucha dificultad</ion-select-option>
+                <ion-select-option value="cannot">No puedo subir escaleras</ion-select-option>
+              </ion-select>
+            </ion-item>
+
+            <!-- Experiencia con Pesas -->
+            <ion-item class="form-item">
+              <ion-label position="stacked">¿Has levantado pesas antes? *</ion-label>
+              <ion-select formControlName="weightExperience" placeholder="Selecciona">
+                <ion-select-option value="never">Nunca he levantado pesas</ion-select-option>
+                <ion-select-option value="few_times">Solo unas pocas veces</ion-select-option>
+                <ion-select-option value="some_experience">Tengo algo de experiencia</ion-select-option>
+                <ion-select-option value="experienced">Tengo experiencia regular</ion-select-option>
+                <ion-select-option value="very_experienced">Soy muy experimentado</ion-select-option>
+              </ion-select>
+            </ion-item>
+
+            <!-- Peso Máximo Cómodo -->
+            <ion-item 
+              class="form-item" 
+              *ngIf="medicalHistoryForm.get('weightExperience')?.value && medicalHistoryForm.get('weightExperience')?.value !== 'never'">
+              <ion-label position="stacked">¿Cuál es el peso máximo que puedes levantar cómodamente? (kg)</ion-label>
+              <ion-input 
+                formControlName="maxComfortableWeight" 
+                type="number" 
+                placeholder="Ej: 10, 20, 50..."
+                min="0" 
+                max="200">
+              </ion-input>
+            </ion-item>
+
+            <!-- Nivel de Energía -->
+            <ion-item class="form-item">
+              <ion-label position="stacked">¿Cómo describirías tu nivel de energía general? *</ion-label>
+              <ion-select formControlName="energyLevel" placeholder="Selecciona">
+                <ion-select-option value="very_low">Muy bajo - Me canso fácilmente</ion-select-option>
+                <ion-select-option value="low">Bajo - Me canso con actividades ligeras</ion-select-option>
+                <ion-select-option value="moderate">Moderado - Nivel normal de energía</ion-select-option>
+                <ion-select-option value="high">Alto - Tengo bastante energía</ion-select-option>
+                <ion-select-option value="very_high">Muy alto - Siempre tengo energía</ion-select-option>
+              </ion-select>
+            </ion-item>
+          </div>
+
+          <!-- Condiciones Médicas Básicas (Tu código existente) -->
           <div class="form-section">
-            <h4>Condiciones Médicas Actuales</h4>
+            <h4>Condiciones Médicas</h4>
             
             <div class="dynamic-list">
+              <h5>Condiciones Actuales</h5>
               <div *ngFor="let condition of getFormArray('medicalHistoryForm', 'currentConditions').controls; let i = index" class="dynamic-item">
                 <ion-item class="form-item">
                   <ion-input 
-                  [formControl]="$any(condition)" 
+                    [formControl]="$any(condition)" 
                     placeholder="Condición médica">
                   </ion-input>
                   <ion-button 
@@ -302,31 +505,6 @@
                 (click)="addToArray('medicalHistoryForm', 'currentConditions')">
                 <ion-icon name="add-outline" slot="start"></ion-icon>
                 Agregar Condición
-              </ion-button>
-            </div>
-
-            <div class="dynamic-list">
-              <h5>Enfermedades Crónicas</h5>
-              <div *ngFor="let disease of getFormArray('medicalHistoryForm', 'chronicDiseases').controls; let i = index" class="dynamic-item">
-                <ion-item class="form-item">
-                  <ion-input 
-                    [formControl]="$any(disease)" 
-                    placeholder="Enfermedad crónica">
-                  </ion-input>
-                  <ion-button 
-                    fill="clear" 
-                    slot="end" 
-                    (click)="removeFromArray('medicalHistoryForm', 'chronicDiseases', i)">
-                    <ion-icon name="trash-outline" color="danger"></ion-icon>
-                  </ion-button>
-                </ion-item>
-              </div>
-              <ion-button 
-                fill="outline" 
-                size="small" 
-                (click)="addToArray('medicalHistoryForm', 'chronicDiseases')">
-                <ion-icon name="add-outline" slot="start"></ion-icon>
-                Agregar Enfermedad Crónica
               </ion-button>
             </div>
 
@@ -405,62 +583,33 @@
               <ion-label position="stacked">Notas del Médico</ion-label>
               <ion-textarea 
                 formControlName="doctorNotes" 
-                placeholder="Recomendaciones médicas específicas"
+                placeholder="Cualquier recomendación específica de tu médico..."
                 rows="3">
               </ion-textarea>
             </ion-item>
           </div>
 
-          <!-- Información Cardiovascular -->
-          <div class="form-section">
-            <h4>Información Cardiovascular</h4>
-            
-            <div class="dynamic-list">
-              <h5>Condiciones Cardíacas</h5>
-              <div *ngFor="let condition of getFormArray('medicalHistoryForm', 'heartConditions').controls; let i = index" class="dynamic-item">
-                <ion-item class="form-item">
-                  <ion-input 
-                    [formControl]="$any(condition)" 
-                    placeholder="Condición cardíaca">
-                  </ion-input>
-                  <ion-button 
-                    fill="clear" 
-                    slot="end" 
-                    (click)="removeFromArray('medicalHistoryForm', 'heartConditions', i)">
-                    <ion-icon name="trash-outline" color="danger"></ion-icon>
-                  </ion-button>
-                </ion-item>
-              </div>
-              <ion-button 
-                fill="outline" 
-                size="small" 
-                (click)="addToArray('medicalHistoryForm', 'heartConditions')">
-                <ion-icon name="add-outline" slot="start"></ion-icon>
-                Agregar Condición Cardíaca
-              </ion-button>
-            </div>
-          </div>
           <div class="form-actions">
             <ion-button 
               type="submit" 
               expand="block" 
               [disabled]="isSaving"
-              class="save-btn">
-              <ion-icon name="save-outline" slot="start"></ion-icon>
+              [color]="isAIReady ? 'success' : 'primary'">
               {{ isSaving ? 'Guardando...' : 'Guardar Historial Médico' }}
               <ion-spinner *ngIf="isSaving" slot="end"></ion-spinner>
+              <ion-icon name="brain-outline" slot="end" *ngIf="isAIReady && !isSaving"></ion-icon>
             </ion-button>
           </div>
         </form>
       </ion-card-content>
     </ion-card>
 
-    <!-- Objetivos Fitness Section -->
+    <!-- ===== SECCIÓN OBJETIVOS FITNESS ===== -->
     <ion-card *ngIf="currentSection === 'goals'" class="section-card">
       <ion-card-header>
         <ion-card-title>
           <ion-icon name="trophy-outline"></ion-icon>
-          Objetivos Fitness
+          Objetivos de Fitness
         </ion-card-title>
       </ion-card-header>
       
@@ -469,40 +618,41 @@
           
           <div class="form-section">
             <h4>Objetivos Principales *</h4>
-            <ion-item class="form-item">
-              <ion-label position="stacked">¿Cuáles son tus objetivos principales?</ion-label>
-              <ion-select 
-                formControlName="primaryGoals" 
-                multiple="true" 
-                placeholder="Selecciona uno o más objetivos">
-                <ion-select-option 
-                  *ngFor="let goal of primaryGoalsOptions" 
-                  [value]="goal.value">
-                  {{ goal.label }}
-                </ion-select-option>
-              </ion-select>
-            </ion-item>
+            <p class="section-description">Selecciona tus objetivos principales (puedes elegir varios)</p>
+            
+            <div class="goals-grid">
+              <ion-item 
+                *ngFor="let goal of primaryGoalsOptions" 
+                class="goal-item"
+                [class.selected]="fitnessGoalsForm.get('primaryGoals')?.value?.includes(goal.value)">
+                <ion-checkbox 
+                  [checked]="fitnessGoalsForm.get('primaryGoals')?.value?.includes(goal.value)"
+                  (ionChange)="toggleGoal(goal.value)">
+                </ion-checkbox>
+                <ion-label class="goal-label">{{ goal.label }}</ion-label>
+              </ion-item>
+            </div>
           </div>
 
           <div class="form-section">
             <h4>Objetivos Específicos</h4>
             
             <div class="form-row">
-              <ion-item class="form-item">
+              <ion-item class="form-item half">
                 <ion-label position="stacked">Peso Objetivo (kg)</ion-label>
                 <ion-input 
-                  type="number" 
                   formControlName="targetWeight" 
-                  placeholder="Tu peso objetivo">
+                  type="number" 
+                  placeholder="Ej: 65">
                 </ion-input>
               </ion-item>
 
-              <ion-item class="form-item">
-                <ion-label position="stacked">% Grasa Objetivo</ion-label>
+              <ion-item class="form-item half">
+                <ion-label position="stacked">% Grasa Corporal Objetivo</ion-label>
                 <ion-input 
-                  type="number" 
                   formControlName="targetBodyFat" 
-                  placeholder="Porcentaje objetivo">
+                  type="number" 
+                  placeholder="Ej: 15">
                 </ion-input>
               </ion-item>
             </div>
@@ -526,22 +676,27 @@
             </ion-item>
 
             <div class="form-row">
-              <ion-item class="form-item">
+              <ion-item class="form-item half">
                 <ion-label position="stacked">Duración Preferida (min)</ion-label>
-                <ion-input 
-                  type="number" 
-                  formControlName="preferredWorkoutDuration" 
-                  placeholder="30-90 minutos">
-                </ion-input>
+                <ion-select formControlName="preferredWorkoutDuration" placeholder="Minutos">
+                  <ion-select-option value="15">15 minutos</ion-select-option>
+                  <ion-select-option value="30">30 minutos</ion-select-option>
+                  <ion-select-option value="45">45 minutos</ion-select-option>
+                  <ion-select-option value="60">60 minutos</ion-select-option>
+                  <ion-select-option value="90">90 minutos</ion-select-option>
+                </ion-select>
               </ion-item>
 
-              <ion-item class="form-item">
-                <ion-label position="stacked">Frecuencia (días/semana)</ion-label>
-                <ion-input 
-                  type="number" 
-                  formControlName="preferredWorkoutFrequency" 
-                  placeholder="3-6 días">
-                </ion-input>
+              <ion-item class="form-item half">
+                <ion-label position="stacked">Frecuencia Semanal</ion-label>
+                <ion-select formControlName="preferredWorkoutFrequency" placeholder="Días/semana">
+                  <ion-select-option value="2">2 días/semana</ion-select-option>
+                  <ion-select-option value="3">3 días/semana</ion-select-option>
+                  <ion-select-option value="4">4 días/semana</ion-select-option>
+                  <ion-select-option value="5">5 días/semana</ion-select-option>
+                  <ion-select-option value="6">6 días/semana</ion-select-option>
+                  <ion-select-option value="7">7 días/semana</ion-select-option>
+                </ion-select>
               </ion-item>
             </div>
           </div>
@@ -550,9 +705,7 @@
             <ion-button 
               type="submit" 
               expand="block" 
-              [disabled]="fitnessGoalsForm.invalid || isSaving"
-              class="save-btn">
-              <ion-icon name="save-outline" slot="start"></ion-icon>
+              [disabled]="fitnessGoalsForm.invalid || isSaving">
               {{ isSaving ? 'Guardando...' : 'Guardar Objetivos' }}
               <ion-spinner *ngIf="isSaving" slot="end"></ion-spinner>
             </ion-button>
@@ -561,11 +714,11 @@
       </ion-card-content>
     </ion-card>
 
-    <!-- Nivel Fitness Section -->
+    <!-- ===== SECCIÓN NIVEL FITNESS ===== -->
     <ion-card *ngIf="currentSection === 'level'" class="section-card">
       <ion-card-header>
         <ion-card-title>
-          <ion-icon name="fitness-outline"></ion-icon>
+          <ion-icon name="barbell-outline"></ion-icon>
           Nivel de Fitness
         </ion-card-title>
       </ion-card-header>
@@ -575,16 +728,24 @@
           
           <div class="form-section">
             <h4>Nivel General *</h4>
-            <ion-item class="form-item">
-              <ion-label position="stacked">¿Cuál es tu nivel general de fitness?</ion-label>
-              <ion-select formControlName="overallLevel" placeholder="Selecciona tu nivel">
-                <ion-select-option 
-                  *ngFor="let level of fitnessLevelOptions" 
-                  [value]="level.value">
-                  {{ level.label }}
-                </ion-select-option>
-              </ion-select>
-            </ion-item>
+            <p class="section-description">¿Cómo describirías tu nivel actual de fitness?</p>
+            
+            <div class="level-options">
+              <ion-item 
+                *ngFor="let level of fitnessLevelOptions" 
+                class="level-item"
+                [class.selected]="fitnessLevelForm.get('overallLevel')?.value === level.value">
+                <ion-radio 
+                  slot="start" 
+                  [value]="level.value"  
+                  formControlName="overallLevel">
+                </ion-radio>
+                <ion-label class="level-label">
+                  <h3>{{ level.label }}</h3>
+                  <p>{{ getLevelDescription(level.value) }}</p>
+                </ion-label>
+              </ion-item>
+            </div>
           </div>
 
           <div class="form-section">
@@ -594,9 +755,9 @@
               <ion-label position="stacked">Entrenamiento de Fuerza</ion-label>
               <ion-select formControlName="strengthTraining" placeholder="Nivel de experiencia">
                 <ion-select-option 
-                  *ngFor="let level of experienceLevelOptions" 
-                  [value]="level.value">
-                  {{ level.label }}
+                  *ngFor="let exp of experienceLevelOptions" 
+                  [value]="exp.value">
+                  {{ exp.label }}
                 </ion-select-option>
               </ion-select>
             </ion-item>
@@ -605,31 +766,31 @@
               <ion-label position="stacked">Entrenamiento Cardiovascular</ion-label>
               <ion-select formControlName="cardioTraining" placeholder="Nivel de experiencia">
                 <ion-select-option 
-                  *ngFor="let level of experienceLevelOptions" 
-                  [value]="level.value">
-                  {{ level.label }}
+                  *ngFor="let exp of experienceLevelOptions" 
+                  [value]="exp.value">
+                  {{ exp.label }}
                 </ion-select-option>
               </ion-select>
             </ion-item>
 
             <ion-item class="form-item">
-              <ion-label position="stacked">Entrenamiento de Flexibilidad</ion-label>
+              <ion-label position="stacked">Flexibilidad/Yoga</ion-label>
               <ion-select formControlName="flexibilityTraining" placeholder="Nivel de experiencia">
                 <ion-select-option 
-                  *ngFor="let level of experienceLevelOptions" 
-                  [value]="level.value">
-                  {{ level.label }}
+                  *ngFor="let exp of experienceLevelOptions" 
+                  [value]="exp.value">
+                  {{ exp.label }}
                 </ion-select-option>
               </ion-select>
             </ion-item>
 
             <ion-item class="form-item">
-              <ion-label position="stacked">Experiencia Deportiva</ion-label>
+              <ion-label position="stacked">Experiencia en Deportes</ion-label>
               <ion-select formControlName="sportsExperience" placeholder="Nivel de experiencia">
                 <ion-select-option 
-                  *ngFor="let level of experienceLevelOptions" 
-                  [value]="level.value">
-                  {{ level.label }}
+                  *ngFor="let exp of experienceLevelOptions" 
+                  [value]="exp.value">
+                  {{ exp.label }}
                 </ion-select-option>
               </ion-select>
             </ion-item>
@@ -639,21 +800,25 @@
             <h4>Experiencia Temporal</h4>
             
             <div class="form-row">
-              <ion-item class="form-item">
+              <ion-item class="form-item half">
                 <ion-label position="stacked">Años Entrenando</ion-label>
                 <ion-input 
-                  type="number" 
                   formControlName="yearsOfTraining" 
-                  placeholder="Años">
+                  type="number" 
+                  placeholder="Ej: 2"
+                  min="0" 
+                  max="50">
                 </ion-input>
               </ion-item>
 
-              <ion-item class="form-item">
+              <ion-item class="form-item half">
                 <ion-label position="stacked">Meses Adicionales</ion-label>
                 <ion-input 
-                  type="number" 
                   formControlName="monthsOfTraining" 
-                  placeholder="Meses">
+                  type="number" 
+                  placeholder="Ej: 6"
+                  min="0" 
+                  max="11">
                 </ion-input>
               </ion-item>
             </div>
@@ -661,7 +826,7 @@
             <ion-item class="form-item">
               <ion-checkbox formControlName="previousGymExperience"></ion-checkbox>
               <ion-label class="checkbox-label">
-                Tengo experiencia previa en gimnasios
+                He entrenado en gimnasio anteriormente
               </ion-label>
             </ion-item>
           </div>
@@ -670,9 +835,7 @@
             <ion-button 
               type="submit" 
               expand="block" 
-              [disabled]="fitnessLevelForm.invalid || isSaving"
-              class="save-btn">
-              <ion-icon name="save-outline" slot="start"></ion-icon>
+              [disabled]="fitnessLevelForm.invalid || isSaving">
               {{ isSaving ? 'Guardando...' : 'Guardar Nivel de Fitness' }}
               <ion-spinner *ngIf="isSaving" slot="end"></ion-spinner>
             </ion-button>
@@ -681,7 +844,7 @@
       </ion-card-content>
     </ion-card>
 
-    <!-- Preferencias de Entrenamiento Section -->
+    <!-- ===== SECCIÓN PREFERENCIAS ===== -->
     <ion-card *ngIf="currentSection === 'preferences'" class="section-card">
       <ion-card-header>
         <ion-card-title>
@@ -716,21 +879,23 @@
                 formControlName="preferredTimeSlots" 
                 multiple="true" 
                 placeholder="Selecciona horarios">
-                <ion-select-option value="early_morning">Madrugada (5:00-7:00)</ion-select-option>
-                <ion-select-option value="morning">Mañana (7:00-12:00)</ion-select-option>
-                <ion-select-option value="afternoon">Tarde (12:00-17:00)</ion-select-option>
-                <ion-select-option value="evening">Noche (17:00-21:00)</ion-select-option>
-                <ion-select-option value="late_evening">Noche Tardía (21:00+)</ion-select-option>
+                <ion-select-option value="early_morning">Madrugada (5-7 AM)</ion-select-option>
+                <ion-select-option value="morning">Mañana (7-11 AM)</ion-select-option>
+                <ion-select-option value="afternoon">Tarde (11 AM-5 PM)</ion-select-option>
+                <ion-select-option value="evening">Noche (5-9 PM)</ion-select-option>
+                <ion-select-option value="late_evening">Noche tardía (9+ PM)</ion-select-option>
               </ion-select>
             </ion-item>
 
             <ion-item class="form-item">
-              <ion-label position="stacked">Duración Máxima de Sesión (min)</ion-label>
-              <ion-input 
-                type="number" 
-                formControlName="maxSessionDuration" 
-                placeholder="60-120 minutos">
-              </ion-input>
+              <ion-label position="stacked">Duración Máxima por Sesión (min)</ion-label>
+              <ion-select formControlName="maxSessionDuration" placeholder="Minutos máximos">
+                <ion-select-option value="30">30 minutos</ion-select-option>
+                <ion-select-option value="45">45 minutos</ion-select-option>
+                <ion-select-option value="60">60 minutos</ion-select-option>
+                <ion-select-option value="90">90 minutos</ion-select-option>
+                <ion-select-option value="120">120 minutos</ion-select-option>
+              </ion-select>
             </ion-item>
           </div>
 
@@ -742,10 +907,10 @@
               <ion-select 
                 formControlName="preferredEnvironment" 
                 multiple="true" 
-                placeholder="Donde prefieres entrenar">
+                placeholder="Selecciona entornos">
                 <ion-select-option value="home">Casa</ion-select-option>
                 <ion-select-option value="gym">Gimnasio</ion-select-option>
-                <ion-select-option value="outdoor">Aire Libre</ion-select-option>
+                <ion-select-option value="outdoor">Aire libre</ion-select-option>
                 <ion-select-option value="online">Online/Virtual</ion-select-option>
               </ion-select>
             </ion-item>
@@ -754,29 +919,29 @@
               <ion-label position="stacked">Limitaciones de Espacio</ion-label>
               <ion-textarea 
                 formControlName="spaceConstraints" 
-                placeholder="Describe limitaciones de espacio (ej: habitación pequeña, techo bajo)"
+                placeholder="Describe cualquier limitación de espacio que tengas..."
                 rows="2">
               </ion-textarea>
             </ion-item>
           </div>
 
           <div class="form-section">
-            <h4>Estilo de Entrenamiento</h4>
+            <h4>Preferencias de Estilo</h4>
             
             <ion-item class="form-item">
               <ion-label position="stacked">Intensidad Preferida</ion-label>
-              <ion-select formControlName="preferredIntensity" placeholder="Selecciona intensidad">
-                <ion-select-option value="low">Baja</ion-select-option>
-                <ion-select-option value="moderate">Moderada</ion-select-option>
-                <ion-select-option value="high">Alta</ion-select-option>
-                <ion-select-option value="variable">Variable</ion-select-option>
+              <ion-select formControlName="preferredIntensity" placeholder="Nivel de intensidad">
+                <ion-select-option value="low">Baja - Suave y relajado</ion-select-option>
+                <ion-select-option value="moderate">Moderada - Equilibrado</ion-select-option>
+                <ion-select-option value="high">Alta - Intenso y desafiante</ion-select-option>
+                <ion-select-option value="variable">Variable - Depende del día</ion-select-option>
               </ion-select>
             </ion-item>
 
             <ion-item class="form-item">
               <ion-checkbox formControlName="needsMotivation"></ion-checkbox>
               <ion-label class="checkbox-label">
-                Necesito motivación externa para entrenar
+                Necesito motivación y recordatorios frecuentes
               </ion-label>
             </ion-item>
 
@@ -788,27 +953,21 @@
             </ion-item>
           </div>
 
+          <!-- Preferencias de Retroalimentación -->
           <div class="form-section" formGroupName="feedbackPreferences">
             <h4>Preferencias de Retroalimentación</h4>
             
             <ion-item class="form-item">
               <ion-checkbox formControlName="audioFeedback"></ion-checkbox>
               <ion-label class="checkbox-label">
-                Retroalimentación por audio
+                Retroalimentación por audio/voz
               </ion-label>
             </ion-item>
 
             <ion-item class="form-item">
               <ion-checkbox formControlName="visualFeedback"></ion-checkbox>
               <ion-label class="checkbox-label">
-                Retroalimentación visual
-              </ion-label>
-            </ion-item>
-
-            <ion-item class="form-item">
-              <ion-checkbox formControlName="hapticFeedback"></ion-checkbox>
-              <ion-label class="checkbox-label">
-                Vibración/retroalimentación táctil
+                Retroalimentación visual en pantalla
               </ion-label>
             </ion-item>
 
@@ -831,41 +990,35 @@
             <ion-button 
               type="submit" 
               expand="block" 
-              [disabled]="isSaving"
-              class="save-btn">
-              <ion-icon name="save-outline" slot="start"></ion-icon>
-              {{ isSaving ? 'Guardando...' : 'Guardar Preferencias y Completar Perfil' }}
+              [disabled]="isSaving">
+              {{ isSaving ? 'Guardando...' : 'Guardar Preferencias' }}
               <ion-spinner *ngIf="isSaving" slot="end"></ion-spinner>
             </ion-button>
           </div>
         </form>
       </ion-card-content>
     </ion-card>
-<!-- FOOTER LIMPIO SIN TEXTO RELLENO -->
-<div class="profile-footer" *ngIf="profileCompletionPercentage >= 80">
-  <div class="success-message">
-    <ion-icon name="checkmark-circle-outline" color="success"></ion-icon>
-    <h3>¡Perfil Completo!</h3>
-    <p>Tu perfil está listo para generar rutinas personalizadas con IA</p>
-    
-    <ion-button 
-      expand="block" 
-      color="primary" 
-      fill="solid"
-      (click)="navigateToTraining()">
-      <ion-icon name="fitness-outline" slot="start"></ion-icon>
-      Comenzar Entrenamiento
-    </ion-button>
-  </div>
-</div>
 
-<!-- MENSAJE MOTIVACIONAL CUANDO EL PERFIL NO ESTÁ COMPLETO -->
-<div class="profile-footer" *ngIf="profileCompletionPercentage < 80">
-  <div class="completion-message">
-    <ion-icon name="information-circle-outline" color="primary"></ion-icon>
-    <h3>Completa tu Perfil</h3>
-    <p>{{ profileCompletionPercentage }}% completado. Completa todas las secciones para obtener rutinas más personalizadas.</p>
-  </div>
-</div>   
+    <!-- ✅ ACCIONES ADICIONALES -->
+    <div class="additional-actions">
+      <ion-button 
+        fill="outline" 
+        expand="block" 
+        (click)="showExistingRoutines()"
+        *ngIf="isAIReady">
+        <ion-icon name="list-outline" slot="start"></ion-icon>
+        Ver Mis Rutinas IA
+      </ion-button>
+      
+      <ion-button 
+        fill="clear" 
+        expand="block" 
+        color="medium"
+        (click)="resetSection(currentSection)">
+        <ion-icon name="refresh-outline" slot="start"></ion-icon>
+        Resetear Sección Actual
+      </ion-button>
+    </div>
+
   </div>
 </ion-content>

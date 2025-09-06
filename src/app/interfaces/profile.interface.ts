@@ -1,15 +1,11 @@
 // src/app/interfaces/profile.interface.ts
-// ✅ EXPANDIDA - HISTORIAL MÉDICO COMPLETO SEGÚN DOCUMENTO DE TITULACIÓN
-// ✅ COMPATIBLE CON INTERFACE EXISTENTE
+// ✅ INTERFAZ COMPLETA EXPANDIDA PARA RUTINAS ADAPTATIVAS IA
 
 export interface PersonalInfo {
-  // ✅ DATOS PERSONALES BÁSICOS
   age?: number;
   gender?: 'male' | 'female' | 'other';
   weight?: number; // kg
   height?: number; // cm
-  
-  // ✅ DATOS ADICIONALES
   dateOfBirth?: Date;
   phoneNumber?: string;
   emergencyContact?: {
@@ -17,150 +13,115 @@ export interface PersonalInfo {
     phone: string;
     relationship: string;
   };
-  
-  // ✅ INFORMACIÓN FÍSICA
-  bodyMassIndex?: number; // Calculado automáticamente
+  bodyMassIndex?: number;
   bodyFatPercentage?: number;
   muscleMassPercentage?: number;
 }
 
+// ✅ HISTORIAL MÉDICO EXPANDIDO PARA IA
 export interface MedicalHistory {
-  // ✅ CONDICIONES MÉDICAS ACTUALES
+  // Campos originales (mantener compatibilidad)
+  injuries?: string[];
+  conditions?: string[];
+  limitations?: string[];
+  
+  // Campos expandidos existentes
   currentConditions?: string[];
   chronicDiseases?: string[];
   allergies?: string[];
   medications?: string[];
-  
-  // ✅ HISTORIAL DE LESIONES
-  previousInjuries?: {
-    type: string;
-    date: Date;
-    affectedArea: string;
-    severity: 'mild' | 'moderate' | 'severe';
-    recovered: boolean;
-    notes?: string;
-  }[];
-  
-  // ✅ LIMITACIONES FÍSICAS ACTUALES
-  physicalLimitations?: {
-    type: string;
-    description: string;
-    affectedMovements: string[];
-    severity: 'mild' | 'moderate' | 'severe';
-  }[];
-  
-  // ✅ EVALUACIONES MÉDICAS
+  heartConditions?: string[];
   lastMedicalCheckup?: Date;
   doctorClearance?: boolean;
   doctorNotes?: string;
   
+  // ✅ NUEVOS CAMPOS CRÍTICOS PARA IA
+  currentInjuries?: string; // Descripción libre de lesiones actuales
+  painfulAreas?: string[]; // Áreas del cuerpo con dolor
+  forbiddenExercises?: string; // Ejercicios prohibidos por médico
+  movementLimitations?: string; // Limitaciones de movimiento específicas
+  exercisesToAvoid?: string; // Ejercicios que debe evitar
   
-  // ✅ OTROS
-  surgeries?: {
-    type: string;
-    date: Date;
-    notes?: string;
-  }[];
+  // ✅ CAPACIDAD FÍSICA ACTUAL (CRÍTICO PARA IA)
+  physicalCapacity?: {
+    walkingCapacity: 'less_5min' | '5_15min' | '15_30min' | '30_60min' | 'more_60min';
+    stairsCapacity: 'no_difficulty' | 'mild_difficulty' | 'moderate_difficulty' | 'high_difficulty' | 'cannot';
+    weightExperience: 'never' | 'few_times' | 'some_experience' | 'experienced' | 'very_experienced';
+    maxComfortableWeight?: number; // kg
+    energyLevel: 'very_low' | 'low' | 'moderate' | 'high' | 'very_high';
+  };
   
+  // ✅ INDICADORES PARA IA
+  aiReadiness?: number; // Porcentaje de preparación para IA (0-100)
+  readyForAI?: boolean; // Si está listo para generar rutinas con IA
   lastUpdated?: Date;
 }
 
 export interface FitnessGoals {
-  // ✅ OBJETIVOS PRINCIPALES
   primaryGoals: ('weight_loss' | 'muscle_gain' | 'strength' | 'endurance' | 'flexibility' | 'general_fitness')[];
-  
-  // ✅ OBJETIVOS ESPECÍFICOS
   targetWeight?: number;
   targetBodyFat?: number;
   targetMuscle?: number;
-  
-  // ✅ OBJETIVOS DE RENDIMIENTO
   strengthGoals?: {
     exercise: string;
     currentMax: number;
     targetMax: number;
     unit: 'kg' | 'lbs' | 'reps';
   }[];
-  
-  // ✅ PLAZOS
-  shortTermGoals?: string[]; // 1-3 meses
-  mediumTermGoals?: string[]; // 3-6 meses
-  longTermGoals?: string[]; // 6+ meses
-  
-  // ✅ MOTIVACIÓN
+  shortTermGoals?: string[];
+  mediumTermGoals?: string[];
+  longTermGoals?: string[];
   motivationFactors?: string[];
   rewardSystem?: string[];
-  
-  // ✅ PREFERENCIAS DE ENTRENAMIENTO
   preferredWorkoutTypes?: ('strength' | 'cardio' | 'flexibility' | 'sports' | 'group_classes')[];
-  preferredWorkoutDuration?: number; // minutos
-  preferredWorkoutFrequency?: number; // días por semana
-  
+  preferredWorkoutDuration?: number;
+  preferredWorkoutFrequency?: number;
   createdAt?: Date;
   lastUpdated?: Date;
 }
 
 export interface FitnessLevel {
-  // ✅ NIVEL GENERAL
   overallLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert';
-  
-  // ✅ EXPERIENCIA POR CATEGORÍA
   strengthTraining?: 'none' | 'beginner' | 'intermediate' | 'advanced';
   cardioTraining?: 'none' | 'beginner' | 'intermediate' | 'advanced';
   flexibilityTraining?: 'none' | 'beginner' | 'intermediate' | 'advanced';
   sportsExperience?: 'none' | 'beginner' | 'intermediate' | 'advanced';
-  
-  // ✅ EXPERIENCIA TEMPORAL
   yearsOfTraining?: number;
   monthsOfTraining?: number;
   previousGymExperience?: boolean;
-  
-  // ✅ DEPORTES PRACTICADOS
   sportsPracticed?: {
     sport: string;
     level: 'recreational' | 'competitive' | 'professional';
     yearsOfPractice: number;
     stillPracticing: boolean;
   }[];
-  
-  // ✅ EVALUACIONES INICIALES
   initialFitnessAssessment?: {
     date: Date;
-    assessedBy: string; // ID del entrenador
-    cardiovascularScore: number; // 1-10
-    strengthScore: number; // 1-10
-    flexibilityScore: number; // 1-10
-    balanceScore: number; // 1-10
-    overallScore: number; // 1-10
+    assessedBy: string;
+    cardiovascularScore: number;
+    strengthScore: number;
+    flexibilityScore: number;
+    balanceScore: number;
+    overallScore: number;
     notes: string;
   };
-  
   lastUpdated?: Date;
 }
 
 export interface TrainingPreferences {
-  // ✅ DISPONIBILIDAD
   availableDays?: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[];
   preferredTimeSlots?: ('early_morning' | 'morning' | 'afternoon' | 'evening' | 'late_evening')[];
-  maxSessionDuration?: number; // minutos
-  
-  // ✅ PREFERENCIAS DE EJERCICIO
+  maxSessionDuration?: number;
   likedExercises?: string[];
   dislikedExercises?: string[];
-  exercisesToAvoid?: string[]; // Por lesiones o limitaciones
-  
-  // ✅ ENTORNO DE ENTRENAMIENTO
+  exercisesToAvoid?: string[];
   preferredEnvironment?: ('home' | 'gym' | 'outdoor' | 'online')[];
   availableEquipment?: string[];
   spaceConstraints?: string;
-  
-  // ✅ ESTILO DE ENTRENAMIENTO
   preferredIntensity?: 'low' | 'moderate' | 'high' | 'variable';
   preferredMusicGenre?: string[];
   needsMotivation?: boolean;
   prefersGroupWorkouts?: boolean;
-  
-  // ✅ RETROALIMENTACIÓN
   feedbackPreferences?: {
     audioFeedback: boolean;
     visualFeedback: boolean;
@@ -168,109 +129,176 @@ export interface TrainingPreferences {
     realTimeCorrections: boolean;
     postWorkoutAnalysis: boolean;
   };
-  
   lastUpdated?: Date;
 }
 
+// ✅ NUEVA INTERFAZ: RUTINA GENERADA POR IA
+export interface AIGeneratedRoutine {
+  id: string;
+  userId: string;
+  generatedAt: Date;
+  
+  // Datos usados para generar la rutina
+  baseProfile: {
+    fitnessLevel: string;
+    primaryGoals: string[];
+    medicalLimitations: string[];
+    physicalCapacity: any;
+  };
+  
+  // Rutina generada
+  routine: {
+    name: string;
+    description: string;
+    duration: number; // minutos
+    difficulty: 'beginner' | 'intermediate' | 'advanced' | 'custom';
+    exercises: AIExercise[];
+    estimatedCalories: number;
+    focusAreas: string[];
+    adaptations: string[]; // Adaptaciones hechas por limitaciones médicas
+  };
+  
+  // Estado de aprobación
+  status: 'pending_approval' | 'approved' | 'rejected' | 'needs_modification';
+  trainerNotes?: string;
+  approvedBy?: string;
+  approvedAt?: Date;
+  rejectionReason?: string;
+  
+  // Métricas de generación
+  aiConfidence: number; // 0-100
+  generationTime: number; // ms
+  adaptationLevel: 'none' | 'minimal' | 'moderate' | 'extensive';
+  
+  lastUpdated: Date;
+}
+
+export interface AIExercise {
+  id: string;
+  name: string;
+  description: string;
+  category: 'strength' | 'cardio' | 'flexibility' | 'balance' | 'recovery';
+  targetMuscles: string[];
+  equipment: string[];
+  
+  // Parámetros del ejercicio
+  sets?: number;
+  reps?: number | string; // "10-12" o "30 segundos"
+  duration?: number; // segundos
+  restTime?: number; // segundos
+  weight?: number | string; // kg o "bodyweight"
+  
+  // Adaptaciones por limitaciones
+  modifications?: string[];
+  alternatives?: string[];
+  contraindications?: string[];
+  
+  // Progresión automática
+  progression?: {
+    beginner: any;
+    intermediate: any;
+    advanced: any;
+  };
+  
+  // Datos para MediaPipe
+  poseKeyPoints?: number[]; // Puntos clave a monitorear
+  criticalAngles?: {
+    joint: string;
+    minAngle: number;
+    maxAngle: number;
+    warningThreshold: number;
+  }[];
+}
+
+// ✅ INTERFAZ PRINCIPAL DEL PERFIL (EXPANDIDA)
 export interface Profile {
   uid: string;
   
-  // ✅ RETROCOMPATIBILIDAD - Mantenemos estructura original
-  personalInfo: {
-    age?: number;
-    gender?: string;
-    weight?: number;
-    height?: number;
-    // ✅ DATOS ADICIONALES OPCIONALES
-    dateOfBirth?: Date;
-    phoneNumber?: string;
-    emergencyContact?: {
-      name: string;
-      phone: string;
-      relationship: string;
-    };
-    bodyMassIndex?: number;
-    bodyFatPercentage?: number;
-    muscleMassPercentage?: number;
-  };
-  
-  medicalHistory: {
-    injuries?: string[];
-    conditions?: string[];
-    limitations?: string[];
-    // ✅ HISTORIAL EXPANDIDO OPCIONAL
-    currentConditions?: string[];
-    chronicDiseases?: string[];
-    allergies?: string[];
-    medications?: string[];
-    previousInjuries?: {
-      type: string;
-      date: Date;
-      affectedArea: string;
-      severity: 'mild' | 'moderate' | 'severe';
-      recovered: boolean;
-      notes?: string;
-    }[];
-    physicalLimitations?: {
-      type: string;
-      description: string;
-      affectedMovements: string[];
-      severity: 'mild' | 'moderate' | 'severe';
-    }[];
-    lastMedicalCheckup?: Date;
-    doctorClearance?: boolean;
-    doctorNotes?: string;
-    heartConditions?: string[];
-    bloodPressure?: {
-      systolic: number;
-      diastolic: number;
-      date: Date;
-    };
-    restingHeartRate?: number;
-    surgeries?: {
-      type: string;
-      date: Date;
-      notes?: string;
-    }[];
-    lastUpdated?: Date;
-  };
-  
+  // Datos básicos
+  personalInfo: PersonalInfo;
+  medicalHistory: MedicalHistory;
   fitnessLevel: 'beginner' | 'intermediate' | 'advanced';
   goals?: string[];
   profileComplete: boolean;
   
-  // ✅ CAMPOS OPCIONALES EXPANDIDOS
+  // Expandidos
   fitnessGoals?: FitnessGoals;
   trainingPreferences?: TrainingPreferences;
+  
+  // ✅ RUTINAS IA
+  currentAIRoutine?: string; // ID de la rutina actual
+  routineHistory?: string[]; // IDs de rutinas pasadas
+  lastRoutineGenerated?: Date;
+  routinePreferences?: {
+    autoGenerate: boolean;
+    preferredDuration: number;
+    maxExercises: number;
+    adaptationLevel: 'conservative' | 'balanced' | 'aggressive';
+  };
+  
+  // Entrenador
   assignedTrainer?: string;
   trainerNotes?: string;
   lastTrainerReview?: Date;
+  
+  // Completitud
   profileCompletionPercentage?: number;
+  aiReadinessPercentage?: number; // ✅ NUEVO
   sectionsCompleted?: {
     personalInfo: boolean;
     medicalHistory: boolean;
     fitnessGoals: boolean;
     fitnessLevel: boolean;
     trainingPreferences: boolean;
+    aiReadiness: boolean; // ✅ NUEVO
   };
+  
+  // Configuración
   appSettings?: {
     audioEnabled: boolean;
     autoDetectionEnabled: boolean;
     pushNotificationsEnabled: boolean;
     dataShareWithTrainer: boolean;
     privacyLevel: 'public' | 'trainer_only' | 'private';
+    aiRoutineGeneration: boolean; // ✅ NUEVO
   };
+  
+  // Metadatos
   createdAt?: Date;
   lastUpdated?: Date;
   profileVersion?: number;
 }
 
-// ✅ TIPOS AUXILIARES PARA FACILITAR EL USO
+// ✅ TIPOS AUXILIARES
 export type FitnessLevelString = 'beginner' | 'intermediate' | 'advanced' | 'expert';
 export type PrimaryGoal = 'weight_loss' | 'muscle_gain' | 'strength' | 'endurance' | 'flexibility' | 'general_fitness';
 export type WorkoutType = 'strength' | 'cardio' | 'flexibility' | 'sports' | 'group_classes';
+export type BodyArea = 'neck' | 'shoulders' | 'back' | 'lower_back' | 'knees' | 'ankles' | 'wrists' | 'hips';
 
-// ✅ INTERFAZ PARA CREACIÓN DE PERFIL INICIAL
+// ✅ INTERFAZ PARA SOLICITAR RUTINA A LA IA
+export interface AIRoutineRequest {
+  userId: string;
+  personalInfo: PersonalInfo;
+  medicalHistory: MedicalHistory;
+  fitnessGoals: FitnessGoals;
+  fitnessLevel: string;
+  trainingPreferences?: TrainingPreferences;
+  currentRoutine?: any;
+  specialRequests?: string;
+  urgency: 'low' | 'normal' | 'high';
+}
+
+// ✅ RESPUESTA DE LA IA
+export interface AIRoutineResponse {
+  success: boolean;
+  routineId?: string;
+  routine?: AIGeneratedRoutine;
+  error?: string;
+  needsTrainerApproval: boolean;
+  estimatedApprovalTime?: number; // horas
+  confidenceScore: number; // 0-100
+}
+
 export interface InitialProfileData {
   personalInfo: {
     age: number;
@@ -287,7 +315,6 @@ export interface InitialProfileData {
   primaryGoals: PrimaryGoal[];
 }
 
-// ✅ INTERFAZ PARA ACTUALIZACIONES PARCIALES
 export interface ProfileUpdate extends Partial<Omit<Profile, 'uid' | 'createdAt'>> {
   lastUpdated: Date;
 }

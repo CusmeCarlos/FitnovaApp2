@@ -85,115 +85,157 @@ export class ProfileService {
     }
   }
 
-  async updateMedicalHistory(medicalHistory: Partial<Profile['medicalHistory']>): Promise<boolean> {
+  async updateMedicalHistory(medicalHistory: any): Promise<boolean> {
     try {
       const user = await this.auth.user$.pipe(take(1)).toPromise();
       if (!user?.uid) throw new Error('Usuario no autenticado');
-
-      console.log('💾 Guardando historial médico:', medicalHistory);
-
-      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
-      
-      await docRef.update({
+  
+      const updateData = {
         medicalHistory: {
           ...medicalHistory,
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+          lastUpdated: new Date()
         },
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      console.log('✅ Historial médico guardado');
-      
-      // Recargar perfil
-      await this.loadUserProfile(user.uid);
-      
+        lastUpdated: new Date()
+      };
+  
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      await docRef.update(updateData);
+  
+      // Actualizar el BehaviorSubject
+      const currentProfile = this.profileSubject.value;
+      if (currentProfile) {
+        const updatedProfile = {
+          ...currentProfile,
+          ...updateData
+        };
+        this.profileSubject.next(updatedProfile);
+      }
+  
       return true;
     } catch (error) {
-      console.error('❌ Error guardando historial médico:', error);
+      console.error('❌ Error actualizando historial médico:', error);
       return false;
     }
   }
-
+  
   async updateFitnessGoals(fitnessGoals: any): Promise<boolean> {
     try {
       const user = await this.auth.user$.pipe(take(1)).toPromise();
       if (!user?.uid) throw new Error('Usuario no autenticado');
-
-      console.log('💾 Guardando objetivos fitness:', fitnessGoals);
-
-      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
-      
-      await docRef.update({
+  
+      const updateData = {
         fitnessGoals: {
           ...fitnessGoals,
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+          lastUpdated: new Date()
         },
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      console.log('✅ Objetivos fitness guardados');
-      
-      // Recargar perfil
-      await this.loadUserProfile(user.uid);
-      
+        lastUpdated: new Date()
+      };
+  
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      await docRef.update(updateData);
+  
+      // Actualizar el BehaviorSubject
+      const currentProfile = this.profileSubject.value;
+      if (currentProfile) {
+        const updatedProfile = {
+          ...currentProfile,
+          ...updateData
+        };
+        this.profileSubject.next(updatedProfile);
+      }
+  
       return true;
     } catch (error) {
-      console.error('❌ Error guardando objetivos fitness:', error);
+      console.error('❌ Error actualizando objetivos fitness:', error);
       return false;
     }
   }
 
-  async updateFitnessLevel(fitnessLevel: any): Promise<boolean> {
+  async updateFitnessLevel(fitnessLevel: 'beginner' | 'intermediate' | 'advanced'): Promise<boolean> {
     try {
       const user = await this.auth.user$.pipe(take(1)).toPromise();
       if (!user?.uid) throw new Error('Usuario no autenticado');
-
-      console.log('💾 Guardando nivel fitness:', fitnessLevel);
-
+  
+      const updateData = {
+        fitnessLevel,
+        lastUpdated: new Date()
+      };
+  
       const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
-      
-      await docRef.update({
-        fitnessLevel: fitnessLevel,
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      console.log('✅ Nivel fitness guardado');
-      
-      // Recargar perfil
-      await this.loadUserProfile(user.uid);
-      
+      await docRef.update(updateData);
+  
+      const currentProfile = this.profileSubject.value;
+      if (currentProfile) {
+        const updatedProfile: Profile = {
+          ...currentProfile,
+          fitnessLevel, // ✅ TIPO CORRECTO
+          lastUpdated: new Date()
+        };
+        this.profileSubject.next(updatedProfile);
+      }
+  
       return true;
     } catch (error) {
-      console.error('❌ Error guardando nivel fitness:', error);
+      console.error('❌ Error actualizando nivel fitness:', error);
       return false;
     }
   }
 
-  async updateTrainingPreferences(preferences: any): Promise<boolean> {
+  async updateTrainingPreferences(trainingPreferences: any): Promise<boolean> {
     try {
       const user = await this.auth.user$.pipe(take(1)).toPromise();
       if (!user?.uid) throw new Error('Usuario no autenticado');
-
-      console.log('💾 Guardando preferencias:', preferences);
-
-      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
-      
-      await docRef.update({
+  
+      const updateData = {
         trainingPreferences: {
-          ...preferences,
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+          ...trainingPreferences,
+          lastUpdated: new Date()
         },
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      console.log('✅ Preferencias guardadas');
-      
-      // Recargar perfil
-      await this.loadUserProfile(user.uid);
-      
+        lastUpdated: new Date()
+      };
+  
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      await docRef.update(updateData);
+  
+      // Actualizar el BehaviorSubject
+      const currentProfile = this.profileSubject.value;
+      if (currentProfile) {
+        const updatedProfile = {
+          ...currentProfile,
+          ...updateData
+        };
+        this.profileSubject.next(updatedProfile);
+      }
+  
       return true;
     } catch (error) {
-      console.error('❌ Error guardando preferencias:', error);
+      console.error('❌ Error actualizando preferencias:', error);
+      return false;
+    }
+  }
+
+  async updateProfilePhoto(photoDataUrl: string): Promise<boolean> {
+    try {
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user?.uid) throw new Error('Usuario no autenticado');
+  
+      // Actualizar en Firebase Auth
+      await firebase.auth().currentUser?.updateProfile({
+        photoURL: photoDataUrl
+      });
+  
+      // Actualizar en Firestore
+      const updateData = {
+        'personalInfo.photoURL': photoDataUrl,
+        lastUpdated: new Date()
+      };
+  
+      const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
+      await docRef.update(updateData);
+  
+      return true;
+    } catch (error) {
+      console.error('❌ Error actualizando foto:', error);
       return false;
     }
   }
@@ -250,6 +292,7 @@ export class ProfileService {
         uid: user.uid,
         personalInfo: {
           ...data.personalInfo,
+          gender: data.personalInfo.gender as 'male' | 'female' | 'other', // ✅ CAST TIPO
           bodyMassIndex: this.calculateBMI(data.personalInfo.weight, data.personalInfo.height)
         },
         medicalHistory: {

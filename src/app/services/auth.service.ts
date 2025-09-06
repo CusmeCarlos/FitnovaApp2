@@ -168,6 +168,20 @@ export class AuthService {
     }
   }
 
+  async sendEmailVerification(): Promise<boolean> {
+    try {
+      const user = firebase.auth().currentUser;
+      if (user && !user.emailVerified) {
+        await user.sendEmailVerification();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error enviando verificación:', error);
+      return false;
+    }
+  }
+
   private getErrorMessage(error: any): string {
     if (error?.code) {
       switch (error.code) {
