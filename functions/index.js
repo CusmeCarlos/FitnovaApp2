@@ -1,16 +1,46 @@
 // functions/index.js
-// 🔥 CLOUD FUNCTIONS PARA FITNOVA - VERSIÓN CORREGIDA ESLINT
+// 🔥 CLOUD FUNCTIONS PARA FITNOVA - VERSIÓN DEFINITIVA CON OPENAI GPT
 
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
-const {logger} = require("firebase-functions");
+const {logger} = require("firebase-functions/v1");
+const {setGlobalOptions} = require("firebase-functions/v2");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {getMessaging} = require("firebase-admin/messaging");
+const {OpenAI} = require("openai");
+const apiKey = process.env.OPENAI_API_KEY;
+const functions = require("firebase-functions");
+
+
+// ✅ CONFIGURAR OPCIONES GLOBALES PARA V2
+setGlobalOptions({
+  maxInstances: 10,
+  timeoutSeconds: 300,
+  memory: "512MiB"
+});
 
 // ✅ INICIALIZAR FIREBASE ADMIN
 initializeApp();
 const db = getFirestore();
 const messaging = getMessaging();
+
+// ✅ INICIALIZAR OPENAI CON MANEJO DE ERRORES
+let openai = null;
+try {
+  const apiKey = process.env.OPENAI_API_KEY || functions.config().openai?.key;
+  
+  if (!apiKey) {
+    logger.warn("⚠️ OPENAI_API_KEY no encontrada en variables de entorno");
+  } else {
+    openai = new OpenAI({
+      apiKey: apiKey,
+    });
+    logger.info("✅ OpenAI inicializado correctamente");
+  }
+} catch (error) {
+  logger.error("❌ Error inicializando OpenAI:", error);
+  openai = null;
+}
 
 // 🔔 FUNCIÓN PRINCIPAL - ENVIAR NOTIFICACIÓN AL ENTRENADOR
 exports.sendTrainerNotification = onCall(async (request) => {
@@ -18,35 +48,27 @@ exports.sendTrainerNotification = onCall(async (request) => {
     const {data} = request;
     logger.info("📨 Procesando alerta crítica:", data);
 
-    // ✅ VALIDAR AUTENTICACIÓN
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Usuario no autenticado");
     }
 
-    // ✅ VALIDAR DATOS REQUERIDOS
     if (!data.uid || !data.errorType || !data.severity) {
       throw new HttpsError("invalid-argument", "Datos de alerta incompletos");
     }
 
-    // ✅ VERIFICAR QUE EL USUARIO PUEDE ENVIAR ALERTAS
     if (request.auth.uid !== data.uid) {
-      throw new HttpsError("permission-denied",
-          "No autorizado para enviar alertas de este usuario");
+      throw new HttpsError("permission-denied", "No autorizado para enviar alertas de este usuario");
     }
 
-    // ✅ OBTENER DATOS DEL USUARIO
     const userDoc = await db.collection("users").doc(data.uid).get();
     if (!userDoc.exists) {
       throw new HttpsError("not-found", "Usuario no encontrado");
     }
 
     const userData = userDoc.data();
-
-    // ✅ OBTENER ENTRENADOR ASIGNADO O USAR ADMIN
     const trainerId = userData.assignedTrainer || "admin";
     let trainerData = {fcmToken: null, email: "admin@fitnova.com"};
 
-    // Intentar obtener datos del entrenador
     if (trainerId !== "admin") {
       const trainerDoc = await db.collection("trainers").doc(trainerId).get();
       if (trainerDoc.exists) {
@@ -56,12 +78,10 @@ exports.sendTrainerNotification = onCall(async (request) => {
       }
     }
 
-    // ✅ CREAR MENSAJE FCM ESTRUCTURADO
     const fcmMessage = {
       notification: {
         title: `🚨 FitNova - Alerta ${getSeverityText(data.severity)}`,
-        body: `${data.userDisplayName || "Usuario"}: ` +
-              `${getErrorTypeText(data.errorType)} en ${data.exercise}`,
+        body: `${data.userDisplayName || "Usuario"}: ${getErrorTypeText(data.errorType)} en ${data.exercise}`,
       },
       data: {
         type: "critical_error",
@@ -75,47 +95,11 @@ exports.sendTrainerNotification = onCall(async (request) => {
         userEmail: data.userEmail || "",
         userDisplayName: data.userDisplayName || "Usuario",
         clickAction: "/dashboard/alerts",
-      },
-      android: {
-        priority: "high",
-        notification: {
-          icon: "ic_notification",
-          color: data.severity === "critical" ? "#FF0000" : "#FF8800",
-          sound: "default",
-          channelId: "critical_alerts",
-        },
-      },
-      webpush: {
-        headers: {
-          "TTL": "300",
-          "Urgency": "high",
-        },
-        notification: {
-          icon: "/assets/icon/icon-192x192.png",
-          badge: "/assets/icon/icon-72x72.png",
-          requireInteraction: true,
-          tag: `error-${data.errorType}-${data.sessionId}`,
-          actions: [
-            {
-              action: "view-details",
-              title: "Ver Detalles",
-            },
-            {
-              action: "dismiss",
-              title: "Cerrar",
-            },
-          ],
-        },
-        fcmOptions: {
-          link: "/dashboard/alerts",
-        },
-      },
+      }
     };
 
-    // ✅ ARRAY PARA RESULTADOS DE NOTIFICACIONES
     const notificationResults = [];
 
-    // ✅ ENVIAR A TOKEN ESPECÍFICO DEL ENTRENADOR
     if (trainerData.fcmToken) {
       try {
         const result = await messaging.send({
@@ -128,8 +112,7 @@ exports.sendTrainerNotification = onCall(async (request) => {
           result: result,
           success: true,
         });
-        logger.info(`✅ Notificación enviada al entrenador ` +
-                   `${trainerId}: ${result}`);
+        logger.info(`✅ Notificación enviada al entrenador ${trainerId}: ${result}`);
       } catch (error) {
         logger.error(`❌ Error enviando a entrenador ${trainerId}:`, error);
         notificationResults.push({
@@ -141,30 +124,6 @@ exports.sendTrainerNotification = onCall(async (request) => {
       }
     }
 
-    // ✅ ENVIAR A TOPIC DE ENTRENADORES (BACKUP)
-    try {
-      const topicResult = await messaging.send({
-        ...fcmMessage,
-        topic: "trainers",
-      });
-      notificationResults.push({
-        type: "topic",
-        topic: "trainers",
-        result: topicResult,
-        success: true,
-      });
-      logger.info(`✅ Notificación enviada al topic trainers: ${topicResult}`);
-    } catch (error) {
-      logger.error("❌ Error enviando al topic trainers:", error);
-      notificationResults.push({
-        type: "topic",
-        topic: "trainers",
-        error: error.message,
-        success: false,
-      });
-    }
-
-    // ✅ GUARDAR ALERTA EN COLECCIÓN ESPECIALIZADA
     const alertRef = await db.collection("criticalAlerts").add({
       ...data,
       trainerId: trainerId,
@@ -176,7 +135,6 @@ exports.sendTrainerNotification = onCall(async (request) => {
       platform: "mobile",
     });
 
-    // ✅ ACTUALIZAR ESTADÍSTICAS DEL USUARIO
     await db.collection("userStats").doc(data.uid).set({
       lastCriticalError: new Date(),
       totalCriticalErrors: FieldValue.increment(1),
@@ -184,27 +142,6 @@ exports.sendTrainerNotification = onCall(async (request) => {
       lastExercise: data.exercise,
       lastSessionId: data.sessionId,
     }, {merge: true});
-
-    // ✅ CREAR ENTRADA PARA DASHBOARD DEL ENTRENADOR
-    await db.collection("trainerDashboard").add({
-      alertId: alertRef.id,
-      userId: data.uid,
-      userDisplayName: data.userDisplayName,
-      userEmail: data.userEmail,
-      errorType: data.errorType,
-      exercise: data.exercise,
-      severity: data.severity,
-      captureURL: data.captureURL,
-      biomechanicsData: data.biomechanicsData,
-      deviceInfo: data.deviceInfo,
-      status: "pending_review",
-      priority: data.severity === "critical" ? "high" : "medium",
-      createdAt: new Date(),
-      assignedTrainer: trainerId,
-      requiresAction: data.severity === "critical",
-    });
-
-    logger.info("✅ Alerta procesada exitosamente:", alertRef.id);
 
     return {
       success: true,
@@ -215,8 +152,7 @@ exports.sendTrainerNotification = onCall(async (request) => {
     };
   } catch (error) {
     logger.error("🛑 Error procesando alerta crítica:", error);
-    throw new HttpsError("internal", "Error procesando alerta: " +
-                         error.message);
+    throw new HttpsError("internal", "Error procesando alerta: " + error.message);
   }
 });
 
@@ -230,14 +166,11 @@ exports.processTrainerAlert = onCall(async (request) => {
       throw new HttpsError("unauthenticated", "Usuario no autenticado");
     }
 
-    // ✅ OBTENER ALERTA EXISTENTE
-    const alertDoc = await db.collection("notifications").doc(data.alertId)
-        .get();
+    const alertDoc = await db.collection("notifications").doc(data.alertId).get();
     if (!alertDoc.exists) {
       throw new HttpsError("not-found", "Alerta no encontrada");
     }
 
-    // ✅ GENERAR ANÁLISIS BIOMECÁNICO
     let biomechanicsAnalysis = null;
     if (data.biomechanicsData) {
       biomechanicsAnalysis = {
@@ -251,7 +184,6 @@ exports.processTrainerAlert = onCall(async (request) => {
       };
     }
 
-    // ✅ ACTUALIZAR ALERTA CON ANÁLISIS
     await alertDoc.ref.update({
       biomechanicsAnalysis,
       analysisProcessed: true,
@@ -282,7 +214,6 @@ exports.syncMobileData = onCall(async (request) => {
 
     logger.info("🔄 Sincronizando datos móvil:", uid);
 
-    // ✅ PROCESAR DATOS DE SESIÓN
     if (mobileData.sessionData) {
       await db.collection("activeSessions").doc(uid).set({
         ...mobileData.sessionData,
@@ -292,7 +223,6 @@ exports.syncMobileData = onCall(async (request) => {
       }, {merge: true});
     }
 
-    // ✅ PROCESAR MÉTRICAS EN TIEMPO REAL
     if (mobileData.metrics) {
       await db.collection("userMetrics").doc(uid).set({
         ...mobileData.metrics,
@@ -301,7 +231,6 @@ exports.syncMobileData = onCall(async (request) => {
       }, {merge: true});
     }
 
-    // ✅ PROCESAR CONFIGURACIONES
     if (mobileData.settings) {
       await db.collection("userSettings").doc(uid).set({
         ...mobileData.settings,
@@ -321,11 +250,11 @@ exports.syncMobileData = onCall(async (request) => {
     };
   } catch (error) {
     logger.error("🛑 Error sincronizando datos:", error);
-    throw new HttpsError("internal", "Error en sincronización: " +
-                         error.message);
+    throw new HttpsError("internal", "Error en sincronización: " + error.message);
   }
 });
 
+// 🧠 FUNCIÓN PRINCIPAL - GENERAR RUTINA ADAPTATIVA CON GPT
 exports.generateAdaptiveRoutine = onCall(async (request) => {
   try {
     const {data} = request;
@@ -335,9 +264,8 @@ exports.generateAdaptiveRoutine = onCall(async (request) => {
       throw new HttpsError("permission-denied", "No autorizado");
     }
 
-    logger.info("🧠 Generando rutina adaptativa IA para:", userId);
+    logger.info("🧠 Generando rutina adaptativa IA + GPT para:", userId);
 
-    // ✅ VALIDAR DATOS MÍNIMOS PARA IA
     if (!personalInfo?.age || !personalInfo?.weight || !personalInfo?.height) {
       throw new HttpsError("failed-precondition", "Datos personales incompletos");
     }
@@ -353,7 +281,6 @@ exports.generateAdaptiveRoutine = onCall(async (request) => {
       throw new HttpsError("failed-precondition", "Objetivos fitness no definidos");
     }
 
-    // ✅ ANALIZAR HISTORIAL DE ERRORES RECIENTES
     const errorsSnapshot = await db.collection("criticalAlerts")
         .where("uid", "==", userId)
         .where("severity", "in", ["high", "critical"])
@@ -363,11 +290,8 @@ exports.generateAdaptiveRoutine = onCall(async (request) => {
 
     const recentErrors = errorsSnapshot.docs.map((doc) => doc.data());
     const errorAnalysis = analyzeUserErrors(recentErrors);
-
-    // ✅ CALCULAR NIVEL DE ADAPTACIÓN REQUERIDO
     const adaptationLevel = calculateAdaptationLevel(medicalHistory, errorAnalysis);
     
-    // ✅ GENERAR RUTINA PERSONALIZADA CON ALGORITMO IA
     const generatedRoutine = await generatePersonalizedRoutine({
       userId,
       personalInfo,
@@ -379,13 +303,9 @@ exports.generateAdaptiveRoutine = onCall(async (request) => {
       adaptationLevel
     });
 
-    // ✅ CALCULAR CONFIANZA DE LA IA
     const aiConfidence = calculateAIConfidence(generatedRoutine, medicalHistory, errorAnalysis);
-
-    // ✅ DETERMINAR SI NECESITA APROBACIÓN DEL ENTRENADOR
     const needsTrainerApproval = shouldRequireTrainerApproval(adaptationLevel, aiConfidence, medicalHistory);
 
-    // ✅ PREPARAR RUTINA FINAL
     const finalRoutine = {
       id: `routine_${userId}_${Date.now()}`,
       userId: userId,
@@ -404,7 +324,9 @@ exports.generateAdaptiveRoutine = onCall(async (request) => {
         exercises: generatedRoutine.exercises,
         estimatedCalories: calculateEstimatedCalories(generatedRoutine.exercises, personalInfo),
         focusAreas: generatedRoutine.focusAreas,
-        adaptations: generatedRoutine.adaptations
+        adaptations: generatedRoutine.adaptations,
+        gptGenerated: generatedRoutine.gptGenerated || false,
+        gptInstructions: generatedRoutine.gptInstructions || []
       },
       status: needsTrainerApproval ? "pending_approval" : "approved",
       aiConfidence: aiConfidence,
@@ -414,21 +336,18 @@ exports.generateAdaptiveRoutine = onCall(async (request) => {
       lastUpdated: new Date()
     };
 
-    // ✅ GUARDAR RUTINA GENERADA
     const routineRef = await db.collection("aiRoutines")
         .doc(userId)
         .collection("routines")
         .add(finalRoutine);
 
-    // ✅ CREAR NOTIFICACIÓN PARA ENTRENADOR SI ES NECESARIO
     if (needsTrainerApproval) {
       await createTrainerNotification(userId, routineRef.id, finalRoutine, adaptationLevel);
     }
 
-    // ✅ ACTUALIZAR ESTADÍSTICAS DEL USUARIO
     await updateUserAIStats(userId, aiConfidence, adaptationLevel);
 
-    logger.info("✅ Rutina IA generada exitosamente:", routineRef.id);
+    logger.info("✅ Rutina IA + GPT generada exitosamente:", routineRef.id);
 
     return {
       success: true,
@@ -437,12 +356,12 @@ exports.generateAdaptiveRoutine = onCall(async (request) => {
       needsTrainerApproval: needsTrainerApproval,
       aiConfidence: aiConfidence,
       message: needsTrainerApproval ? 
-        "Rutina generada, esperando aprobación del entrenador" : 
-        "Rutina generada y lista para usar"
+        "Rutina generada con GPT, esperando aprobación del entrenador" : 
+        "Rutina generada con GPT y lista para usar"
     };
 
   } catch (error) {
-    logger.error("🛑 Error generando rutina IA:", error);
+    logger.error("🛑 Error generando rutina IA + GPT:", error);
     throw new HttpsError("internal", "Error generando rutina: " + error.message);
   }
 });
@@ -457,11 +376,9 @@ exports.getUserMetrics = onCall(async (request) => {
       throw new HttpsError("permission-denied", "No autorizado");
     }
 
-    // ✅ OBTENER ESTADÍSTICAS DEL USUARIO
     const statsDoc = await db.collection("userStats").doc(uid).get();
     const userStats = statsDoc.exists ? statsDoc.data() : {};
 
-    // ✅ OBTENER ALERTAS RECIENTES
     const alertsSnapshot = await db.collection("criticalAlerts")
         .where("uid", "==", uid)
         .orderBy("processedAt", "desc")
@@ -473,7 +390,6 @@ exports.getUserMetrics = onCall(async (request) => {
       ...doc.data(),
     }));
 
-    // ✅ CALCULAR MÉTRICAS
     const metrics = calculateUserMetrics(userStats, recentAlerts, timeRange);
 
     return {
@@ -483,8 +399,7 @@ exports.getUserMetrics = onCall(async (request) => {
     };
   } catch (error) {
     logger.error("🛑 Error obteniendo métricas:", error);
-    throw new HttpsError("internal", "Error obteniendo métricas: " +
-                         error.message);
+    throw new HttpsError("internal", "Error obteniendo métricas: " + error.message);
   }
 });
 
@@ -502,26 +417,16 @@ exports.ping = onCall(async (request) => {
 
 // ===== FUNCIONES AUXILIARES =====
 
-/**
- * Convierte códigos de severidad a texto legible
- * @param {string} severity - Código de severidad
- * @return {string} Texto de severidad
- */
 function getSeverityText(severity) {
   const severityMap = {
     "critical": "CRÍTICO",
-    "high": "ALTO",
+    "high": "ALTO", 
     "medium": "MEDIO",
     "low": "BAJO",
   };
   return severityMap[severity] || "DESCONOCIDO";
 }
 
-/**
- * Convierte códigos de error a texto descriptivo
- * @param {string} errorType - Tipo de error
- * @return {string} Descripción del error
- */
 function getErrorTypeText(errorType) {
   const errorMap = {
     "KNEE_VALGUS": "Rodillas hacia adentro",
@@ -537,11 +442,6 @@ function getErrorTypeText(errorType) {
   return errorMap[errorType] || "Error postural";
 }
 
-/**
- * Genera recomendaciones basadas en el tipo de error
- * @param {string} errorType - Tipo de error detectado
- * @return {Array} Array de recomendaciones
- */
 function generateRecommendations(errorType) {
   const recommendationsMap = {
     "KNEE_VALGUS": [
@@ -550,7 +450,7 @@ function generateRecommendations(errorType) {
       "Ejercicios de activación antes del entrenamiento",
     ],
     "ROUNDED_BACK": [
-      "Fortalecer erectores espinales",
+      "Fortalecer erectores espinales", 
       "Trabajo de movilidad torácica",
       "Ejercicios de estabilización del core",
     ],
@@ -560,20 +460,14 @@ function generateRecommendations(errorType) {
       "Ejercicios de flexibilidad de tobillos",
     ],
   };
-  return recommendationsMap[errorType] ||
-         ["Consultar con entrenador especializado"];
+  return recommendationsMap[errorType] || ["Consultar con entrenador especializado"];
 }
 
-/**
- * Genera acciones correctivas específicas
- * @param {string} errorType - Tipo de error
- * @return {Array} Acciones correctivas
- */
 function generateCorrectiveActions(errorType) {
   const actionsMap = {
     "KNEE_VALGUS": [
       "Pausar ejercicio inmediatamente",
-      "Revisar posición de pies",
+      "Revisar posición de pies", 
       "Activar glúteos antes de continuar",
     ],
     "ROUNDED_BACK": [
@@ -585,26 +479,13 @@ function generateCorrectiveActions(errorType) {
   return actionsMap[errorType] || ["Corregir técnica con entrenador"];
 }
 
-/**
- * Calcula el nivel de riesgo basado en datos biomecánicos
- * @param {string} severity - Severidad del error
- * @param {Object} biomechanicsData - Datos biomecánicos
- * @return {string} Nivel de riesgo
- */
 function calculateRiskLevel(severity, biomechanicsData) {
   if (severity === "critical") return "alto";
-  if (severity === "high" && biomechanicsData &&
-      biomechanicsData.confidence > 0.8) return "medio-alto";
+  if (severity === "high" && biomechanicsData && biomechanicsData.confidence > 0.8) return "medio-alto";
   if (severity === "medium") return "medio";
   return "bajo";
 }
 
-/**
- * Analiza errores del usuario para generar insights
- * @param {Array} errors - Array de errores recientes
- * @return {Object} Análisis de errores
- */
-// ✅ FUNCIÓN AUXILIAR: ANALIZAR ERRORES DEL USUARIO
 function analyzeUserErrors(recentErrors) {
   const errorTypes = {};
   const problemAreas = [];
@@ -621,8 +502,7 @@ function analyzeUserErrors(recentErrors) {
     .slice(0, 3)
     .map(([type]) => type);
 
-  const priorityAreas = [...new Set(problemAreas)]
-    .slice(0, 3);
+  const priorityAreas = [...new Set(problemAreas)].slice(0, 3);
 
   return {
     commonErrors,
@@ -630,66 +510,305 @@ function analyzeUserErrors(recentErrors) {
     totalErrors: recentErrors.length,
     severity: recentErrors.some(e => e.severity === 'critical') ? 'high' : 'moderate',
     reasoning: `Usuario presenta ${recentErrors.length} errores recientes, principalmente en: ${commonErrors.join(', ')}`,
-    expectedImprovement: calculateExpectedImprovement(commonErrors, priorityAreas)
+    expectedImprovement: `Mejora esperada en ${commonErrors.length} tipos de errores y ${priorityAreas.length} áreas problemáticas en 2-4 semanas`
   };
 }
 
 function calculateAdaptationLevel(medicalHistory, errorAnalysis) {
   let adaptationScore = 0;
 
-  // Lesiones actuales
   if (medicalHistory.currentInjuries && medicalHistory.currentInjuries.length > 0) {
     adaptationScore += 3;
   }
 
-  // Áreas con dolor
   if (medicalHistory.painfulAreas && medicalHistory.painfulAreas.length > 0) {
     adaptationScore += medicalHistory.painfulAreas.length;
   }
 
-  // Ejercicios prohibidos
   if (medicalHistory.forbiddenExercises && medicalHistory.forbiddenExercises.length > 0) {
     adaptationScore += 2;
   }
 
-  // Limitaciones de movimiento
   if (medicalHistory.movementLimitations && medicalHistory.movementLimitations.length > 0) {
     adaptationScore += 2;
   }
 
-  // Capacidad física baja
   if (medicalHistory.physicalCapacity?.walkingCapacity === 'less_5min' ||
       medicalHistory.physicalCapacity?.stairsCapacity === 'cannot' ||
       medicalHistory.physicalCapacity?.energyLevel === 'very_low') {
     adaptationScore += 3;
   }
 
-  // Errores recientes críticos
   if (errorAnalysis.severity === 'high') {
     adaptationScore += 2;
   }
 
-  // Determinar nivel
   if (adaptationScore === 0) return 'none';
   if (adaptationScore <= 3) return 'minimal';
   if (adaptationScore <= 6) return 'moderate';
   return 'extensive';
 }
 
-// ✅ FUNCIÓN AUXILIAR: GENERAR RUTINA PERSONALIZADA
 async function generatePersonalizedRoutine(profileData) {
   const {personalInfo, medicalHistory, fitnessGoals, fitnessLevel, trainingPreferences, errorAnalysis} = profileData;
   
-  // Base de ejercicios seguros
+  try {
+    logger.info("🧠 Iniciando generación híbrida: Algoritmo Local + GPT-4...");
+    
+    const safeExercises = await getSafeExercisesForProfile(medicalHistory, fitnessLevel);
+    const goalSpecificExercises = getExercisesForGoals(fitnessGoals.primaryGoals, fitnessLevel);
+    const correctiveExercises = getCorrectiveExercises(errorAnalysis.commonErrors, errorAnalysis.priorityAreas);
+    
+    if (openai) {
+      try {
+        const medicalContext = prepareMedicalContextForGPT(medicalHistory, errorAnalysis);
+        const userProfile = prepareUserProfileForGPT(personalInfo, fitnessGoals, fitnessLevel, trainingPreferences);
+        
+        const gptRoutine = await generateRoutineWithGPT(userProfile, medicalContext, {
+          safeExercises,
+          goalSpecificExercises,
+          correctiveExercises,
+          duration: trainingPreferences?.maxSessionDuration || 30
+        });
+        
+        const enhancedRoutine = validateAndEnhanceGPTRoutine(gptRoutine, safeExercises, medicalHistory);
+        
+        logger.info("✅ Rutina generada exitosamente con GPT-4");
+        return enhancedRoutine;
+        
+      } catch (gptError) {
+        logger.warn("⚠️ Error con GPT, usando algoritmo local como fallback:", gptError.message);
+      }
+    }
+    
+    return await generateLocalRoutine(profileData);
+    
+  } catch (error) {
+    logger.error("❌ Error en generación de rutina:", error);
+    return await generateLocalRoutine(profileData);
+  }
+}
+
+async function generateRoutineWithGPT(userProfile, medicalContext, exerciseOptions) {
+  if (!openai) {
+    throw new Error("OpenAI no está disponible");
+  }
+
+  const prompt = createIntelligentPromptForGPT(userProfile, medicalContext, exerciseOptions);
+  
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `Eres un entrenador personal experto especializado en usuarios principiantes con limitaciones médicas. 
+          Generas rutinas de ejercicio seguras, progresivas y personalizadas. 
+          SIEMPRE respondes en formato JSON válido con la estructura exacta solicitada.
+          
+          IMPORTANTE: Solo incluye ejercicios básicos seguros para principiantes:
+          - Sentadillas básicas y variaciones
+          - Flexiones y variaciones  
+          - Plancha y core
+          - Caminata y cardio ligero
+          - Estiramientos básicos`
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 1500,
+      temperature: 0.7,
+    });
+
+    const responseText = completion.choices[0].message.content;
+    const cleanedResponse = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const gptResult = JSON.parse(cleanedResponse);
+
+    logger.info("✅ GPT-4 generó rutina exitosamente");
+    
+    return {
+      ...gptResult,
+      gptGenerated: true,
+      generatedAt: new Date()
+    };
+
+  } catch (error) {
+    logger.error("❌ Error llamando a GPT-4:", error);
+    throw new Error(`GPT Error: ${error.message}`);
+  }
+}
+
+function createIntelligentPromptForGPT(userProfile, medicalContext, exerciseOptions) {
+  return `
+GENERA UNA RUTINA DE ENTRENAMIENTO PERSONALIZADA:
+
+PERFIL DEL USUARIO:
+- Edad: ${userProfile.age} años
+- Género: ${userProfile.gender}
+- Peso: ${userProfile.weight} kg
+- Altura: ${userProfile.height} cm
+- Nivel fitness: ${userProfile.fitnessLevel}
+- Objetivos principales: ${userProfile.primaryGoals.join(', ')}
+- Duración preferida: ${exerciseOptions.duration} minutos
+
+LIMITACIONES MÉDICAS:
+${medicalContext.limitations}
+
+CAPACIDAD FÍSICA ACTUAL:
+${medicalContext.physicalCapacity}
+
+ERRORES POSTURALES RECIENTES:
+${medicalContext.recentErrors}
+
+EJERCICIOS SEGUROS DISPONIBLES:
+${exerciseOptions.safeExercises.map(ex => `- ${ex.name}: ${ex.category}`).join('\n')}
+
+RESPONDE EN ESTE FORMATO JSON EXACTO:
+{
+  "exercises": [
+    {
+      "id": "exercise_id",
+      "name": "Nombre del Ejercicio",
+      "category": "strength/cardio/flexibility/corrective",
+      "sets": 3,
+      "reps": "10-12",
+      "duration": 180,
+      "restTime": 60,
+      "instructions": "Instrucciones detalladas paso a paso",
+      "modifications": "Modificaciones para limitaciones",
+      "targetMuscles": ["muscle1", "muscle2"],
+      "order": 1
+    }
+  ],
+  "adaptations": [
+    "Adaptación específica 1",
+    "Adaptación específica 2"
+  ],
+  "focusAreas": [
+    "Área de enfoque 1",
+    "Área de enfoque 2"
+  ],
+  "specialInstructions": [
+    "Instrucción especial 1",
+    "Instrucción especial 2"
+  ],
+  "totalDuration": ${exerciseOptions.duration},
+  "difficultyRating": 1
+}`;
+}
+
+function prepareMedicalContextForGPT(medicalHistory, errorAnalysis) {
+  const limitations = [];
+  const physicalCapacity = [];
+  
+  if (medicalHistory.currentInjuries) {
+    limitations.push(`Lesiones actuales: ${medicalHistory.currentInjuries}`);
+  }
+  
+  if (medicalHistory.painfulAreas?.length > 0) {
+    limitations.push(`Áreas con dolor: ${medicalHistory.painfulAreas.join(', ')}`);
+  }
+  
+  if (medicalHistory.forbiddenExercises) {
+    limitations.push(`Ejercicios prohibidos: ${medicalHistory.forbiddenExercises}`);
+  }
+  
+  if (medicalHistory.movementLimitations) {
+    limitations.push(`Limitaciones de movimiento: ${medicalHistory.movementLimitations}`);
+  }
+  
+  if (medicalHistory.physicalCapacity) {
+    const cap = medicalHistory.physicalCapacity;
+    physicalCapacity.push(`Capacidad de caminata: ${cap.walkingCapacity}`);
+    physicalCapacity.push(`Capacidad escaleras: ${cap.stairsCapacity}`);
+    physicalCapacity.push(`Experiencia con pesas: ${cap.weightExperience}`);
+    physicalCapacity.push(`Nivel de energía: ${cap.energyLevel}`);
+  }
+  
+  return {
+    limitations: limitations.length > 0 ? limitations.join('\n') : 'Sin limitaciones médicas reportadas',
+    physicalCapacity: physicalCapacity.join('\n'),
+    recentErrors: errorAnalysis.commonErrors.length > 0 ? 
+      `Errores frecuentes: ${errorAnalysis.commonErrors.join(', ')}` : 
+      'Sin errores posturales recientes'
+  };
+}
+
+function prepareUserProfileForGPT(personalInfo, fitnessGoals, fitnessLevel, trainingPreferences) {
+  return {
+    age: personalInfo.age,
+    gender: personalInfo.gender,
+    weight: personalInfo.weight,
+    height: personalInfo.height,
+    fitnessLevel: fitnessLevel,
+    primaryGoals: fitnessGoals.primaryGoals || [],
+    preferredIntensity: trainingPreferences?.preferredIntensity || 'moderate',
+    maxDuration: trainingPreferences?.maxSessionDuration || 30
+  };
+}
+
+function validateAndEnhanceGPTRoutine(gptRoutine, safeExercises, medicalHistory) {
+  try {
+    const validatedExercises = gptRoutine.exercises.filter(exercise => {
+      const isSafe = safeExercises.some(safe => 
+        safe.name.toLowerCase().includes(exercise.name.toLowerCase()) ||
+        exercise.name.toLowerCase().includes(safe.name.toLowerCase())
+      );
+      
+      if (!isSafe) {
+        logger.warn(`⚠️ Ejercicio ${exercise.name} no está en lista segura, removido`);
+      }
+      
+      return isSafe;
+    });
+
+    if (validatedExercises.length < 3) {
+      logger.warn("⚠️ Muy pocos ejercicios validados, agregando ejercicios seguros básicos");
+      
+      const basicSafeExercises = safeExercises.slice(0, 3).map((exercise, index) => ({
+        id: `safe_${exercise.id}`,
+        name: exercise.name,
+        category: exercise.category,
+        sets: 2,
+        reps: "10-12",
+        duration: 180,
+        restTime: 60,
+        instructions: `Realizar ${exercise.name} de forma controlada y segura`,
+        modifications: exercise.modifications?.knee_pain || "Adaptar según capacidad",
+        targetMuscles: exercise.targetMuscles || ['core'],
+        order: validatedExercises.length + index + 1
+      }));
+      
+      validatedExercises.push(...basicSafeExercises);
+    }
+
+    return {
+      exercises: validatedExercises,
+      adaptations: gptRoutine.adaptations || [],
+      focusAreas: gptRoutine.focusAreas || ['Entrenamiento General'],
+      gptGenerated: true,
+      gptInstructions: gptRoutine.specialInstructions || [],
+      totalDuration: gptRoutine.totalDuration || calculateTotalDuration(validatedExercises),
+      difficultyRating: gptRoutine.difficultyRating || 2
+    };
+
+  } catch (error) {
+    logger.error("❌ Error validando rutina GPT:", error);
+    throw error;
+  }
+}
+
+async function generateLocalRoutine(profileData) {
+  const {medicalHistory, fitnessGoals, fitnessLevel, trainingPreferences, errorAnalysis} = profileData;
+  
+  logger.info("🔄 Generando rutina con algoritmo local...");
+  
   const safeExercises = await getSafeExercisesForProfile(medicalHistory, fitnessLevel);
-  
-  // Ejercicios específicos para objetivos
   const goalSpecificExercises = getExercisesForGoals(fitnessGoals.primaryGoals, fitnessLevel);
-  
-  // Ejercicios correctivos para errores recientes
   const correctiveExercises = getCorrectiveExercises(errorAnalysis.commonErrors, errorAnalysis.priorityAreas);
   
-  // Combinar y balancear ejercicios
   const selectedExercises = balanceExerciseSelection({
     safe: safeExercises,
     goalSpecific: goalSpecificExercises,
@@ -698,24 +817,21 @@ async function generatePersonalizedRoutine(profileData) {
     intensity: trainingPreferences?.preferredIntensity || 'moderate'
   });
 
-  // Generar adaptaciones específicas
   const adaptations = generateExerciseAdaptations(selectedExercises, medicalHistory);
-  
-  // Determinar áreas de enfoque
   const focusAreas = determineFocusAreas(fitnessGoals.primaryGoals, errorAnalysis.priorityAreas);
 
   return {
     exercises: selectedExercises,
     adaptations: adaptations,
     focusAreas: focusAreas,
+    gptGenerated: false,
+    gptInstructions: [],
     totalDuration: calculateTotalDuration(selectedExercises),
     difficultyRating: calculateDifficultyRating(selectedExercises, fitnessLevel)
   };
 }
 
-// ✅ FUNCIÓN AUXILIAR: OBTENER EJERCICIOS SEGUROS
 async function getSafeExercisesForProfile(medicalHistory, fitnessLevel) {
-  // Base de datos de ejercicios con contraindications
   const allExercises = [
     {
       id: 'squat_basic',
@@ -783,21 +899,15 @@ async function getSafeExercisesForProfile(medicalHistory, fitnessLevel) {
     }
   ];
 
-  // Filtrar ejercicios seguros basado en limitaciones médicas
   const painfulAreas = medicalHistory.painfulAreas || [];
   const forbiddenExercises = medicalHistory.forbiddenExercises || '';
-  const movementLimitations = medicalHistory.movementLimitations || '';
 
   const safeExercises = allExercises.filter(exercise => {
-    // Verificar contraindications por áreas dolorosas
     const hasContraindication = exercise.contraindications.some(contra => 
       painfulAreas.some(area => contra.includes(area))
     );
 
-    // Verificar ejercicios específicamente prohibidos
     const isForbidden = forbiddenExercises.toLowerCase().includes(exercise.name.toLowerCase());
-
-    // Verificar dificultad apropiada
     const appropriateDifficulty = isAppropriateForLevel(exercise.difficulty, fitnessLevel);
 
     return !hasContraindication && !isForbidden && appropriateDifficulty;
@@ -806,7 +916,6 @@ async function getSafeExercisesForProfile(medicalHistory, fitnessLevel) {
   return safeExercises;
 }
 
-// ✅ FUNCIÓN AUXILIAR: EJERCICIOS PARA OBJETIVOS
 function getExercisesForGoals(primaryGoals, fitnessLevel) {
   const goalExercises = {
     'weight_loss': [
@@ -851,22 +960,21 @@ function getExercisesForGoals(primaryGoals, fitnessLevel) {
   return selectedExercises;
 }
 
-// ✅ FUNCIÓN AUXILIAR: EJERCICIOS CORRECTIVOS
 function getCorrectiveExercises(commonErrors, priorityAreas) {
   const correctiveMap = {
-    'poor_squat_form': [
+    'KNEE_VALGUS': [
       {id: 'wall_squat', name: 'Sentadilla en Pared', category: 'corrective'},
       {id: 'goblet_squat', name: 'Sentadilla Copa', category: 'corrective'}
     ],
-    'forward_head_posture': [
+    'ROUNDED_BACK': [
       {id: 'neck_stretches', name: 'Estiramientos de Cuello', category: 'corrective'},
       {id: 'chin_tucks', name: 'Retracciones de Barbilla', category: 'corrective'}
     ],
-    'rounded_shoulders': [
+    'INSUFFICIENT_DEPTH': [
       {id: 'shoulder_blade_squeezes', name: 'Compresión de Omóplatos', category: 'corrective'},
       {id: 'door_chest_stretch', name: 'Estiramiento de Pecho en Puerta', category: 'corrective'}
     ],
-    'knee_valgus': [
+    'POOR_ALIGNMENT': [
       {id: 'glute_activation', name: 'Activación de Glúteos', category: 'corrective'},
       {id: 'hip_abduction', name: 'Abducción de Cadera', category: 'corrective'}
     ]
@@ -882,25 +990,20 @@ function getCorrectiveExercises(commonErrors, priorityAreas) {
   return correctiveExercises;
 }
 
-// ✅ FUNCIÓN AUXILIAR: BALANCEAR SELECCIÓN DE EJERCICIOS
 function balanceExerciseSelection({safe, goalSpecific, corrective, duration, intensity}) {
-  const targetExerciseCount = Math.ceil(duration / 5); // ~5 min por ejercicio
+  const targetExerciseCount = Math.ceil(duration / 5);
   
   let selectedExercises = [];
   
-  // Priorizar ejercicios correctivos (20%)
   const correctiveCount = Math.max(1, Math.floor(targetExerciseCount * 0.2));
   selectedExercises.push(...corrective.slice(0, correctiveCount));
   
-  // Ejercicios específicos para objetivos (60%)
   const goalCount = Math.floor(targetExerciseCount * 0.6);
   selectedExercises.push(...goalSpecific.slice(0, goalCount));
   
-  // Completar con ejercicios seguros (20%)
   const remainingSlots = targetExerciseCount - selectedExercises.length;
   selectedExercises.push(...safe.slice(0, remainingSlots));
   
-  // Asignar parámetros específicos
   return selectedExercises.map((exercise, index) => ({
     ...exercise,
     sets: calculateSets(exercise.category, intensity),
@@ -912,7 +1015,6 @@ function balanceExerciseSelection({safe, goalSpecific, corrective, duration, int
   }));
 }
 
-// ✅ FUNCIONES AUXILIARES ADICIONALES
 function calculateSets(category, intensity) {
   const setsMap = {
     'strength': intensity === 'high' ? 4 : intensity === 'moderate' ? 3 : 2,
@@ -937,11 +1039,11 @@ function calculateReps(category, intensity) {
 
 function calculateExerciseDuration(category) {
   const durationMap = {
-    'strength': 180, // 3 minutos
-    'cardio': 300, // 5 minutos
-    'flexibility': 120, // 2 minutos
-    'corrective': 150, // 2.5 minutos
-    'balance': 120 // 2 minutos
+    'strength': 180,
+    'cardio': 300,
+    'flexibility': 120,
+    'corrective': 150,
+    'balance': 120
   };
   return durationMap[category] || 180;
 }
@@ -950,7 +1052,7 @@ function calculateRestTime(category, intensity) {
   if (category === 'strength') {
     return intensity === 'high' ? 90 : intensity === 'moderate' ? 60 : 45;
   }
-  return 30; // Para otros tipos de ejercicio
+  return 30;
 }
 
 function isAppropriateForLevel(exerciseDifficulty, userLevel) {
@@ -958,7 +1060,6 @@ function isAppropriateForLevel(exerciseDifficulty, userLevel) {
   const exerciseIndex = difficultyOrder.indexOf(exerciseDifficulty);
   const userIndex = difficultyOrder.indexOf(userLevel);
   
-  // Permitir ejercicios del mismo nivel o inferior
   return exerciseIndex <= userIndex;
 }
 
@@ -997,8 +1098,7 @@ function mapDifficultyLevel(fitnessLevel, adaptationLevel) {
 }
 
 function calculateEstimatedCalories(exercises, personalInfo) {
-  // Fórmula básica: MET * peso * tiempo
-  const avgMET = 4.5; // MET promedio para ejercicios moderados
+  const avgMET = 4.5;
   const totalTimeHours = exercises.reduce((total, ex) => total + (ex.duration || 180), 0) / 3600;
   const weightKg = personalInfo.weight || 70;
   
@@ -1021,13 +1121,16 @@ function determineFocusAreas(primaryGoals, priorityAreas) {
     focusAreas.push('Corrección Postural');
   }
   
-  return [...new Set(focusAreas)]; // Eliminar duplicados
+  return [...new Set(focusAreas)];
 }
 
 function calculateAIConfidence(generatedRoutine, medicalHistory, errorAnalysis) {
-  let confidence = 85; // Base confidence
+  let confidence = 85;
   
-  // Reducir confianza por limitaciones médicas complejas
+  if (generatedRoutine.gptGenerated) {
+    confidence += 10;
+  }
+  
   const limitations = [
     medicalHistory.currentInjuries,
     medicalHistory.forbiddenExercises,
@@ -1036,12 +1139,10 @@ function calculateAIConfidence(generatedRoutine, medicalHistory, errorAnalysis) 
   
   confidence -= limitations * 5;
   
-  // Reducir confianza por errores críticos recientes
   if (errorAnalysis.severity === 'high') {
     confidence -= 10;
   }
   
-  // Aumentar confianza por ejercicios bien balanceados
   if (generatedRoutine.exercises.length >= 5 && generatedRoutine.adaptations.length > 0) {
     confidence += 5;
   }
@@ -1050,16 +1151,9 @@ function calculateAIConfidence(generatedRoutine, medicalHistory, errorAnalysis) 
 }
 
 function shouldRequireTrainerApproval(adaptationLevel, aiConfidence, medicalHistory) {
-  // Siempre requerir aprobación para adaptaciones extensas
   if (adaptationLevel === 'extensive') return true;
-  
-  // Requerir aprobación si la confianza es baja
   if (aiConfidence < 75) return true;
-  
-  // Requerir aprobación si hay lesiones actuales
   if (medicalHistory.currentInjuries && medicalHistory.currentInjuries.length > 0) return true;
-  
-  // Requerir aprobación si hay ejercicios prohibidos por médico
   if (medicalHistory.forbiddenExercises && medicalHistory.forbiddenExercises.length > 0) return true;
   
   return false;
@@ -1103,10 +1197,6 @@ function calculateDifficultyRating(exercises, fitnessLevel) {
   return levelScores[fitnessLevel] || 1;
 }
 
-function calculateExpectedImprovement(commonErrors, priorityAreas) {
-  return `Mejora esperada en ${commonErrors.length} tipos de errores y ${priorityAreas.length} áreas problemáticas en 2-4 semanas`;
-}
-
 async function createTrainerNotification(userId, routineId, routine, adaptationLevel) {
   try {
     await db.collection("trainerNotifications").add({
@@ -1123,7 +1213,8 @@ async function createTrainerNotification(userId, routineId, routine, adaptationL
       metadata: {
         exerciseCount: routine.routine.exercises.length,
         duration: routine.routine.duration,
-        focusAreas: routine.routine.focusAreas
+        focusAreas: routine.routine.focusAreas,
+        gptGenerated: routine.routine.gptGenerated || false
       }
     });
   } catch (error) {
@@ -1156,66 +1247,6 @@ async function updateUserAIStats(userId, aiConfidence, adaptationLevel) {
   }
 }
 
-/**
- * Genera ejercicios de corrección basados en errores comunes
- * @param {Array} commonErrors - Errores más frecuentes
- * @return {Array} Ejercicios de corrección
- */
-function generateCorrectionExercises(commonErrors) {
-  const exerciseMap = {
-    "KNEE_VALGUS": [
-      "Sentadillas con banda",
-      "Pasos laterales con resistencia",
-      "Clamshells",
-      "Puentes de glúteo",
-    ],
-    "ROUNDED_BACK": [
-      "Superman",
-      "Bird dog",
-      "Plancha con extensión",
-      "Estiramiento de pecho",
-    ],
-    "INSUFFICIENT_DEPTH": [
-      "Sentadillas asistidas",
-      "Movilidad de cadera",
-      "Estiramiento de psoas",
-      "Sentadillas con caja",
-    ],
-  };
-
-  const exercises = [];
-  commonErrors.forEach((error) => {
-    const correctionExercises = exerciseMap[error.errorType] || [];
-    exercises.push(...correctionExercises);
-  });
-
-  return [...new Set(exercises)];
-}
-
-/**
- * Calcula nivel de dificultad basado en perfil y errores
- * @param {Object} userProfile - Perfil del usuario
- * @param {Object} errorAnalysis - Análisis de errores
- * @return {string} Nivel de dificultad
- */
-function calculateDifficultyLevel(userProfile, errorAnalysis) {
-  const errorCount = errorAnalysis.commonErrors.length;
-  const criticalCount = errorAnalysis.commonErrors
-      .filter((e) => e.count > 3).length;
-
-  if (criticalCount > 2 || errorCount > 10) return "beginner";
-  if (criticalCount > 1 || errorCount > 5) return "intermediate";
-  return userProfile && userProfile.fitnessLevel ?
-         userProfile.fitnessLevel : "intermediate";
-}
-
-/**
- * Calcula métricas del usuario
- * @param {Object} userStats - Estadísticas del usuario
- * @param {Array} recentAlerts - Alertas recientes
- * @param {string} timeRange - Rango de tiempo
- * @return {Object} Métricas calculadas
- */
 function calculateUserMetrics(userStats, recentAlerts, timeRange) {
   const now = new Date();
   const timeRanges = {
@@ -1235,8 +1266,7 @@ function calculateUserMetrics(userStats, recentAlerts, timeRange) {
 
   return {
     totalAlerts: filteredAlerts.length,
-    criticalAlerts: filteredAlerts.filter((a) => a.severity === "critical")
-        .length,
+    criticalAlerts: filteredAlerts.filter((a) => a.severity === "critical").length,
     improvementTrend: calculateImprovementTrend(filteredAlerts),
     mostCommonError: getMostCommonError(filteredAlerts),
     accuracyScore: calculateAccuracyScore(filteredAlerts),
@@ -1245,11 +1275,6 @@ function calculateUserMetrics(userStats, recentAlerts, timeRange) {
   };
 }
 
-/**
- * Calcula tendencia de mejora
- * @param {Array} alerts - Alertas filtradas
- * @return {string} Tendencia de mejora
- */
 function calculateImprovementTrend(alerts) {
   if (alerts.length < 2) return "insufficient_data";
 
@@ -1257,21 +1282,14 @@ function calculateImprovementTrend(alerts) {
   const firstHalf = alerts.slice(0, midpoint);
   const secondHalf = alerts.slice(midpoint);
 
-  const firstHalfCritical = firstHalf
-      .filter((a) => a.severity === "critical").length;
-  const secondHalfCritical = secondHalf
-      .filter((a) => a.severity === "critical").length;
+  const firstHalfCritical = firstHalf.filter((a) => a.severity === "critical").length;
+  const secondHalfCritical = secondHalf.filter((a) => a.severity === "critical").length;
 
   if (secondHalfCritical < firstHalfCritical) return "improving";
   if (secondHalfCritical > firstHalfCritical) return "declining";
   return "stable";
 }
 
-/**
- * Obtiene el error más común
- * @param {Array} alerts - Alertas filtradas
- * @return {string|null} Error más común
- */
 function getMostCommonError(alerts) {
   if (alerts.length === 0) return null;
 
@@ -1287,11 +1305,6 @@ function getMostCommonError(alerts) {
   return entries[0][0];
 }
 
-/**
- * Calcula score de precisión
- * @param {Array} alerts - Alertas filtradas
- * @return {number} Score de precisión (0-100)
- */
 function calculateAccuracyScore(alerts) {
   if (alerts.length === 0) return 100;
 
