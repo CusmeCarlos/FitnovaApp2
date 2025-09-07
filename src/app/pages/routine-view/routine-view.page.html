@@ -1,0 +1,211 @@
+<!-- src/app/pages/routine-view/routine-view.page.html -->
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tabs/tab3"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Mi Rutina IA</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" (click)="goToProfile()">
+        <ion-icon name="person-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="routine-content">
+  
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <ion-spinner name="circles" class="loading-spinner"></ion-spinner>
+    <p class="loading-text">Cargando rutina...</p>
+  </div>
+
+  <!-- Content -->
+  <div *ngIf="!loading" class="routine-container">
+    
+    <!-- Header Status Card -->
+    <div class="status-card">
+      <div class="status-header">
+        <ion-icon name="fitness-outline" class="status-icon"></ion-icon>
+        <div class="status-info">
+          <h2>Estado de tu Rutina</h2>
+          <ion-chip [color]="getStatusColor()" class="status-chip">
+            <ion-label>{{ getStatusMessage() }}</ion-label>
+          </ion-chip>
+        </div>
+      </div>
+      
+      <!-- Generación Date -->
+      <div *ngIf="routineState.generatedAt" class="status-meta">
+        <ion-icon name="calendar-outline"></ion-icon>
+        <span>Generada: {{ routineState.generatedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+      </div>
+      
+      <!-- Aprobación Date -->
+      <div *ngIf="routineState.approvedAt" class="status-meta">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        <span>Aprobada: {{ routineState.approvedAt | date:'dd/MM/yyyy HH:mm' }}</span>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="routineState.status === RoutineStatus.ERROR" class="error-card">
+      <ion-icon name="warning-outline" class="error-icon"></ion-icon>
+      <h3>Error en Rutina</h3>
+      <p>{{ routineState.error }}</p>
+      <ion-button 
+        expand="block" 
+        color="danger" 
+        (click)="regenerateRoutine()"
+        class="retry-button">
+        <ion-icon name="refresh-outline" slot="start"></ion-icon>
+        Generar Nueva Rutina
+      </ion-button>
+    </div>
+
+    <!-- Routine Content -->
+    <div *ngIf="routineState.routine && routineState.status !== RoutineStatus.ERROR">
+
+      <!-- Routine Overview -->
+      <div class="routine-overview">
+        <div class="overview-header">
+          <h2>{{ getRoutineName() }}</h2>
+          <p class="routine-description">{{ getRoutineDescription() }}</p>
+        </div>
+        
+        <div class="routine-stats">
+          <div class="stat-item">
+            <ion-icon name="time-outline"></ion-icon>
+            <div class="stat-info">
+              <span class="stat-value">{{ formatDuration(getRoutineDuration()) }}</span>
+              <span class="stat-label">Duración</span>
+            </div>
+          </div>
+          
+          <div class="stat-item">
+            <ion-icon name="barbell-outline"></ion-icon>
+            <div class="stat-info">
+              <span class="stat-value">{{ getRoutineExercises().length }}</span>
+              <span class="stat-label">Ejercicios</span>
+            </div>
+          </div>
+          
+          <div class="stat-item">
+            <ion-icon name="analytics-outline"></ion-icon>
+            <div class="stat-info">
+              <span class="stat-value">{{ getRoutineDifficulty() }}</span>
+              <span class="stat-label">Nivel</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Medical Adaptations -->
+      <div *ngIf="getRoutineAdaptations().length" class="medical-adaptations">
+        <h3>
+          <ion-icon name="medical-outline"></ion-icon>
+          Adaptaciones Médicas
+        </h3>
+        <div class="adaptations-list">
+          <div *ngFor="let adaptation of getRoutineAdaptations()" class="adaptation-item">
+            <ion-icon name="alert-circle-outline" color="warning"></ion-icon>
+            <span>{{ adaptation }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exercise List -->
+      <div class="exercises-section">
+        <h3>
+          <ion-icon name="list-outline"></ion-icon>
+          Ejercicios ({{ getRoutineExercises().length }})
+        </h3>
+        
+        <div class="exercises-list">
+          <div 
+            *ngFor="let exercise of getRoutineExercises(); let i = index" 
+            class="exercise-card">
+            
+            <div class="exercise-header">
+              <div class="exercise-number">{{ i + 1 }}</div>
+              <div class="exercise-info">
+                <h4>{{ exercise.name }}</h4>
+                <p class="exercise-target">{{ exercise.targetMuscles?.join(', ') }}</p>
+              </div>
+              <div class="exercise-sets">
+                <span class="sets-text">{{ exercise.sets }}x{{ exercise.reps }}</span>
+                <span *ngIf="exercise.weight" class="weight-text">{{ exercise.weight }}kg</span>
+              </div>
+            </div>
+            
+            <!-- Instructions -->
+            <div *ngIf="exercise.instructions" class="exercise-instructions">
+              <h5>
+                <ion-icon name="information-circle-outline"></ion-icon>
+                Instrucciones
+              </h5>
+              <p>{{ exercise.instructions }}</p>
+            </div>
+            
+            <!-- Adaptations for this exercise -->
+            <div *ngIf="exercise.adaptations?.length" class="exercise-adaptations">
+              <h5>
+                <ion-icon name="medical-outline"></ion-icon>
+                Adaptaciones
+              </h5>
+              <ul>
+                <li *ngFor="let adaptation of exercise.adaptations">{{ adaptation }}</li>
+              </ul>
+            </div>
+            
+            <!-- Rest Time -->
+            <div *ngIf="exercise.restTime" class="exercise-rest">
+              <ion-icon name="hourglass-outline"></ion-icon>
+              <span>Descanso: {{ exercise.restTime }}s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        
+        <!-- Start Training Button (Solo si aprobada) -->
+        <ion-button 
+          *ngIf="routineState.status === RoutineStatus.APPROVED || routineState.status === RoutineStatus.ACTIVE"
+          expand="block" 
+          size="large"
+          color="success"
+          (click)="startTraining()"
+          class="start-training-btn">
+          <ion-icon name="play-outline" slot="start"></ion-icon>
+          {{ routineState.status === RoutineStatus.ACTIVE ? 'Continuar Entrenamiento' : 'Iniciar Entrenamiento' }}
+        </ion-button>
+
+        <!-- Regenerate Button -->
+        <ion-button 
+          *ngIf="routineState.status === RoutineStatus.REJECTED || routineState.status === RoutineStatus.APPROVED"
+          expand="block" 
+          fill="outline"
+          color="primary"
+          (click)="regenerateRoutine()"
+          class="regenerate-btn">
+          <ion-icon name="refresh-outline" slot="start"></ion-icon>
+          Generar Nueva Rutina
+        </ion-button>
+
+        <!-- Waiting Message -->
+        <div *ngIf="routineState.status === RoutineStatus.WAITING_APPROVAL" class="waiting-message">
+          <ion-icon name="hourglass-outline" color="warning"></ion-icon>
+          <h4>Esperando Aprobación</h4>
+          <p>Tu entrenador revisará esta rutina pronto. Te notificaremos cuando esté lista.</p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</ion-content>

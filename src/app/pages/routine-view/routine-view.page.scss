@@ -1,0 +1,523 @@
+// src/app/pages/routine-view/routine-view.page.scss
+
+/* === VARIABLES Y BASE === */
+:root {
+    --routine-bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --routine-bg-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --routine-glass-bg: rgba(255, 255, 255, 0.08);
+    --routine-glass-border: rgba(255, 255, 255, 0.18);
+    --routine-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --routine-text-primary: #ffffff;
+    --routine-text-secondary: rgba(255, 255, 255, 0.8);
+    --routine-success: #10dc60;
+    --routine-warning: #ffce00;
+    --routine-danger: #f04141;
+  }
+  
+  .routine-content {
+    --background: var(--routine-bg-primary);
+    position: relative;
+    
+    &::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--routine-bg-primary);
+      z-index: -1;
+    }
+  }
+  
+  /* === LOADING STATE === */
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 50vh;
+    gap: 20px;
+  }
+  
+  .loading-spinner {
+    --color: var(--routine-text-primary);
+    transform: scale(2);
+  }
+  
+  .loading-text {
+    color: var(--routine-text-primary);
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0;
+  }
+  
+  /* === CONTAINER === */
+  .routine-container {
+    padding: 20px;
+    min-height: 100vh;
+  }
+  
+  /* === STATUS CARD === */
+  .status-card {
+    background: var(--routine-glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--routine-glass-border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--routine-shadow);
+  }
+  
+  .status-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .status-icon {
+    font-size: 32px;
+    color: var(--routine-text-primary);
+  }
+  
+  .status-info h2 {
+    color: var(--routine-text-primary);
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+  }
+  
+  .status-chip {
+    --background: rgba(255, 255, 255, 0.2);
+    --color: var(--routine-text-primary);
+    font-weight: 500;
+  }
+  
+  .status-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--routine-text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  
+    ion-icon {
+      font-size: 16px;
+    }
+  }
+  
+  /* === ERROR CARD === */
+  .error-card {
+    background: rgba(240, 65, 65, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(240, 65, 65, 0.3);
+    border-radius: 20px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  
+  .error-icon {
+    font-size: 48px;
+    color: var(--routine-danger);
+    margin-bottom: 16px;
+  }
+  
+  .error-card h3 {
+    color: var(--routine-text-primary);
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+  }
+  
+  .error-card p {
+    color: var(--routine-text-secondary);
+    margin-bottom: 20px;
+  }
+  
+  .retry-button {
+    --background: var(--routine-danger);
+    --border-radius: 12px;
+    font-weight: 600;
+  }
+  
+  /* === ROUTINE OVERVIEW === */
+  .routine-overview {
+    background: var(--routine-glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--routine-glass-border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--routine-shadow);
+  }
+  
+  .overview-header h2 {
+    color: var(--routine-text-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  
+  .routine-description {
+    color: var(--routine-text-secondary);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+  
+  .routine-stats {
+    display: flex;
+    justify-content: space-around;
+    gap: 16px;
+  }
+  
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    flex: 1;
+    
+    ion-icon {
+      font-size: 24px;
+      color: var(--routine-text-primary);
+      margin-bottom: 8px;
+    }
+  }
+  
+  .stat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .stat-value {
+    color: var(--routine-text-primary);
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+  
+  .stat-label {
+    color: var(--routine-text-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  /* === MEDICAL ADAPTATIONS === */
+  .medical-adaptations {
+    background: rgba(255, 206, 0, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 206, 0, 0.3);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 24px;
+  
+    h3 {
+      color: var(--routine-text-primary);
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+  
+      ion-icon {
+        color: var(--routine-warning);
+      }
+    }
+  }
+  
+  .adaptations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .adaptation-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--routine-text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.4;
+  
+    ion-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+  }
+  
+  /* === EXERCISES SECTION === */
+  .exercises-section {
+    margin-bottom: 32px;
+  
+    h3 {
+      color: var(--routine-text-primary);
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+  
+  .exercises-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  /* === EXERCISE CARD === */
+  .exercise-card {
+    background: var(--routine-glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--routine-glass-border);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--routine-shadow);
+    transition: transform 0.2s ease;
+  
+    &:hover {
+      transform: translateY(-2px);
+    }
+  }
+  
+  .exercise-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .exercise-number {
+    background: var(--routine-bg-secondary);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+  
+  .exercise-info {
+    flex: 1;
+  
+    h4 {
+      color: var(--routine-text-primary);
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+    }
+  }
+  
+  .exercise-target {
+    color: var(--routine-text-secondary);
+    font-size: 0.85rem;
+    margin: 0;
+    text-transform: capitalize;
+  }
+  
+  .exercise-sets {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  
+  .sets-text {
+    color: var(--routine-text-primary);
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  
+  .weight-text {
+    color: var(--routine-text-secondary);
+    font-size: 0.8rem;
+  }
+  
+  /* === EXERCISE DETAILS === */
+  .exercise-instructions {
+    margin-bottom: 12px;
+  
+    h5 {
+      color: var(--routine-text-primary);
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+  
+      ion-icon {
+        font-size: 14px;
+        color: #4fc3f7;
+      }
+    }
+  
+    p {
+      color: var(--routine-text-secondary);
+      font-size: 0.9rem;
+      line-height: 1.4;
+      margin: 0;
+    }
+  }
+  
+  .exercise-adaptations {
+    margin-bottom: 12px;
+  
+    h5 {
+      color: var(--routine-text-primary);
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+  
+      ion-icon {
+        font-size: 14px;
+        color: var(--routine-warning);
+      }
+    }
+  
+    ul {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--routine-text-secondary);
+      font-size: 0.85rem;
+  
+      li {
+        margin-bottom: 4px;
+        line-height: 1.3;
+      }
+    }
+  }
+  
+  .exercise-rest {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--routine-text-secondary);
+    font-size: 0.85rem;
+  
+    ion-icon {
+      font-size: 14px;
+    }
+  }
+  
+  /* === ACTION BUTTONS === */
+  .action-buttons {
+    padding: 20px;
+    margin-top: 20px;
+  }
+  
+  .start-training-btn {
+    --background: var(--routine-success);
+    --border-radius: 16px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    height: 56px;
+    margin-bottom: 16px;
+  
+    &:hover {
+      --background: #0cd654;
+    }
+  }
+  
+  .regenerate-btn {
+    --border-radius: 16px;
+    --border-color: rgba(255, 255, 255, 0.3);
+    --color: var(--routine-text-primary);
+    font-weight: 600;
+    height: 48px;
+  }
+  
+  /* === WAITING MESSAGE === */
+  .waiting-message {
+    background: rgba(255, 206, 0, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 206, 0, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+  
+    ion-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+  
+    h4 {
+      color: var(--routine-text-primary);
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+  
+    p {
+      color: var(--routine-text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.4;
+      margin: 0;
+    }
+  }
+  
+  /* === ANIMATIONS === */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Apply animation class */
+  [fadeInUp] {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+  
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    .routine-container {
+      padding: 16px;
+    }
+  
+    .routine-stats {
+      flex-direction: column;
+      gap: 12px;
+    }
+  
+    .stat-item {
+      flex-direction: row;
+      justify-content: flex-start;
+      text-align: left;
+      gap: 12px;
+  
+      ion-icon {
+        margin-bottom: 0;
+      }
+    }
+  
+    .exercise-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+  
+    .exercise-sets {
+      align-items: flex-start;
+    }
+  }

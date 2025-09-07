@@ -1254,5 +1254,15 @@
 
   &:hover::after {
     transform: translateX(100%);
+
+    .view-routine-btn {
+      --border-color: var(--ion-color-success);
+      --color: var(--ion-color-success);
+      margin-top: 12px;
+      
+      &:hover {
+        --background: rgba(16, 220, 96, 0.1);
+      }
+    }
   }
 }

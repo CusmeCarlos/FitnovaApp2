@@ -126,6 +126,7 @@ export class Tab2Page implements OnInit, OnDestroy {
 
     // Cargar estadísticas del día
     this.loadTodayStats();
+    this.loadActiveRoutine();
   }
 
   ngOnDestroy() {
@@ -138,6 +139,19 @@ export class Tab2Page implements OnInit, OnDestroy {
     return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   }
 
+  private loadActiveRoutine() {
+    const activeRoutineData = localStorage.getItem('activeRoutine');
+    if (activeRoutineData) {
+      try {
+        const routine = JSON.parse(activeRoutineData);
+        console.log('Rutina activa cargada:', routine);
+        // Aquí puedes usar la rutina en Tab2
+        // Por ejemplo: this.currentRoutine = routine;
+      } catch (error) {
+        console.error('Error cargando rutina activa:', error);
+      }
+    }
+  }
   // INICIAR ENTRENAMIENTO
   async startTraining(): Promise<void> {
     try {

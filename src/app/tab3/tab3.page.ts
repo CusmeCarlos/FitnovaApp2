@@ -17,6 +17,8 @@ import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { take } from 'rxjs/operators';
 import { AIGeneratedRoutine } from '../interfaces/profile.interface';
+import { RoutineStateService, RoutineStatus } from '../services/routine-state.service';
+import { AngularFirestore } from '@angular/fire/compat/firestore';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/storage';
 import 'firebase/compat/firestore';
@@ -186,6 +188,9 @@ export class Tab3Page implements OnInit, OnDestroy {
     private actionSheetController: ActionSheetController,
     private loadingController: LoadingController,
     private router: Router,
+    private routineStateService: RoutineStateService,
+    private firestore: AngularFirestore,
+
   ) {
     this.initializeForms();
   }
@@ -198,6 +203,14 @@ export class Tab3Page implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.userSubscription.unsubscribe();
     this.profileSubscription.unsubscribe();
+  }
+  
+  hasActiveRoutine(): boolean {
+    return this.routineStateService.hasActiveRoutine();
+  }
+  
+  viewCurrentRoutine() {
+    this.router.navigate(['/routine-view']);
   }
 
   // ✅ INICIALIZAR SUSCRIPCIONES
@@ -739,9 +752,23 @@ private calculateProfileCompletion(): void {
       // Llamar al servicio para generar rutina
       const result = await this.aiRoutineService.generateAdaptiveRoutine(profileData);
       
-      if (result.success) {
+      if (result.success && result.routine) {
         await this.showToast('🎉 ¡Rutina generada! Esperando aprobación del entrenador', 'success');
         await this.showRoutineDetails(result);
+        
+        if (this.user?.uid) {
+          setTimeout(() => {
+            // Usar directamente el objeto de respuesta
+            this.routineStateService.updateRoutineState({
+              status: 'waiting_approval' as any,
+              routine: result.routine,
+              generatedAt: new Date()
+            });
+            
+            console.log('✅ Estado rutina actualizado');
+          }, 100);
+        }
+        
       } else {
         await this.showToast('❌ Error generando rutina: ' + result.error, 'danger');
       }

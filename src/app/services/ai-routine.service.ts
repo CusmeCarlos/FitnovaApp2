@@ -7,6 +7,7 @@ import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AuthService } from './auth.service';
 import { CloudFunctionsService } from './cloud-functions.service';
 import { ErrorHandlerService } from './error-handler.service';
+
 import { 
   AIGeneratedRoutine, 
   AIRoutineRequest, 
@@ -85,17 +86,15 @@ export class AiRoutineService {
       });
   }
 
-  // ✅ GENERAR RUTINA ADAPTATIVA
   async generateAdaptiveRoutine(profileData: Profile): Promise<AIRoutineResponse> {
     try {
       const user = await this.auth.user$.pipe(take(1)).toPromise();
       if (!user?.uid) {
         throw new Error('Usuario no autenticado');
       }
-
+  
       console.log('🧠 Iniciando generación de rutina IA...');
-
-      // Validar que el perfil esté listo para IA
+  
       if (!this.validateProfileForAI(profileData)) {
         return {
           success: false,
@@ -104,8 +103,7 @@ export class AiRoutineService {
           confidenceScore: 0
         };
       }
-
-      // Preparar solicitud para la IA
+  
       const aiRequest: AIRoutineRequest = {
         userId: user.uid,
         personalInfo: profileData.personalInfo,
@@ -116,30 +114,38 @@ export class AiRoutineService {
         specialRequests: '',
         urgency: 'normal'
       };
+  
+              const cloudResponse = await this.cloudFunctions.generateAdaptiveRoutine(aiRequest);
 
-      // Llamar Cloud Function
-      const cloudResponse = await this.cloudFunctions.generateAdaptiveRoutine(aiRequest);
+        console.log('🔍 DEBUG - cloudResponse completo:', JSON.stringify(cloudResponse, null, 2));
 
-      if (cloudResponse.success && cloudResponse.data) {
-        // Procesar respuesta exitosa
-        const routineData = cloudResponse.data;
-        
-        // Guardar rutina localmente
-        await this.saveGeneratedRoutine(user.uid, routineData.routine);
+        if (cloudResponse.success) {
+          // La respuesta está directamente en cloudResponse.data, no anidada
+          const responseData = cloudResponse.data;
+          
+          console.log('🔍 DEBUG - responseData:', JSON.stringify(responseData, null, 2));
+          
+          if (!responseData || !responseData.routine) {
+            console.error('❌ Estructura de respuesta inválida:', responseData);
+            throw new Error('La Cloud Function no devolvió una rutina válida');
+          }
+          
+          // Guardar rutina localmente
+          await this.saveGeneratedRoutine(user.uid, responseData.routine);
 
-        console.log('✅ Rutina IA generada exitosamente');
-        
-        return {
-          success: true,
-          routineId: routineData.routineId,
-          routine: routineData.routine,
-          needsTrainerApproval: routineData.needsTrainerApproval || true,
-          confidenceScore: routineData.aiConfidence || 85
-        };
-      } else {
-        throw new Error(cloudResponse.error || 'Error desconocido en Cloud Function');
-      }
-
+          console.log('✅ Rutina IA generada exitosamente');
+          
+          return {
+            success: true,
+            routineId: responseData.routineId || 'unknown',
+            routine: responseData.routine,
+            needsTrainerApproval: responseData.needsTrainerApproval || false,
+            confidenceScore: responseData.aiConfidence || 0
+          };
+        } else {
+          throw new Error(cloudResponse.error || 'Error desconocido en Cloud Function');
+        }
+  
     } catch (error: any) {
       console.error('❌ Error generando rutina IA:', error);
       await this.errorHandler.handleGeneralError(error, 'Error generando rutina IA');
@@ -150,6 +156,56 @@ export class AiRoutineService {
         needsTrainerApproval: false,
         confidenceScore: 0
       };
+    }
+  }
+
+  async getCurrentUserRoutine(): Promise<AIGeneratedRoutine | null> {
+    try {
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user) throw new Error('Usuario no autenticado');
+  
+      const routineDoc = await this.firestore
+        .collection('aiRoutines')
+        .doc(user.uid)
+        .get()
+        .toPromise();
+  
+      if (!routineDoc?.exists) {
+        return null;
+      }
+  
+      const data = routineDoc.data() as any;
+      return {
+        ...data,
+        createdAt: data.createdAt,
+        approvedAt: data.approvedAt
+      } as AIGeneratedRoutine;
+  
+    } catch (error) {
+      console.error('Error obteniendo rutina actual:', error);
+      return null;
+    }
+  }
+  
+  // Establecer rutina activa para entrenamiento
+  async setActiveRoutineForTraining(routine: AIGeneratedRoutine): Promise<void> {
+    try {
+      // Guardar en localStorage para Tab2
+      localStorage.setItem('activeRoutine', JSON.stringify(routine));
+      
+      // Actualizar estado en Firestore
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (user) {
+        await this.firestore
+          .collection('aiRoutines')
+          .doc(user.uid)
+          .update({
+            status: 'active',
+            lastActiveAt: new Date()
+          });
+      }
+    } catch (error) {
+      console.error('Error activando rutina:', error);
     }
   }
 
@@ -181,30 +237,25 @@ export class AiRoutineService {
 
     return true;
   }
-
-  // ✅ GUARDAR RUTINA GENERADA
-  private async saveGeneratedRoutine(uid: string, routineData: AIGeneratedRoutine): Promise<void> {
-    try {
-      const routineDoc = {
-        ...routineData,
-        userId: uid,
-        generatedAt: new Date(),
-        lastUpdated: new Date()
-      };
-
-      await this.firestore
-        .collection(this.COLLECTION)
-        .doc(uid)
-        .collection('routines')
-        .add(routineDoc);
-
-      console.log('💾 Rutina guardada en Firestore');
-    } catch (error) {
-      console.error('❌ Error guardando rutina:', error);
-      throw error;
-    }
+  private async saveGeneratedRoutine(uid: string, routineData: any): Promise<void> {
+    console.log('💾 Guardando rutina:', routineData);
+    
+    const routineDoc = {
+      ...routineData,
+      userId: uid,
+      generatedAt: new Date(),
+      lastUpdated: new Date(),
+      status: 'pending_approval'
+    };
+  
+    // Usar Firebase directamente sin AngularFirestore
+    const { getFirestore, doc, setDoc } = await import('firebase/firestore');
+    const db = getFirestore();
+    const docRef = doc(db, this.COLLECTION, uid);
+    
+    await setDoc(docRef, routineDoc);
+    console.log('💾 Rutina guardada correctamente');
   }
-
   // ✅ OBTENER RUTINA ACTUAL
   getCurrentRoutine(): Observable<AIGeneratedRoutine | null> {
     return this.currentRoutine$;

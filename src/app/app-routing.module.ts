@@ -46,7 +46,11 @@ const routes: Routes = [
   {
     path: '**',
     redirectTo: 'auth/login'
+  },  {
+    path: 'routine-view',
+    loadChildren: () => import('./pages/routine-view/routine-view.module').then( m => m.RoutineViewPageModule)
   }
+
 ];
 
 @NgModule({

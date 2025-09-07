@@ -100,35 +100,38 @@ export class CloudFunctionsService {
     }
   }
 
-  // ✅ GENERAR RUTINA ADAPTATIVA CON GPT
   async generateAdaptiveRoutine(profileData: any): Promise<CloudFunctionResponse> {
     try {
       const user = await this.auth.user$.pipe(take(1)).toPromise();
       if (!user) {
         throw new Error('Usuario no autenticado');
       }
-
-      const routineRequest: GenerateRoutineRequest = {
-        uid: user.uid,
-        userProfile: profileData.personalInfo,
-        fitnessLevel: profileData.fitnessLevel,
-        goals: profileData.goals || [],
-        medicalHistory: profileData.medicalHistory,
-        currentRoutine: profileData.currentRoutine
+  
+      const requestData = {
+        userId: user.uid,
+        personalInfo: profileData.personalInfo || {},
+        medicalHistory: profileData.medicalHistory || {},
+        fitnessGoals: profileData.fitnessGoals || {},
+        fitnessLevel: profileData.fitnessLevel || 'beginner',
+        trainingPreferences: profileData.trainingPreferences || {}
       };
-
+  
+      console.log('📤 Enviando a Cloud Function:', requestData);
+  
       const generateRoutine = this.functions.httpsCallable('generateAdaptiveRoutine');
-      const result = await generateRoutine(routineRequest).toPromise();
+      const result = await generateRoutine(requestData).toPromise();
       
-      console.log('🏋️ Rutina generada exitosamente:', result);
+      console.log('📥 Respuesta Cloud Function:', result);
+      
+      // La respuesta de Cloud Functions viene en result directamente, no en result.data
       return {
         success: true,
-        data: result,
+        data: result,  // result ES la respuesta de la Cloud Function
         timestamp: new Date()
       };
+      
     } catch (error: any) {
-      console.error('🛑 Error generando rutina:', error);
-      await this.errorHandler.handleGeneralError(error, 'Error generando rutina personalizada');
+      console.error('❌ Error detallado:', error);
       return {
         success: false,
         error: error.message || 'Error generando rutina',
