@@ -709,21 +709,20 @@ private calculateProfileCompletion(): void {
     await alert.present();
   }
 
-  // ✅ GENERAR RUTINA CON IA
   async generateAIRoutine(): Promise<void> {
     if (!this.isAIReady) {
       await this.showToast('⚠️ Completa tu perfil médico primero', 'warning');
       return;
     }
-
+  
     const loading = await this.loadingController.create({
       message: '🧠 La IA está creando tu rutina personalizada...',
       spinner: 'dots'
     });
     await loading.present();
-
+  
     this.isGeneratingRoutine = true;
-
+  
     try {
       // Recopilar todos los datos del perfil
       const profileData: Profile = {
@@ -748,33 +747,44 @@ private calculateProfileCompletion(): void {
         profileComplete: true,
         aiReadinessPercentage: this.aiReadinessPercentage
       };
-
+  
+      console.log('🧠 Enviando datos a AI-Routine Service:', profileData);
+  
       // Llamar al servicio para generar rutina
       const result = await this.aiRoutineService.generateAdaptiveRoutine(profileData);
       
+      console.log('🔍 Resultado generación:', result);
+      
       if (result.success && result.routine) {
-        await this.showToast('🎉 ¡Rutina generada! Esperando aprobación del entrenador', 'success');
-        await this.showRoutineDetails(result);
+        // ✅ ACTUALIZAR ESTADO CORRECTAMENTE
+        const routineStatus = result.needsTrainerApproval ? 
+          RoutineStatus.WAITING_APPROVAL : 
+          RoutineStatus.APPROVED;
+  
+        this.routineStateService.updateRoutineState({
+          status: routineStatus,
+          routine: result.routine,
+          generatedAt: new Date(),
+          approvedAt: result.needsTrainerApproval ? undefined : new Date()
+        });
+  
+        await this.showToast('🎉 ¡Rutina generada exitosamente!', 'success');
         
-        if (this.user?.uid) {
-          setTimeout(() => {
-            // Usar directamente el objeto de respuesta
-            this.routineStateService.updateRoutineState({
-              status: 'waiting_approval' as any,
-              routine: result.routine,
-              generatedAt: new Date()
-            });
-            
-            console.log('✅ Estado rutina actualizado');
-          }, 100);
-        }
+        console.log('🚀 Navegando a routine-view...');
+        
+        // ✅ PEQUEÑA PAUSA PARA ASEGURAR ESTADO ACTUALIZADO
+        setTimeout(async () => {
+          const navigationResult = await this.router.navigate(['/routine-view']);
+          console.log('🔍 Resultado navegación:', navigationResult);
+        }, 500);
         
       } else {
-        await this.showToast('❌ Error generando rutina: ' + result.error, 'danger');
+        throw new Error(result.error || 'Error generando rutina');
       }
-    } catch (error) {
-      console.error('Error generando rutina IA:', error);
-      await this.showToast('❌ Error inesperado generando rutina', 'danger');
+  
+    } catch (error: any) {
+      console.error('❌ Error generando rutina IA:', error);
+      await this.showToast(`❌ Error: ${error.message}`, 'danger');
     } finally {
       await loading.dismiss();
       this.isGeneratingRoutine = false;

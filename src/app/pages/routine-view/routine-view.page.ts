@@ -1,4 +1,6 @@
 // src/app/pages/routine-view/routine-view.page.ts
+// COMPONENTE CORREGIDO SIN ERRORES DE INYECCIÓN
+
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -71,17 +73,18 @@ export class RoutineViewPage implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    // Código existente...
+    console.log(' RoutineViewPage iniciado');
     
-    // Debug para ver la estructura
+    // Suscribirse al estado de rutinas
     this.stateSubscription = this.routineStateService.routineState$.subscribe(
       state => {
         this.routineState = state;
-        console.log('🔍 Estado rutina completo:', JSON.stringify(state, null, 2));
-        console.log('🔍 Estructura routine:', state.routine);
+        console.log(' Estado rutina completo:', JSON.stringify(state, null, 2));
+        console.log(' Estructura routine:', state.routine);
       }
     );
   
+    // Cargar rutina actual
     this.loadCurrentRoutine();
   }
 
@@ -91,66 +94,77 @@ export class RoutineViewPage implements OnInit, OnDestroy {
     }
   }
 
- // En routine-view.page.ts, reemplaza el método loadCurrentRoutine:
+  async loadCurrentRoutine() {
+    try {
+      this.loading = true;
+      console.log(' Iniciando carga de rutina...');
 
- async loadCurrentRoutine() {
-  try {
-    this.loading = true;
-
-    // Buscar directamente en la colección aiRoutines
-    const user = await this.auth.user$.pipe(take(1)).toPromise();
-    if (!user) {
-      this.router.navigate(['/tabs/tab3']);
-      return;
-    }
-
-    console.log('🔍 Buscando rutina para usuario:', user.uid);
-
-    const routineDoc = await this.firestore
-      .collection('aiRoutines')
-      .doc(user.uid)
-      .get()
-      .toPromise();
-
-    console.log('🔍 Documento encontrado:', routineDoc?.exists);
-    console.log('🔍 Datos del documento:', routineDoc?.data());
-
-    if (routineDoc && routineDoc.exists) {
-      const routineData = routineDoc.data() as any;
-      
-      // La rutina está en routineData.routine, no directamente en routineData
-      if (routineData && routineData.routine) {
-        let status: RoutineStatus = RoutineStatus.WAITING_APPROVAL;
-        
-        if (routineData.status === 'approved') {
-          status = RoutineStatus.APPROVED;
-        } else if (routineData.status === 'rejected') {
-          status = RoutineStatus.REJECTED;
-        }
-
-        this.routineStateService.updateRoutineState({
-          status,
-          routine: routineData, // Pasar todo el objeto
-          generatedAt: routineData.generatedAt,
-          approvedAt: routineData.approvedAt
-        });
-
-        console.log('✅ Rutina cargada exitosamente');
+      // Verificar si ya tenemos rutina en el estado (síncrono)
+      const currentState = this.routineStateService.getCurrentState();
+      if (currentState?.routine) {
+        this.routineState = currentState;
+        console.log(' Rutina ya disponible en estado');
+        this.loading = false;
         return;
       }
+
+      // Obtener usuario actual
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user) {
+        console.log(' Usuario no autenticado, redirigiendo...');
+        this.router.navigate(['/tabs/tab3']);
+        return;
+      }
+
+      console.log(' Buscando rutina para usuario:', user.uid);
+
+      // USAR FIRESTORE CORRECTAMENTE
+      const routineDoc = await this.firestore
+        .collection('aiRoutines')
+        .doc(user.uid)
+        .get()
+        .toPromise();
+
+      console.log(' Documento encontrado:', routineDoc?.exists);
+
+      if (routineDoc && routineDoc.exists) {
+        const routineData = routineDoc.data() as any;
+        console.log(' Datos del documento:', routineData);
+        
+        if (routineData && routineData.routine) {
+          let status: RoutineStatus = RoutineStatus.WAITING_APPROVAL;
+          
+          if (routineData.status === 'approved') {
+            status = RoutineStatus.APPROVED;
+          } else if (routineData.status === 'rejected') {
+            status = RoutineStatus.REJECTED;
+          }
+
+          this.routineStateService.updateRoutineState({
+            status,
+            routine: routineData,
+            generatedAt: routineData.generatedAt,
+            approvedAt: routineData.approvedAt
+          });
+
+          console.log(' Rutina cargada exitosamente');
+          return;
+        }
+      }
+
+      console.log(' No se encontró rutina válida');
+      this.router.navigate(['/tabs/tab3']);
+
+    } catch (error) {
+      console.error(' Error cargando rutina:', error);
+      this.routineStateService.setError('Error cargando rutina');
+      
+      // NO redirigir automáticamente en caso de error
+      // this.router.navigate(['/tabs/tab3']);
+    } finally {
+      this.loading = false;
     }
-
-    console.log('❌ No se encontró rutina válida');
-    this.router.navigate(['/tabs/tab3']);
-
-  } catch (error) {
-    console.error('❌ Error cargando rutina:', error);
-    this.routineStateService.setError('Error cargando rutina');
-    this.router.navigate(['/tabs/tab3']);
-  } finally {
-    this.loading = false;
   }
-}
 
   async regenerateRoutine() {
     const alert = await this.alertController.create({
@@ -288,28 +302,27 @@ export class RoutineViewPage implements OnInit, OnDestroy {
     return `${hours}h ${mins}min`;
   }
 
-// Corrige estos métodos auxiliares:
-getRoutineName(): string {
-  return this.routineState.routine?.routine?.name || 'Rutina sin nombre';
-}
+  getRoutineName(): string {
+    return this.routineState.routine?.routine?.name || 'Rutina sin nombre';
+  }
 
-getRoutineDescription(): string {
-  return this.routineState.routine?.routine?.description || 'Sin descripción';
-}
+  getRoutineDescription(): string {
+    return this.routineState.routine?.routine?.description || 'Sin descripción';
+  }
 
-getRoutineDuration(): number {
-  return this.routineState.routine?.routine?.duration || 0;
-}
+  getRoutineDuration(): number {
+    return this.routineState.routine?.routine?.duration || 0;
+  }
 
-getRoutineExercises(): any[] {
-  return this.routineState.routine?.routine?.exercises || [];
-}
+  getRoutineExercises(): any[] {
+    return this.routineState.routine?.routine?.exercises || [];
+  }
 
-getRoutineDifficulty(): string {
-  return this.routineState.routine?.routine?.difficulty || 'No definido';
-}
+  getRoutineDifficulty(): string {
+    return this.routineState.routine?.routine?.difficulty || 'No definido';
+  }
 
-getRoutineAdaptations(): string[] {
-  return this.routineState.routine?.routine?.adaptations || [];
-}
+  getRoutineAdaptations(): string[] {
+    return this.routineState.routine?.routine?.adaptations || [];
+  }
 }

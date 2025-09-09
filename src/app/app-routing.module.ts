@@ -1,5 +1,5 @@
 // src/app/app-routing.module.ts
-// ✅ ROUTING LIMPIO - SOLO RUTAS DOCUMENTADAS
+// ✅ ROUTING CORREGIDO - ORDEN CORRECTO DE RUTAS
 
 import { NgModule } from '@angular/core';
 import { PreloadAllModules, RouterModule, Routes } from '@angular/router';
@@ -34,6 +34,13 @@ const routes: Routes = [
     // ✅ Requiere autenticación para acceder
     canActivate: [AuthGuard]
   },
+
+  // ✅ RUTA ROUTINE-VIEW - DEBE IR ANTES DEL WILDCARD
+  {
+    path: 'routine-view',
+    loadChildren: () => import('./pages/routine-view/routine-view.module').then(m => m.RoutineViewPageModule),
+    canActivate: [AuthGuard] // ✅ Agregar protección con autenticación
+  },
   
   // ✅ REDIRECCIONES
   {
@@ -42,15 +49,11 @@ const routes: Routes = [
     pathMatch: 'full'
   },
   
-  // ✅ RUTA FALLBACK - Todo lo no encontrado va a login
+  // ✅ RUTA FALLBACK - ESTA DEBE IR AL FINAL
   {
     path: '**',
     redirectTo: 'auth/login'
-  },  {
-    path: 'routine-view',
-    loadChildren: () => import('./pages/routine-view/routine-view.module').then( m => m.RoutineViewPageModule)
   }
-
 ];
 
 @NgModule({

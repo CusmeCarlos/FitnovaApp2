@@ -8,7 +8,6 @@ const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {getMessaging} = require("firebase-admin/messaging");
 const {OpenAI} = require("openai");
-const apiKey = process.env.OPENAI_API_KEY;
 const functions = require("firebase-functions");
 
 
@@ -25,23 +24,31 @@ const db = getFirestore();
 const messaging = getMessaging();
 
 // ✅ INICIALIZAR OPENAI CON MANEJO DE ERRORES
+// REEMPLAZAR la sección de inicialización OpenAI con:
 let openai = null;
 try {
+  // Solo usar process.env, eliminar functions.config()
   const apiKey = process.env.OPENAI_API_KEY || functions.config().openai?.key;
+  
+  console.log("🔍 DEBUG - Variables de entorno:");
+  console.log("🔍 process.env.OPENAI_API_KEY existe:", !!process.env.OPENAI_API_KEY);
+  console.log("🔍 API Key preview:", apiKey ? apiKey.substring(0, 10) + "..." : "NO_KEY");
   
   if (!apiKey) {
     logger.warn("⚠️ OPENAI_API_KEY no encontrada en variables de entorno");
+    console.log("❌ OpenAI NO INICIALIZADO - Sin API Key");
   } else {
     openai = new OpenAI({
       apiKey: apiKey,
     });
     logger.info("✅ OpenAI inicializado correctamente");
+    console.log("✅ OpenAI object creado exitosamente");
   }
 } catch (error) {
   logger.error("❌ Error inicializando OpenAI:", error);
+  console.log("❌ Error específico:", error.message);
   openai = null;
 }
-
 // 🔔 FUNCIÓN PRINCIPAL - ENVIAR NOTIFICACIÓN AL ENTRENADOR
 exports.sendTrainerNotification = onCall(async (request) => {
   try {
@@ -554,16 +561,23 @@ async function generatePersonalizedRoutine(profileData) {
   
   try {
     logger.info("🧠 Iniciando generación híbrida: Algoritmo Local + GPT-4...");
+    console.log("🔍 DEBUG - generatePersonalizedRoutine iniciada");
+    console.log("🔍 DEBUG - openai object existe:", !!openai);
+    console.log("🔍 DEBUG - typeof openai:", typeof openai);
     
     const safeExercises = await getSafeExercisesForProfile(medicalHistory, fitnessLevel);
     const goalSpecificExercises = getExercisesForGoals(fitnessGoals.primaryGoals, fitnessLevel);
     const correctiveExercises = getCorrectiveExercises(errorAnalysis.commonErrors, errorAnalysis.priorityAreas);
     
+    console.log("🔍 DEBUG - Verificando condición para GPT...");
+    
     if (openai) {
+      console.log("✅ DEBUG - OpenAI disponible, intentando usar GPT-4...");
       try {
         const medicalContext = prepareMedicalContextForGPT(medicalHistory, errorAnalysis);
         const userProfile = prepareUserProfileForGPT(personalInfo, fitnessGoals, fitnessLevel, trainingPreferences);
         
+        console.log("🔍 DEBUG - Llamando generateRoutineWithGPT...");
         const gptRoutine = await generateRoutineWithGPT(userProfile, medicalContext, {
           safeExercises,
           goalSpecificExercises,
@@ -571,32 +585,54 @@ async function generatePersonalizedRoutine(profileData) {
           duration: trainingPreferences?.maxSessionDuration || 30
         });
         
+        console.log("✅ DEBUG - GPT respondió exitosamente!");
+        console.log("🔍 DEBUG - gptRoutine:", JSON.stringify(gptRoutine, null, 2));
+        
         const enhancedRoutine = validateAndEnhanceGPTRoutine(gptRoutine, safeExercises, medicalHistory);
         
         logger.info("✅ Rutina generada exitosamente con GPT-4");
+        console.log("🎉 DEBUG - Rutina GPT final:", enhancedRoutine);
         return enhancedRoutine;
         
       } catch (gptError) {
+        console.log("❌ DEBUG - Error específico con GPT:", gptError.message);
+        console.log("❌ DEBUG - Stack trace GPT:", gptError.stack);
         logger.warn("⚠️ Error con GPT, usando algoritmo local como fallback:", gptError.message);
       }
+    } else {
+      console.log("❌ DEBUG - OpenAI NO está disponible, usando algoritmo local directamente");
     }
     
-    return await generateLocalRoutine(profileData);
+    console.log("🔄 DEBUG - Ejecutando fallback a algoritmo local...");
+    const localRoutine = await generateLocalRoutine(profileData);
+    console.log("📋 DEBUG - Rutina local generada:", localRoutine);
+    return localRoutine;
     
   } catch (error) {
+    console.log("❌ DEBUG - Error general en generatePersonalizedRoutine:", error.message);
     logger.error("❌ Error en generación de rutina:", error);
     return await generateLocalRoutine(profileData);
   }
 }
 
 async function generateRoutineWithGPT(userProfile, medicalContext, exerciseOptions) {
+  console.log("🔍 DEBUG - Entrando a generateRoutineWithGPT");
+  console.log("🔍 DEBUG - openai object disponible:", !!openai);
+  
   if (!openai) {
+    console.log("❌ DEBUG - OpenAI no disponible en generateRoutineWithGPT");
     throw new Error("OpenAI no está disponible");
   }
 
+  console.log("🔍 DEBUG - Creando prompt para GPT...");
   const prompt = createIntelligentPromptForGPT(userProfile, medicalContext, exerciseOptions);
+  console.log("🔍 DEBUG - Prompt creado, longitud:", prompt.length);
+  console.log("🔍 DEBUG - Prompt preview:", prompt.substring(0, 200) + "...");
   
   try {
+    console.log("🔍 DEBUG - Realizando llamada a OpenAI API...");
+    console.log("🔍 DEBUG - Modelo a usar: gpt-4o-mini");
+    
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -622,19 +658,40 @@ async function generateRoutineWithGPT(userProfile, medicalContext, exerciseOptio
       temperature: 0.7,
     });
 
+    console.log("✅ DEBUG - OpenAI API respondió exitosamente!");
+    console.log("🔍 DEBUG - Respuesta completa:", JSON.stringify(completion, null, 2));
+    console.log("🔍 DEBUG - Usage tokens:", completion.usage);
+
     const responseText = completion.choices[0].message.content;
+    console.log("🔍 DEBUG - Contenido de respuesta:", responseText);
+    
     const cleanedResponse = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    console.log("🔍 DEBUG - Respuesta limpia:", cleanedResponse);
+    
     const gptResult = JSON.parse(cleanedResponse);
+    console.log("🔍 DEBUG - JSON parseado:", gptResult);
 
     logger.info("✅ GPT-4 generó rutina exitosamente");
     
-    return {
+    const finalResult = {
       ...gptResult,
       gptGenerated: true,
       generatedAt: new Date()
     };
+    
+    console.log("🎉 DEBUG - Resultado final GPT:", finalResult);
+    return finalResult;
 
   } catch (error) {
+    console.log("❌ DEBUG - Error específico en OpenAI call:", error.message);
+    console.log("❌ DEBUG - Error stack completo:", error.stack);
+    console.log("❌ DEBUG - Error type:", error.constructor.name);
+    
+    if (error.response) {
+      console.log("❌ DEBUG - Error response status:", error.response.status);
+      console.log("❌ DEBUG - Error response data:", error.response.data);
+    }
+    
     logger.error("❌ Error llamando a GPT-4:", error);
     throw new Error(`GPT Error: ${error.message}`);
   }
