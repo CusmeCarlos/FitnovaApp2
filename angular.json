@@ -32,7 +32,13 @@
               }
             ],
             "styles": ["src/global.scss", "src/theme/variables.scss"],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "lodash",
+              "firebase/compat/app",
+              "firebase/compat/auth",
+              "firebase/compat/firestore"
+            ]
           },
           "configurations": {
             "production": {

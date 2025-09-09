@@ -1,32 +1,56 @@
-// src/app/tab1/components/training-history-modal.component.ts
-// ✅ REEMPLAZAR IMPORTS COMPLETOS:
+// src/app/tab1/components/training-history-modal.component.ts - CREAR ARCHIVO NUEVO
+// ✅ COMPONENTE MODAL PARA HISTORIAL DE ENTRENAMIENTOS
 
-import { Component, Input, OnInit, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
-import { ModalController } from '@ionic/angular';
-import { Chart, ChartConfiguration } from 'chart.js/auto';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonicModule } from '@ionic/angular';
-
-interface TrainingSession {
-  date: string;
-  exercise: string;
-  duration: number;
-  repetitions: number;
-  errorsCount: number;
-  accuracy: number;
-  sessionId: string;
-}
+import { ModalController } from '@ionic/angular';
+import { 
+  IonHeader, 
+  IonToolbar, 
+  IonTitle, 
+  IonContent, 
+  IonButton, 
+  IonButtons, 
+  IonIcon, 
+  IonLabel,
+  IonItem,
+  IonList,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardContent,
+  IonChip,
+  IonNote
+} from "@ionic/angular/standalone";
 
 @Component({
   selector: 'app-training-history-modal',
   standalone: true,
-  imports: [CommonModule, IonicModule], // ✅ AGREGAR IMPORTS
+  imports: [
+    CommonModule,
+    IonHeader,
+    IonToolbar,
+    IonTitle,
+    IonContent,
+    IonButton,
+    IonButtons,
+    IonIcon,
+    IonLabel,
+    IonItem,
+    IonList,
+    IonCard,
+    IonCardHeader,
+    IonCardTitle,
+    IonCardContent,
+    IonChip,
+    IonNote
+  ],
   template: `
     <ion-header>
       <ion-toolbar color="primary">
         <ion-title>Historial de Entrenamientos</ion-title>
         <ion-buttons slot="end">
-          <ion-button (click)="closeModal()">
+          <ion-button fill="clear" (click)="dismiss()">
             <ion-icon name="close"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -35,225 +59,204 @@ interface TrainingSession {
 
     <ion-content class="history-content">
       
-      <!-- Resumen rápido -->
-      <div class="summary-section">
-        <h3>Resumen General</h3>
-        <div class="summary-grid">
-          <div class="summary-card">
-            <ion-icon name="calendar-outline"></ion-icon>
-            <div class="summary-value">{{ getSummary().totalSessions }}</div>
-            <div class="summary-label">Sesiones</div>
-          </div>
-          <div class="summary-card">
-            <ion-icon name="time-outline"></ion-icon>
-            <div class="summary-value">{{ getSummary().totalDuration }}</div>
-            <div class="summary-label">Tiempo Total</div>
-          </div>
-          <div class="summary-card">
-            <ion-icon name="fitness-outline"></ion-icon>
-            <div class="summary-value">{{ getSummary().totalReps }}</div>
-            <div class="summary-label">Repeticiones</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Gráfico de progreso -->
-      <div class="chart-section" *ngIf="historyData && historyData.length > 0">
-        <h3>Progreso de Precisión</h3>
-        <div class="chart-container">
-          <canvas #progressChart></canvas>
-        </div>
-      </div>
-
-      <!-- Lista de sesiones -->
-      <div class="sessions-section">
-        <h3>Últimas Sesiones</h3>
-        <ion-card *ngFor="let session of getRecentSessions()" class="session-card">
-          <ion-card-header>
-            <div class="session-header">
-              <div class="session-info">
-                <ion-card-title>{{ session.exercise }}</ion-card-title>
-                <ion-card-subtitle>{{ formatDate(session.date) }}</ion-card-subtitle>
-              </div>
-              <div class="accuracy-badge" [class.high]="session.accuracy >= 85" [class.medium]="session.accuracy >= 70 && session.accuracy < 85" [class.low]="session.accuracy < 70">
-                {{ session.accuracy }}%
-              </div>
+      <!-- Resumen de métricas -->
+      <ion-card *ngIf="userMetrics" class="metrics-summary">
+        <ion-card-header>
+          <ion-card-title>Resumen General</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <div class="metrics-grid">
+            <div class="metric-item">
+              <span class="metric-value">{{ userMetrics.totalWorkouts }}</span>
+              <span class="metric-label">Entrenamientos</span>
             </div>
-          </ion-card-header>
-          <ion-card-content>
-            <div class="session-stats">
-              <div class="stat">
-                <ion-icon name="time-outline"></ion-icon>
-                {{ formatDuration(session.duration) }}
-              </div>
-              <div class="stat">
-                <ion-icon name="repeat-outline"></ion-icon>
-                {{ session.repetitions }} reps
-              </div>
-              <div class="stat">
-                <ion-icon name="warning-outline" [color]="session.errorsCount > 5 ? 'warning' : 'medium'"></ion-icon>
-                {{ session.errorsCount }} errores
-              </div>
+            <div class="metric-item">
+              <span class="metric-value">{{ userMetrics.accuracy }}%</span>
+              <span class="metric-label">Precisión</span>
             </div>
-          </ion-card-content>
-        </ion-card>
+            <div class="metric-item">
+              <span class="metric-value">{{ userMetrics.totalHours.toFixed(1) }}h</span>
+              <span class="metric-label">Tiempo Total</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-value">{{ userMetrics.currentStreak }}</span>
+              <span class="metric-label">Racha Actual</span>
+            </div>
+          </div>
+        </ion-card-content>
+      </ion-card>
 
-        <!-- Estado vacío -->
-        <div class="empty-state" *ngIf="!historyData || historyData.length === 0">
-          <ion-icon name="calendar-outline" color="medium"></ion-icon>
-          <h3>Sin entrenamientos</h3>
-          <p>Comienza tu primer entrenamiento para ver tu historial aquí</p>
-          <ion-button color="primary" (click)="startTraining()">
-            <ion-icon name="play-outline" slot="start"></ion-icon>
-            Comenzar Ahora
-          </ion-button>
-        </div>
-      </div>
+      <!-- Lista de entrenamientos -->
+      <ion-card *ngIf="historyData.length > 0" class="history-list">
+        <ion-card-header>
+          <ion-card-title>Sesiones Recientes</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-list>
+            <ion-item *ngFor="let session of historyData; trackBy: trackBySesion" class="session-item">
+              <div slot="start" class="session-icon">
+                <ion-icon [name]="getExerciseIcon(session.exercise)" [color]="getAccuracyColor(session.accuracy)"></ion-icon>
+              </div>
+              
+              <ion-label>
+                <h3>{{ session.exercise }}</h3>
+                <p>{{ formatDate(session.date) }}</p>
+                <ion-note color="medium">
+                  {{ session.duration }} min • {{ session.repetitions }} reps
+                </ion-note>
+              </ion-label>
+              
+              <div slot="end" class="session-stats">
+                <ion-chip [color]="getAccuracyColor(session.accuracy)" class="accuracy-chip">
+                  {{ session.accuracy }}%
+                </ion-chip>
+                <ion-note *ngIf="session.errorsCount > 0" color="warning">
+                  {{ session.errorsCount }} errores
+                </ion-note>
+              </div>
+            </ion-item>
+          </ion-list>
+        </ion-card-content>
+      </ion-card>
+
+      <!-- Estado vacío -->
+      <ion-card *ngIf="historyData.length === 0" class="empty-state">
+        <ion-card-content>
+          <div class="empty-content">
+            <ion-icon name="fitness-outline" size="large" color="medium"></ion-icon>
+            <h3>Sin historial disponible</h3>
+            <p>Completa tu primer entrenamiento para ver tu progreso aquí.</p>
+            <ion-button expand="block" (click)="startTraining()">
+              <ion-icon name="play-outline" slot="start"></ion-icon>
+              Comenzar Entrenamiento
+            </ion-button>
+          </div>
+        </ion-card-content>
+      </ion-card>
 
     </ion-content>
   `,
   styles: [`
     .history-content {
-      --padding-start: 1rem;
-      --padding-end: 1rem;
+      --background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
     }
 
-    .summary-section, .chart-section, .sessions-section {
-      margin: 1.5rem 0;
+    .metrics-summary {
+      margin: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    .summary-section h3, .chart-section h3, .sessions-section h3 {
-      color: var(--ion-color-primary);
-      font-weight: 600;
-      margin-bottom: 1rem;
-    }
-
-    .summary-grid {
+    .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      grid-template-columns: repeat(2, 1fr);
       gap: 1rem;
-    }
-
-    .summary-card {
-      background: var(--ion-color-light);
-      border-radius: 12px;
-      padding: 1rem;
       text-align: center;
-      border: 1px solid var(--ion-color-light-shade);
     }
 
-    .summary-card ion-icon {
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .metric-value {
       font-size: 1.5rem;
+      font-weight: bold;
       color: var(--ion-color-primary);
     }
 
-    .summary-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--ion-color-primary);
-      margin: 0.5rem 0;
-    }
-
-    .summary-label {
+    .metric-label {
       font-size: 0.8rem;
       color: var(--ion-color-medium);
       text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    .chart-container {
-      background: white;
-      border-radius: 12px;
-      padding: 1rem;
-      height: 200px;
+    .history-list {
+      margin: 0 1rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    .session-card {
-      margin-bottom: 1rem;
-      border-radius: 12px;
+    .session-item {
+      --background: transparent;
+      --border-color: rgba(255, 255, 255, 0.1);
+      margin-bottom: 0.5rem;
     }
 
-    .session-header {
+    .session-icon {
+      width: 40px;
+      height: 40px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-    }
-
-    .accuracy-badge {
-      padding: 0.3rem 0.8rem;
-      border-radius: 20px;
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-
-    .accuracy-badge.high {
-      background: var(--ion-color-success-tint);
-      color: var(--ion-color-success-shade);
-    }
-
-    .accuracy-badge.medium {
-      background: var(--ion-color-warning-tint);
-      color: var(--ion-color-warning-shade);
-    }
-
-    .accuracy-badge.low {
-      background: var(--ion-color-danger-tint);
-      color: var(--ion-color-danger-shade);
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
     }
 
     .session-stats {
       display: flex;
-      justify-content: space-around;
-      margin-top: 0.5rem;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.25rem;
     }
 
-    .stat {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-      font-size: 0.9rem;
-      color: var(--ion-color-medium);
+    .accuracy-chip {
+      font-size: 0.75rem;
+      height: 24px;
     }
 
     .empty-state {
-      text-align: center;
-      padding: 2rem;
-      color: var(--ion-color-medium);
+      margin: 2rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    .empty-state ion-icon {
-      font-size: 4rem;
+    .empty-content {
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+
+    .empty-content ion-icon {
       margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-content h3 {
+      margin: 1rem 0 0.5rem;
+      color: var(--ion-color-light);
+    }
+
+    .empty-content p {
+      color: var(--ion-color-medium);
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
   `]
 })
-export class TrainingHistoryModalComponent implements OnInit, AfterViewInit, OnDestroy {
-  @Input() historyData: TrainingSession[] = [];
-  @Input() userMetrics: any;
-  @ViewChild('progressChart', { static: false }) chartCanvas!: ElementRef;
-
-  private progressChart: Chart | null = null;
+export class TrainingHistoryModalComponent implements OnInit {
+  @Input() historyData: any[] = [];
+  @Input() userMetrics: any = null;
 
   constructor(private modalController: ModalController) {}
 
   ngOnInit() {
-    if (!this.historyData || this.historyData.length === 0) {
-      this.generateMockData();
-    }
+    console.log('📊 Modal historial inicializado:', {
+      sesiones: this.historyData?.length || 0,
+      metricas: !!this.userMetrics
+    });
   }
 
-  ngAfterViewInit() {
-    if (this.historyData && this.historyData.length > 0) {
-      setTimeout(() => this.createProgressChart(), 100);
-    }
-  }
-
-  ngOnDestroy() {
-    if (this.progressChart) {
-      this.progressChart.destroy();
-    }
-  }
-
-  closeModal() {
+  dismiss() {
     this.modalController.dismiss();
   }
 
@@ -261,140 +264,45 @@ export class TrainingHistoryModalComponent implements OnInit, AfterViewInit, OnD
     this.modalController.dismiss({ action: 'startTraining' });
   }
 
-  getSummary() {
-    if (!this.historyData || this.historyData.length === 0) {
-      return {
-        totalSessions: 0,
-        totalDuration: '0m',
-        totalReps: 0
-      };
-    }
-
-    const totalSessions = this.historyData.length;
-    const totalMinutes = this.historyData.reduce((sum, session) => sum + session.duration, 0);
-    const totalReps = this.historyData.reduce((sum, session) => sum + session.repetitions, 0);
-
-    return {
-      totalSessions,
-      totalDuration: `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`,
-      totalReps
-    };
+  trackBySesion(index: number, session: any): string {
+    return session.sessionId || index.toString();
   }
 
-  getRecentSessions(): TrainingSession[] {
-    if (!this.historyData) return [];
-    return this.historyData.slice(0, 10);
-  }
-
-  formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
+  formatDate(dateString: string): string {
+    const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 1) return 'Ayer';
-    if (diffDays <= 7) return `Hace ${diffDays} días`;
-    
-    return date.toLocaleDateString('es-ES', { 
-      month: 'short', 
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-    });
-  }
-
-  formatDuration(minutes: number): string {
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins}m`;
-  }
-
-  private generateMockData() {
-    const exercises = ['Sentadillas', 'Flexiones', 'Plancha', 'Estocadas'];
-    const mockData: TrainingSession[] = [];
-
-    for (let i = 0; i < 15; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-
-      mockData.push({
-        date: date.toISOString(),
-        exercise: exercises[Math.floor(Math.random() * exercises.length)],
-        duration: Math.floor(Math.random() * 30) + 15,
-        repetitions: Math.floor(Math.random() * 20) + 10,
-        errorsCount: Math.floor(Math.random() * 8),
-        accuracy: Math.floor(Math.random() * 30) + 70,
-        sessionId: `session_${Date.now()}_${i}`
+    if (diffDays === 0) {
+      return 'Hoy';
+    } else if (diffDays === 1) {
+      return 'Ayer';
+    } else if (diffDays < 7) {
+      return `Hace ${diffDays} días`;
+    } else {
+      return date.toLocaleDateString('es-ES', { 
+        day: 'numeric', 
+        month: 'short' 
       });
     }
-
-    this.historyData = mockData;
   }
 
-  private createProgressChart() {
-    if (!this.chartCanvas?.nativeElement) return;
-
-    const ctx = this.chartCanvas.nativeElement.getContext('2d');
-    if (!ctx) return;
-
-    const last7Sessions = this.historyData.slice(0, 7).reverse();
-    const labels = last7Sessions.map(session => this.formatDate(session.date));
-    const accuracyData = last7Sessions.map(session => session.accuracy);
-
-    const config: ChartConfiguration = {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Precisión (%)',
-          data: accuracyData,
-          borderColor: '#3880ff',
-          backgroundColor: 'rgba(56, 128, 255, 0.1)',
-          borderWidth: 3,
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: '#3880ff',
-          pointBorderColor: '#ffffff',
-          pointBorderWidth: 2,
-          pointRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: false,
-            min: 60,
-            max: 100,
-            grid: {
-              color: 'rgba(0, 0, 0, 0.1)'
-            },
-            ticks: {
-              callback: function(value) {
-                return value + '%';
-              }
-            }
-          },
-          x: {
-            grid: {
-              display: false
-            }
-          }
-        },
-        elements: {
-          point: {
-            hoverRadius: 8
-          }
-        }
-      }
+  getExerciseIcon(exercise: string): string {
+    const iconMap: { [key: string]: string } = {
+      'Sentadillas': 'fitness-outline',
+      'Flexiones': 'barbell-outline',
+      'Plancha': 'body-outline',
+      'Estocadas': 'walk-outline',
+      'Peso Muerto': 'barbell-outline'
     };
+    
+    return iconMap[exercise] || 'fitness-outline';
+  }
 
-    this.progressChart = new Chart(ctx, config);
+  getAccuracyColor(accuracy: number): string {
+    if (accuracy >= 90) return 'success';
+    if (accuracy >= 75) return 'warning';
+    return 'danger';
   }
 }

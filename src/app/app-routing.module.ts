@@ -38,10 +38,8 @@ const routes: Routes = [
   // ✅ RUTA ROUTINE-VIEW - DEBE IR ANTES DEL WILDCARD
   {
     path: 'routine-view',
-    loadChildren: () => import('./pages/routine-view/routine-view.module').then(m => m.RoutineViewPageModule),
-    canActivate: [AuthGuard] // ✅ Agregar protección con autenticación
+    loadChildren: () => import('./pages/routine-view/routine-view.module').then(m => m.RoutineViewPageModule)
   },
-  
   // ✅ REDIRECCIONES
   {
     path: '',

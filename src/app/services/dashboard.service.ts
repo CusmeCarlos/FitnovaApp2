@@ -505,58 +505,120 @@ export class DashboardService {
         throw new Error('Usuario no autenticado');
       }
   
-      // ✅ USAR this.db en lugar de this.firestore
-      const sessionsSnapshot = await this.db
-        .collection('userStats')
-        .doc(user.uid)
-        .collection('sessions')
-        .orderBy('startTime', 'desc')
+      console.log('📊 Cargando historial de entrenamiento para:', user.uid);
+  
+      // OBTENER SESIONES DE ENTRENAMIENTO DESDE criticalAlerts
+      const alertsSnapshot = await this.db
+        .collection('criticalAlerts')
+        .where('uid', '==', user.uid)
+        .orderBy('processedAt', 'desc')
         .limit(20)
         .get();
   
-      const sessions = sessionsSnapshot.docs.map((doc: any) => {
+      // OBTENER TAMBIÉN userStats PARA MÁS DATOS
+      const userStatsDoc = await this.db
+        .collection('userStats')
+        .doc(user.uid)
+        .get();
+  
+      const userStats = userStatsDoc.exists ? userStatsDoc.data() as UserStats : null;
+  
+      if (alertsSnapshot.empty && !userStats) {
+        console.log('📊 No hay historial disponible, generando datos de ejemplo');
+        return this.generateSampleHistory();
+      }
+  
+      // PROCESAR ALERTAS PARA CREAR HISTORIAL DE SESIONES
+      const sessions: any[] = [];
+      const sessionGroups = new Map<string, any[]>();
+  
+      // Agrupar alertas por sessionId o fecha
+      alertsSnapshot.docs.forEach((doc: any) => {
         const data = doc.data();
-        return {
-          date: data.startTime?.toDate?.()?.toISOString() || new Date().toISOString(),
-          exercise: data.exercise || 'Ejercicio',
-          duration: Math.floor((data.duration || 0) / 60), // Convertir a minutos
-          repetitions: data.repetitions || 0,
-          errorsCount: data.errorsDetected || 0,
-          accuracy: data.accuracy || 85,
-          sessionId: doc.id
-        };
+        const sessionKey = data.lastSessionId || 
+                          data.processedAt?.toDate?.()?.toDateString() || 
+                          'unknown';
+        
+        if (!sessionGroups.has(sessionKey)) {
+          sessionGroups.set(sessionKey, []);
+        }
+        sessionGroups.get(sessionKey)!.push({
+          id: doc.id,
+          ...data,
+          processedAt: data.processedAt?.toDate?.() || new Date()
+        });
       });
   
-      console.log('📊 Historial cargado:', sessions.length, 'sesiones');
-      return sessions;
+      // CONVERTIR GRUPOS EN SESIONES
+      sessionGroups.forEach((alerts, sessionKey) => {
+        const sessionDate = alerts[0].processedAt;
+        const exercise = alerts[0].exercise || 'Entrenamiento General';
+        const errorsCount = alerts.length;
+        const avgConfidence = alerts.reduce((sum, alert) => sum + (alert.confidence || 0), 0) / alerts.length;
+        const accuracy = Math.max(0, 100 - (errorsCount * 10)); // Calcular precisión
+  
+        sessions.push({
+          date: sessionDate.toISOString(),
+          exercise: exercise,
+          duration: Math.floor(Math.random() * 20) + 15, // Duración estimada 15-35 min
+          repetitions: Math.max(10, 30 - errorsCount), // Repeticiones estimadas
+          errorsCount: errorsCount,
+          accuracy: Math.round(accuracy),
+          sessionId: sessionKey,
+          confidence: Math.round(avgConfidence * 100) / 100
+        });
+      });
+  
+      // AGREGAR SESIÓN ACTUAL SI HAY userStats
+      if (userStats && (userStats.totalWorkouts || 0) > sessions.length) {
+        sessions.unshift({
+          date: new Date().toISOString(),
+          exercise: userStats.lastExercise || 'Entrenamiento Reciente',
+          duration: Math.round((userStats.lastSessionDurationSeconds || 1200) / 60), // Convertir a minutos
+          repetitions: 15,
+          errorsCount: 0,
+          accuracy: Math.round(userStats.averageAccuracy || 85),
+          sessionId: userStats.lastSessionId || 'current',
+          confidence: 0.95
+        });
+      }
+      // ORDENAR POR FECHA MÁS RECIENTE
+      sessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  
+      console.log('📊 Historial procesado:', sessions.length, 'sesiones encontradas');
+      return sessions.slice(0, 10); // Retornar máximo 10 sesiones
   
     } catch (error) {
-      console.error('Error cargando historial:', error);
+      console.error('❌ Error cargando historial:', error);
       
-      // Retornar datos de ejemplo si hay error
+      // RETORNAR DATOS DE EJEMPLO SI HAY ERROR
+      console.log('📊 Generando historial de ejemplo por error');
       return this.generateSampleHistory();
     }
   }
   
   private generateSampleHistory(): any[] {
-    const exercises = ['Sentadillas', 'Flexiones', 'Plancha', 'Estocadas'];
+    const exercises = ['Sentadillas', 'Flexiones', 'Plancha', 'Estocadas', 'Peso Muerto'];
     const sessions = [];
   
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 8; i++) {
       const date = new Date();
       date.setDate(date.getDate() - i);
+      date.setHours(Math.floor(Math.random() * 4) + 17); // Entre 17-21h
   
       sessions.push({
         date: date.toISOString(),
         exercise: exercises[Math.floor(Math.random() * exercises.length)],
-        duration: Math.floor(Math.random() * 30) + 15,
-        repetitions: Math.floor(Math.random() * 20) + 10,
-        errorsCount: Math.floor(Math.random() * 5),
-        accuracy: Math.floor(Math.random() * 25) + 75,
-        sessionId: `sample_${i}`
+        duration: Math.floor(Math.random() * 25) + 15, // 15-40 minutos
+        repetitions: Math.floor(Math.random() * 15) + 10, // 10-25 repeticiones
+        errorsCount: Math.floor(Math.random() * 4), // 0-3 errores
+        accuracy: Math.floor(Math.random() * 20) + 75, // 75-95% precisión
+        sessionId: `sample_${i}`,
+        confidence: Math.round((Math.random() * 0.3 + 0.7) * 100) / 100 // 70-100%
       });
     }
   
+    console.log('📊 Historial de ejemplo generado:', sessions.length, 'sesiones');
     return sessions;
   }
   // MÉTODOS AUXILIARES PARA TOASTS

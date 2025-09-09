@@ -206,11 +206,100 @@ export class Tab3Page implements OnInit, OnDestroy {
   }
   
   hasActiveRoutine(): boolean {
-    return this.routineStateService.hasActiveRoutine();
+    try {
+      // Verificar en RoutineStateService
+      const hasRoutineInService = this.routineStateService.hasActiveRoutine();
+      
+      // También verificar en localStorage por si acaso
+      const activeRoutine = localStorage.getItem('activeRoutine');
+      const hasRoutineInStorage = !!activeRoutine;
+      
+      console.log('🔍 Verificando rutina activa:', {
+        enService: hasRoutineInService,
+        enStorage: hasRoutineInStorage
+      });
+      
+      return hasRoutineInService || hasRoutineInStorage;
+      
+    } catch (error) {
+      console.error('❌ Error verificando rutina activa:', error);
+      return false;
+    }
   }
   
-  viewCurrentRoutine() {
-    this.router.navigate(['/routine-view']);
+  // ✅ NAVEGAR A VER RUTINA ACTUAL
+  async viewCurrentRoutine(): Promise<void> {
+    try {
+      console.log('🔍 Intentando ver rutina actual...');
+      
+      // Verificar si hay rutina en el service
+      const routineState = this.routineStateService.getCurrentState();
+      console.log('🔍 Estado actual de rutina:', routineState);
+      
+      if (!routineState || !routineState.routine) {
+        // Intentar cargar desde Firestore
+        const user = await this.auth.getCurrentUser();
+        if (user) {
+          await this.loadUserRoutineFromFirestore(user.uid);
+        }
+      }
+      
+      // Navegar a routine-view
+      const navigationResult = await this.router.navigate(['/routine-view']);
+      
+      if (navigationResult) {
+        console.log('✅ Navegación exitosa a routine-view');
+        await this.showToast('Navegando al dashboard', 'success');      } else {
+        console.error('❌ Error en navegación a routine-view');
+        await this.showToast('Error navegando a rutina', 'danger');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en viewCurrentRoutine:', error);
+      await this.showToast('Error cargando rutina', 'danger');
+    }
+  }
+
+  private async loadUserRoutineFromFirestore(uid: string): Promise<void> {
+    try {
+      console.log('🔍 Cargando rutina desde Firestore para:', uid);
+      
+      // ✅ USAR FIREBASE DIRECTO EN LUGAR DE ANGULARFIRE
+      const db = firebase.firestore();
+      const routinesSnapshot = await db
+        .collection('aiRoutines')
+        .where('uid', '==', uid)
+        .where('status', 'in', ['approved', 'active', 'waiting_approval'])
+        .orderBy('createdAt', 'desc')
+        .limit(1)
+        .get();
+      
+      if (!routinesSnapshot.empty) {
+        const routineDoc = routinesSnapshot.docs[0];
+        const routineData = { id: routineDoc.id, ...routineDoc.data() } as any;
+        
+        console.log('✅ Rutina encontrada en Firestore:', routineData);
+        
+        // Actualizar el estado en el service
+        const status = routineData.status === 'approved' ? RoutineStatus.APPROVED :
+                      routineData.status === 'active' ? RoutineStatus.ACTIVE :
+                      RoutineStatus.WAITING_APPROVAL;
+        
+        this.routineStateService.updateRoutineState({
+          status: status,
+          routine: routineData,
+          generatedAt: routineData.createdAt?.toDate?.() || new Date(),
+          approvedAt: routineData.approvedAt?.toDate?.() || undefined
+        });
+        
+      } else {
+        console.log('❌ No se encontró rutina en Firestore');
+        await this.showToast('No tienes rutinas generadas', 'warning');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error cargando rutina desde Firestore:', error);
+    }
   }
 
   // ✅ INICIALIZAR SUSCRIPCIONES
@@ -961,9 +1050,21 @@ private calculateProfileCompletion(): void {
     await alert.present();
   }
 
-  // ✅ NAVEGAR A RUTINAS
-  goToRoutines(): void {
-    this.router.navigate(['/tabs/tab1']);
+  // ✅ MÉTODO goToRoutines CORREGIDO
+  async goToRoutines(): Promise<void> {
+    console.log('🔍 Navegando a dashboard (Tab1)...');
+    
+    try {
+      const navigationResult = await this.router.navigate(['/tabs/tab1']);
+      
+      if (navigationResult) {
+        await this.showToast('Navegando al dashboard', 'success');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error navegando al dashboard:', error);
+      await this.showToast('Error en navegación', 'danger');
+    }
   }
 
   // ✅ VER PROGRESO DE IA

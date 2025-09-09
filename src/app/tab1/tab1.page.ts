@@ -155,176 +155,177 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
 
   // GRÁFICO DE PROGRESO SEMANAL
   private initProgressChart(): void {
-    if (!this.progressChartRef || !this.metrics) return;
+    if (!this.progressChartRef?.nativeElement || !this.metrics) return;
 
-    const ctx = this.progressChartRef.nativeElement.getContext('2d');
-    if (!ctx) return;
+    try {
+      const ctx = this.progressChartRef.nativeElement.getContext('2d');
+      if (!ctx) return;
 
-    this.progressChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: this.metrics.weeklyProgress.map(d => d.day),
-        datasets: [{
-          label: 'Entrenamientos',
-          data: this.metrics.weeklyProgress.map(d => d.workouts),
-          backgroundColor: 'rgba(255, 87, 34, 0.8)',
-          borderColor: 'rgba(255, 87, 34, 1)',
-          borderWidth: 2,
-          borderRadius: 8,
-          borderSkipped: false,
-        }, {
-          label: 'Errores',
-          data: this.metrics.weeklyProgress.map(d => d.errors),
-          backgroundColor: 'rgba(255, 193, 7, 0.6)',
-          borderColor: 'rgba(255, 193, 7, 1)',
-          borderWidth: 1,
-          borderRadius: 6,
-          borderSkipped: false,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: true,
-            labels: {
-              color: '#ffffff',
-              font: { size: 11 }
-            }
-          }
+      this.progressChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: this.metrics.weeklyProgress.map(day => day.day),
+          datasets: [{
+            label: 'Entrenamientos',
+            data: this.metrics.weeklyProgress.map(day => day.workouts),
+            borderColor: '#ff5722',
+            backgroundColor: 'rgba(255, 87, 34, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4
+          }]
         },
-        scales: {
-          x: {
-            ticks: { color: '#ffffff', font: { size: 10 } },
-            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
           },
-          y: {
-            beginAtZero: true,
-            ticks: { color: '#ffffff', font: { size: 10 } },
-            grid: { color: 'rgba(255, 255, 255, 0.1)' }
-          }
-        }
-      }
-    });
-  }
-
-  // GRÁFICO DE TENDENCIA DE PRECISIÓN
-  private initAccuracyChart(): void {
-    if (!this.accuracyChartRef || !this.metrics) return;
-
-    const ctx = this.accuracyChartRef.nativeElement.getContext('2d');
-    if (!ctx) return;
-
-    this.accuracyChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: this.metrics.accuracyTrend.map(d => d.date),
-        datasets: [{
-          label: 'Precisión (%)',
-          data: this.metrics.accuracyTrend.map(d => d.accuracy),
-          borderColor: '#33c759',
-          backgroundColor: 'rgba(51, 199, 89, 0.1)',
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: '#33c759',
-          pointBorderColor: '#ffffff',
-          pointBorderWidth: 2,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          }
-        },
-        scales: {
-          x: {
-            ticks: { color: '#ffffff', font: { size: 10 } },
-            grid: { color: 'rgba(255, 255, 255, 0.1)' }
-          },
-          y: {
-            beginAtZero: true,
-            max: 100,
-            ticks: { 
-              color: '#ffffff', 
-              font: { size: 10 },
-              callback: function(value) {
-                return value + '%';
-              }
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255, 255, 255, 0.1)' },
+              ticks: { color: 'rgba(255, 255, 255, 0.7)' }
             },
-            grid: { color: 'rgba(255, 255, 255, 0.1)' }
-          }
-        }
-      }
-    });
-  }
-
-  // GRÁFICO DE ANÁLISIS DE ERRORES
-  private initErrorsChart(): void {
-    if (!this.errorsChartRef || !this.metrics) return;
-
-    const ctx = this.errorsChartRef.nativeElement.getContext('2d');
-    if (!ctx) return;
-
-    const errorTypes = Object.keys(this.metrics.errorsByType);
-    const errorCounts = Object.values(this.metrics.errorsByType);
-
-    if (errorTypes.length === 0) {
-      console.log(' No hay errores para mostrar en el gráfico');
-      return;
-    }
-
-    this.errorsChart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: errorTypes.map(type => this.getErrorTypeLabel(type)),
-        datasets: [{
-          data: errorCounts,
-          backgroundColor: [
-            '#ff5722',
-            '#ff9800',
-            '#ffeb3b',
-            '#4caf50',
-            '#2196f3',
-            '#9c27b0'
-          ],
-          borderColor: '#1a1a1a',
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              color: '#ffffff',
-              font: { size: 10 },
-              padding: 10
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.1)' },
+              ticks: { color: 'rgba(255, 255, 255, 0.7)' }
             }
           }
         }
-      }
-    });
+      });
+
+      console.log('📊 Gráfico de progreso inicializado');
+    } catch (error) {
+      console.error('❌ Error inicializando gráfico de progreso:', error);
+    }
   }
 
+  private initAccuracyChart(): void {
+    if (!this.accuracyChartRef?.nativeElement || !this.metrics) return;
+
+    try {
+      const ctx = this.accuracyChartRef.nativeElement.getContext('2d');
+      if (!ctx) return;
+
+      this.accuracyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: this.metrics.accuracyTrend.map(day => day.date),
+          datasets: [{
+            label: 'Precisión %',
+            data: this.metrics.accuracyTrend.map(day => day.accuracy),
+            borderColor: '#4caf50',
+            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              grid: { color: 'rgba(255, 255, 255, 0.1)' },
+              ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+            },
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.1)' },
+              ticks: { color: 'rgba(255, 255, 255, 0.7)' }
+            }
+          }
+        }
+      });
+
+      console.log('📊 Gráfico de precisión inicializado');
+    } catch (error) {
+      console.error('❌ Error inicializando gráfico de precisión:', error);
+    }
+  }
+
+  private initErrorsChart(): void {
+    if (!this.errorsChartRef?.nativeElement || !this.metrics) return;
+
+    try {
+      const ctx = this.errorsChartRef.nativeElement.getContext('2d');
+      if (!ctx) return;
+
+      const errorTypes = Object.keys(this.metrics.errorsByType).slice(0, 5);
+      const errorCounts = errorTypes.map(type => this.metrics!.errorsByType[type]);
+
+      this.errorsChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: errorTypes.map(type => this.getErrorTypeLabel(type)),
+          datasets: [{
+            data: errorCounts,
+            backgroundColor: [
+              '#ff5722', '#ff9800', '#ffc107', '#4caf50', '#2196f3'
+            ],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                font: { size: 11 }
+              }
+            }
+          }
+        }
+      });
+
+      console.log('📊 Gráfico de errores inicializado');
+    } catch (error) {
+      console.error('❌ Error inicializando gráfico de errores:', error);
+    }
+  }
   // DESTRUIR GRÁFICOS EXISTENTES
   private destroyCharts(): void {
-    if (this.progressChart) {
-      this.progressChart.destroy();
-      this.progressChart = null;
+    try {
+      if (this.progressChart) {
+        this.progressChart.destroy();
+        this.progressChart = null;
+      }
+      if (this.accuracyChart) {
+        this.accuracyChart.destroy();
+        this.accuracyChart = null;
+      }
+      if (this.errorsChart) {
+        this.errorsChart.destroy();
+        this.errorsChart = null;
+      }
+      console.log('🧹 Charts anteriores limpiados');
+    } catch (error) {
+      console.error('❌ Error limpiando charts:', error);
     }
-    if (this.accuracyChart) {
-      this.accuracyChart.destroy();
-      this.accuracyChart = null;
-    }
-    if (this.errorsChart) {
-      this.errorsChart.destroy();
-      this.errorsChart = null;
+  }
+
+  async refreshDashboard(): Promise<void> {
+    console.log('🔄 Refrescando dashboard...');
+    
+    try {
+      this.isLoading = true;
+      
+      // Recargar métricas
+      this.loadDashboardMetrics();
+      
+      await this.showToast('Dashboard actualizado', 'success');
+      
+    } catch (error) {
+      console.error('❌ Error refrescando dashboard:', error);
+      await this.showError('Error refrescando datos');
     }
   }
 
@@ -474,7 +475,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
   navigateToProfile(): void {
     console.log(' Navegando a perfil...');
     this.router.navigate(['/tabs/tab3']).then(() => {
-      this.showToast('Accediendo a tu perfil', 'primary');
+      this.showToast('Accediendo a tu perfil', 'success');
     });
   }
 
@@ -538,8 +539,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     const alerts = this.metrics?.recentAlerts || [];
 
     if (!alerts.length) {
-      await this.showToast('No hay alertas recientes', 'medium');
-      return;
+      await this.showToast('No hay alertas recientes', 'warning');      return;
     }
 
     const message = alerts
@@ -626,24 +626,38 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
   }
 
   // MOSTRAR MENSAJES AL USUARIO
-  private async showToast(message: string, color: string = 'primary'): Promise<void> {
-    const toast = await this.toastController.create({
-      message,
-      duration: 2000,
-      color,
-      position: 'bottom'
-    });
-
-    await toast.present();
+  private async showToast(message: string, color: 'success' | 'warning' | 'danger' = 'success'): Promise<void> {
+    try {
+      const toast = await this.toastController.create({
+        message,
+        duration: 2000,
+        position: 'bottom',
+        color: color
+      });
+      await toast.present();
+    } catch (error) {
+      console.error('❌ Error mostrando toast:', error);
+    }
   }
 
   private async showError(message: string): Promise<void> {
-    const alert = await this.alertController.create({
-      header: 'Error',
-      message,
-      buttons: ['OK']
-    });
-
-    await alert.present();
+    try {
+      const toast = await this.toastController.create({
+        message,
+        duration: 3000,
+        position: 'bottom',
+        color: 'danger',
+        buttons: [
+          {
+            text: 'Cerrar',
+            role: 'cancel'
+          }
+        ]
+      });
+      await toast.present();
+      console.error('🚨 Error mostrado al usuario:', message);
+    } catch (error) {
+      console.error('❌ Error mostrando toast de error:', error);
+    }
   }
 }

@@ -58,7 +58,7 @@
     <div class="progress-section" *ngIf="profile">
       <!-- Progreso General -->
       <div class="progress-header">
-        <h3>Completitud del Perfil</h3>
+        <h3>Perfin Completadp</h3>
         <span class="progress-percentage">{{ profileCompletionPercentage }}%</span>
       </div>
       <div class="progress-bar">
@@ -126,17 +126,7 @@
       </ion-button>
     </div>
 
-    <!-- ✅ ACCIONES RÁPIDAS IA -->
-    <div class="quick-actions" *ngIf="isAIReady">
-      <ion-button fill="outline" size="small" (click)="showExistingRoutines()">
-        <ion-icon name="list-outline" slot="start"></ion-icon>
-        Mis Rutinas
-      </ion-button>
-      <ion-button fill="outline" size="small" (click)="goToRoutines()">
-        <ion-icon name="fitness-outline" slot="start"></ion-icon>
-        Dashboard
-      </ion-button>
-    </div>
+    
 
     <!-- Section Navigation -->
     <div class="section-navigation">
@@ -1012,26 +1002,6 @@
       </ion-card-content>
     </ion-card>
 
-    <!-- ✅ ACCIONES ADICIONALES -->
-    <div class="additional-actions">
-      <ion-button 
-        fill="outline" 
-        expand="block" 
-        (click)="showExistingRoutines()"
-        *ngIf="isAIReady">
-        <ion-icon name="list-outline" slot="start"></ion-icon>
-        Ver Mis Rutinas IA
-      </ion-button>
-      
-      <ion-button 
-        fill="clear" 
-        expand="block" 
-        color="medium"
-        (click)="resetSection(currentSection)">
-        <ion-icon name="refresh-outline" slot="start"></ion-icon>
-        Resetear Sección Actual
-      </ion-button>
-    </div>
-
+   
   </div>
 </ion-content>

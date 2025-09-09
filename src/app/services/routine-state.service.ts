@@ -40,47 +40,54 @@ export class RoutineStateService {
   }
   // En routine-state.service.ts, agrega este método:
 
-  setGenerating() {
+  setGenerating(): void {
     this.updateRoutineState({
       status: RoutineStatus.GENERATING,
       error: undefined
     });
+    console.log('🔄 Estado cambiado a: GENERATING');
   }
 
-  setWaitingApproval(routine: AIGeneratedRoutine) {
+  setWaitingApproval(routine: AIGeneratedRoutine): void {
     this.updateRoutineState({
       status: RoutineStatus.WAITING_APPROVAL,
       routine,
       generatedAt: new Date(),
       error: undefined
     });
+    console.log('⏳ Estado cambiado a: WAITING_APPROVAL');
   }
 
-  setApproved() {
+  setApproved(): void {
     this.updateRoutineState({
       status: RoutineStatus.APPROVED,
       approvedAt: new Date()
     });
+    console.log('✅ Estado cambiado a: APPROVED');
   }
 
-  setActive() {
+  setActive(): void {
     this.updateRoutineState({
       status: RoutineStatus.ACTIVE
     });
+    console.log('🏃 Estado cambiado a: ACTIVE');
   }
 
-  setError(error: string) {
+  setError(error: string): void {
     this.updateRoutineState({
       status: RoutineStatus.ERROR,
       error
     });
+    console.error('❌ Estado cambiado a: ERROR -', error);
   }
 
-  setRejected() {
+  setRejected(): void {
     this.updateRoutineState({
       status: RoutineStatus.REJECTED
     });
+    console.log('❌ Estado cambiado a: REJECTED');
   }
+
 
   getCurrentState(): RoutineState {
     return this.routineStateSubject.value;
@@ -88,17 +95,47 @@ export class RoutineStateService {
 
   hasActiveRoutine(): boolean {
     const state = this.getCurrentState();
-    return state.status === RoutineStatus.APPROVED || 
-           state.status === RoutineStatus.ACTIVE;
+    
+    // Considerar rutina activa si está aprobada, activa, o esperando aprobación
+    const activeStatuses = [
+      RoutineStatus.APPROVED, 
+      RoutineStatus.ACTIVE, 
+      RoutineStatus.WAITING_APPROVAL
+    ];
+    
+    const hasValidStatus = activeStatuses.includes(state.status);
+    const hasRoutineData = !!state.routine;
+    
+    console.log('🔍 Verificando rutina activa:', {
+      status: state.status,
+      hasValidStatus,
+      hasRoutineData,
+      resultado: hasValidStatus && hasRoutineData
+    });
+    
+    return hasValidStatus && hasRoutineData;
   }
 
   getCurrentRoutine(): AIGeneratedRoutine | undefined {
-    return this.getCurrentState().routine;
+    const state = this.getCurrentState();
+    return state.routine;
   }
 
-  reset() {
+  reset(): void {
     this.routineStateSubject.next({
       status: RoutineStatus.NONE
+    });
+    console.log('🔄 Estado reseteado a: NONE');
+  }
+  logCurrentState(): void {
+    const state = this.getCurrentState();
+    console.log('📊 Estado actual completo del servicio:', {
+      status: state.status,
+      hasRoutine: !!state.routine,
+      routineName: state.routine?.routine?.name || 'Sin nombre',
+      generatedAt: state.generatedAt,
+      approvedAt: state.approvedAt,
+      error: state.error
     });
   }
 }

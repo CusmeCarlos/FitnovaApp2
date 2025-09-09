@@ -1,5 +1,5 @@
-// src/app/tab1/tab1.module.ts
-// ✅ CORREGIR IMPORTS PARA COMPONENTE STANDALONE
+// src/app/tab1/tab1.module.ts - REEMPLAZAR ARCHIVO COMPLETO
+// ✅ AGREGAR TrainingHistoryModalComponent AL MÓDULO
 
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -9,17 +9,21 @@ import { IonicModule } from '@ionic/angular';
 import { Tab1PageRoutingModule } from './tab1-routing.module';
 import { Tab1Page } from './tab1.page';
 
+// ✅ IMPORTAR EL COMPONENTE MODAL
+import { TrainingHistoryModalComponent } from './components/training-history-modal.component';
+
 @NgModule({
   imports: [
     CommonModule,
     FormsModule,
     IonicModule,
-    Tab1PageRoutingModule
-    // ✅ NO DECLARAR componentes standalone aquí
+    Tab1PageRoutingModule,
+    // ✅ AGREGAR EL COMPONENTE STANDALONE
+    TrainingHistoryModalComponent
   ],
   declarations: [
     Tab1Page
-    // ✅ REMOVER TrainingHistoryModalComponent porque es standalone
+    // ✅ NO declarar TrainingHistoryModalComponent aquí porque es standalone
   ]
 })
 export class Tab1PageModule {}
