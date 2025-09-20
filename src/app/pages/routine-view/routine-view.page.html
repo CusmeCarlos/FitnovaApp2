@@ -1,211 +1,291 @@
 <!-- src/app/pages/routine-view/routine-view.page.html -->
+<!-- DISEÑO SIMPLE Y LIMPIO QUE FUNCIONA -->
+
 <ion-header [translucent]="true">
   <ion-toolbar>
     <ion-buttons slot="start">
       <ion-back-button defaultHref="/tabs/tab3"></ion-back-button>
     </ion-buttons>
     <ion-title>Mi Rutina IA</ion-title>
+    
     <ion-buttons slot="end">
-      <ion-button fill="clear" (click)="goToProfile()">
-        <ion-icon name="person-outline"></ion-icon>
+      <ion-button 
+        fill="clear" 
+        (click)="forceSyncManual()"
+        [disabled]="loading">
+        <ion-icon name="sync-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="routine-content">
+<ion-content [fullscreen]="true">
   
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
-    <ion-spinner name="circles" class="loading-spinner"></ion-spinner>
-    <p class="loading-text">Cargando rutina...</p>
+  <!-- Pull to Refresh -->
+  <ion-refresher slot="fixed" (ionRefresh)="handleRefresh($event)">
+    <ion-refresher-content
+      pullingIcon="chevron-down-circle-outline"
+      pullingText="Desliza para sincronizar"
+      refreshingSpinner="circles"
+      refreshingText="Sincronizando rutina...">
+    </ion-refresher-content>
+  </ion-refresher>
+
+  <!-- Warning de Conexión -->
+  <ion-item *ngIf="connectionStatus !== 'connected'" color="warning">
+    <ion-icon name="warning-outline" slot="start"></ion-icon>
+    <ion-label>
+      <h3>Conexión limitada</h3>
+      <p>Última sincronización: {{ getConnectionStatusText() }}</p>
+    </ion-label>
+    <ion-button fill="clear" slot="end" (click)="forceSyncManual()">
+      <ion-icon name="refresh-outline"></ion-icon>
+    </ion-button>
+  </ion-item>
+
+  <!-- Loading -->
+  <div *ngIf="shouldShowLoadingSpinner()" class="loading-section">
+    <ion-spinner name="circles"></ion-spinner>
+    <h3>{{ routineState.status === RoutineStatus.GENERATING ? 'Generando rutina...' : 'Cargando...' }}</h3>
   </div>
 
-  <!-- Content -->
-  <div *ngIf="!loading" class="routine-container">
+  <!-- RUTINA APROBADA -->
+  <div *ngIf="shouldShowApprovedActions()" class="routine-container">
     
-    <!-- Header Status Card -->
-    <div class="status-card">
-      <div class="status-header">
-        <ion-icon name="fitness-outline" class="status-icon"></ion-icon>
-        <div class="status-info">
-          <h2>Estado de tu Rutina</h2>
-          <ion-chip [color]="getStatusColor()" class="status-chip">
-            <ion-label>{{ getStatusMessage() }}</ion-label>
-          </ion-chip>
+    <!-- Status Header -->
+    <ion-card class="status-card success">
+      <ion-card-header>
+        <div class="status-icon">
+          <ion-icon name="checkmark-circle" color="success"></ion-icon>
         </div>
-      </div>
-      
-      <!-- Generación Date -->
-      <div *ngIf="routineState.generatedAt" class="status-meta">
-        <ion-icon name="calendar-outline"></ion-icon>
-        <span>Generada: {{ routineState.generatedAt | date:'dd/MM/yyyy HH:mm' }}</span>
-      </div>
-      
-      <!-- Aprobación Date -->
-      <div *ngIf="routineState.approvedAt" class="status-meta">
-        <ion-icon name="checkmark-circle-outline"></ion-icon>
-        <span>Aprobada: {{ routineState.approvedAt | date:'dd/MM/yyyy HH:mm' }}</span>
-      </div>
-    </div>
+        <ion-card-title class="status-title">¡Rutina Aprobada!</ion-card-title>
+        <ion-card-subtitle>Tu entrenador ha revisado y aprobado tu rutina personalizada.</ion-card-subtitle>
+      </ion-card-header>
+    </ion-card>
 
-    <!-- Error State -->
-    <div *ngIf="routineState.status === RoutineStatus.ERROR" class="error-card">
-      <ion-icon name="warning-outline" class="error-icon"></ion-icon>
-      <h3>Error en Rutina</h3>
-      <p>{{ routineState.error }}</p>
-      <ion-button 
-        expand="block" 
-        color="danger" 
-        (click)="regenerateRoutine()"
-        class="retry-button">
-        <ion-icon name="refresh-outline" slot="start"></ion-icon>
-        Generar Nueva Rutina
-      </ion-button>
-    </div>
+    <!-- Detalles de Rutina -->
+    <ion-card class="routine-details">
+      <ion-card-header>
+        <ion-card-title class="routine-name">{{ getRoutineInfo()?.title || 'Rutina Personalizada' }}</ion-card-title>
+        <ion-card-subtitle>{{ getRoutineInfo()?.description || 'Rutina adaptada a tu perfil' }}</ion-card-subtitle>
+      </ion-card-header>
 
-    <!-- Routine Content -->
-    <div *ngIf="routineState.routine && routineState.status !== RoutineStatus.ERROR">
-
-      <!-- Routine Overview -->
-      <div class="routine-overview">
-        <div class="overview-header">
-          <h2>{{ getRoutineName() }}</h2>
-          <p class="routine-description">{{ getRoutineDescription() }}</p>
-        </div>
-        
-        <div class="routine-stats">
+      <ion-card-content>
+        <!-- Stats Grid -->
+        <div class="stats-container">
           <div class="stat-item">
-            <ion-icon name="time-outline"></ion-icon>
-            <div class="stat-info">
-              <span class="stat-value">{{ formatDuration(getRoutineDuration()) }}</span>
-              <span class="stat-label">Duración</span>
+            <ion-icon name="barbell-outline" color="primary"></ion-icon>
+            <div class="stat-text">
+              <strong>{{ getRoutineInfo()?.exercises || 0 }}</strong>
+              <span>Ejercicios</span>
             </div>
           </div>
           
           <div class="stat-item">
-            <ion-icon name="barbell-outline"></ion-icon>
-            <div class="stat-info">
-              <span class="stat-value">{{ getRoutineExercises().length }}</span>
-              <span class="stat-label">Ejercicios</span>
+            <ion-icon name="time-outline" color="primary"></ion-icon>
+            <div class="stat-text">
+              <strong>{{ getRoutineInfo()?.duration || '30 min' }}</strong>
+              <span>Duración</span>
             </div>
           </div>
           
           <div class="stat-item">
-            <ion-icon name="analytics-outline"></ion-icon>
-            <div class="stat-info">
-              <span class="stat-value">{{ getRoutineDifficulty() }}</span>
-              <span class="stat-label">Nivel</span>
+            <ion-icon name="trending-up-outline" color="primary"></ion-icon>
+            <div class="stat-text">
+              <strong>{{ getRoutineInfo()?.difficulty || 'Principiante' }}</strong>
+              <span>Dificultad</span>
+            </div>
+          </div>
+          
+          <div class="stat-item">
+            <ion-icon name="flame-outline" color="primary"></ion-icon>
+            <div class="stat-text">
+              <strong>{{ routineState.routine?.routine?.estimatedCalories || 71 }} kcal</strong>
+              <span>Calorías</span>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Medical Adaptations -->
-      <div *ngIf="getRoutineAdaptations().length" class="medical-adaptations">
-        <h3>
-          <ion-icon name="medical-outline"></ion-icon>
-          Adaptaciones Médicas
-        </h3>
-        <div class="adaptations-list">
-          <div *ngFor="let adaptation of getRoutineAdaptations()" class="adaptation-item">
-            <ion-icon name="alert-circle-outline" color="warning"></ion-icon>
-            <span>{{ adaptation }}</span>
+        <!-- Muscle Groups -->
+        <div *ngIf="getRoutineInfo()?.muscleGroups?.length > 0" class="muscle-section">
+          <h3>
+            <ion-icon name="fitness-outline" color="primary"></ion-icon>
+            Áreas de enfoque
+          </h3>
+          <div class="muscle-chips">
+            <ion-chip *ngFor="let muscle of getRoutineInfo().muscleGroups" color="primary">
+              <ion-label>{{ muscle }}</ion-label>
+            </ion-chip>
           </div>
         </div>
-      </div>
 
-      <!-- Exercise List -->
-      <div class="exercises-section">
-        <h3>
-          <ion-icon name="list-outline"></ion-icon>
-          Ejercicios ({{ getRoutineExercises().length }})
-        </h3>
-        
-        <div class="exercises-list">
-          <div 
-            *ngFor="let exercise of getRoutineExercises(); let i = index" 
-            class="exercise-card">
-            
-            <div class="exercise-header">
-              <div class="exercise-number">{{ i + 1 }}</div>
-              <div class="exercise-info">
-                <h4>{{ exercise.name }}</h4>
-                <p class="exercise-target">{{ exercise.targetMuscles?.join(', ') }}</p>
-              </div>
-              <div class="exercise-sets">
-                <span class="sets-text">{{ exercise.sets }}x{{ exercise.reps }}</span>
-                <span *ngIf="exercise.weight" class="weight-text">{{ exercise.weight }}kg</span>
-              </div>
-            </div>
-            
-            <!-- Instructions -->
-            <div *ngIf="exercise.instructions" class="exercise-instructions">
-              <h5>
-                <ion-icon name="information-circle-outline"></ion-icon>
-                Instrucciones
-              </h5>
-              <p>{{ exercise.instructions }}</p>
-            </div>
-            
-            <!-- Adaptations for this exercise -->
-            <div *ngIf="exercise.adaptations?.length" class="exercise-adaptations">
-              <h5>
-                <ion-icon name="medical-outline"></ion-icon>
-                Adaptaciones
-              </h5>
-              <ul>
-                <li *ngFor="let adaptation of exercise.adaptations">{{ adaptation }}</li>
-              </ul>
-            </div>
-            
-            <!-- Rest Time -->
-            <div *ngIf="exercise.restTime" class="exercise-rest">
-              <ion-icon name="hourglass-outline"></ion-icon>
-              <span>Descanso: {{ exercise.restTime }}s</span>
-            </div>
-          </div>
+        <!-- Action Buttons -->
+        <div class="button-section">
+          <ion-button 
+            expand="block" 
+            size="large"
+            (click)="startTraining()"
+            [disabled]="loading">
+            <ion-icon name="play-outline" slot="start"></ion-icon>
+            Comenzar Entrenamiento
+          </ion-button>
+          
+          <ion-button 
+            expand="block" 
+            fill="outline" 
+            size="large"
+            (click)="regenerateRoutine()"
+            [disabled]="loading">
+            <ion-icon name="refresh-outline" slot="start"></ion-icon>
+            Generar Nueva Rutina
+          </ion-button>
         </div>
-      </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
 
-      <!-- Action Buttons -->
-      <div class="action-buttons">
-        
-        <!-- Start Training Button (Solo si aprobada) -->
+  <!-- RUTINA ESPERANDO APROBACIÓN -->
+  <div *ngIf="shouldShowWaitingMessage()" class="routine-container">
+    
+    <ion-card class="status-card warning">
+      <ion-card-header>
+        <div class="status-icon">
+          <ion-icon name="time-outline" color="warning"></ion-icon>
+        </div>
+        <ion-card-title class="status-title">Esperando Aprobación</ion-card-title>
+        <ion-card-subtitle>Tu rutina está siendo revisada por tu entrenador.</ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content>
+        <div class="loading-section">
+          <ion-spinner name="dots" color="warning"></ion-spinner>
+        </div>
+
+        <!-- Preview si existe -->
+        <div *ngIf="getRoutineInfo()" class="preview-section">
+          <h4>Vista previa:</h4>
+          <ion-item>
+            <ion-icon name="fitness-outline" slot="start" color="warning"></ion-icon>
+            <ion-label>
+              <h3>{{ getRoutineInfo().title }}</h3>
+              <p>{{ getRoutineInfo().exercises }} ejercicios • {{ getRoutineInfo().duration }}</p>
+            </ion-label>
+          </ion-item>
+        </div>
+
         <ion-button 
-          *ngIf="routineState.status === RoutineStatus.APPROVED || routineState.status === RoutineStatus.ACTIVE"
           expand="block" 
-          size="large"
-          color="success"
-          (click)="startTraining()"
-          class="start-training-btn">
-          <ion-icon name="play-outline" slot="start"></ion-icon>
-          {{ routineState.status === RoutineStatus.ACTIVE ? 'Continuar Entrenamiento' : 'Iniciar Entrenamiento' }}
-        </ion-button>
-
-        <!-- Regenerate Button -->
-        <ion-button 
-          *ngIf="routineState.status === RoutineStatus.REJECTED || routineState.status === RoutineStatus.APPROVED"
-          expand="block" 
-          fill="outline"
-          color="primary"
+          fill="outline" 
+          color="warning"
           (click)="regenerateRoutine()"
-          class="regenerate-btn">
+          [disabled]="loading">
           <ion-icon name="refresh-outline" slot="start"></ion-icon>
           Generar Nueva Rutina
         </ion-button>
+      </ion-card-content>
+    </ion-card>
+  </div>
 
-        <!-- Waiting Message -->
-        <div *ngIf="routineState.status === RoutineStatus.WAITING_APPROVAL" class="waiting-message">
-          <ion-icon name="hourglass-outline" color="warning"></ion-icon>
-          <h4>Esperando Aprobación</h4>
-          <p>Tu entrenador revisará esta rutina pronto. Te notificaremos cuando esté lista.</p>
+  <!-- RUTINA RECHAZADA -->
+  <div *ngIf="shouldShowRejectedActions()" class="routine-container">
+    
+    <ion-card class="status-card danger">
+      <ion-card-header>
+        <div class="status-icon">
+          <ion-icon name="close-circle-outline" color="danger"></ion-icon>
+        </div>
+        <ion-card-title class="status-title">Rutina Rechazada</ion-card-title>
+        <ion-card-subtitle>Tu entrenador ha rechazado la rutina generada.</ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content>
+        <div *ngIf="routineState.error" class="error-message">
+          <h4>Motivo del rechazo:</h4>
+          <p>{{ routineState.error }}</p>
         </div>
 
-      </div>
+        <ion-button 
+          expand="block" 
+          color="danger"
+          (click)="regenerateRoutine()"
+          [disabled]="loading">
+          <ion-icon name="add-outline" slot="start"></ion-icon>
+          Generar Nueva Rutina
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+  </div>
 
-    </div>
+  <!-- ERROR EN RUTINA -->
+  <div *ngIf="shouldShowErrorActions()" class="routine-container">
+    
+    <ion-card class="status-card danger">
+      <ion-card-header>
+        <div class="status-icon">
+          <ion-icon name="warning-outline" color="danger"></ion-icon>
+        </div>
+        <ion-card-title class="status-title">Error en Rutina</ion-card-title>
+        <ion-card-subtitle>Hubo un problema con tu rutina.</ion-card-subtitle>
+      </ion-card-header>
 
+      <ion-card-content>
+        <div *ngIf="routineState.error" class="error-message">
+          <p>{{ routineState.error }}</p>
+        </div>
+
+        <div class="button-section">
+          <ion-button 
+            expand="block" 
+            color="warning"
+            (click)="forceSyncManual()"
+            [disabled]="loading">
+            <ion-icon name="sync-outline" slot="start"></ion-icon>
+            Sincronizar
+          </ion-button>
+          
+          <ion-button 
+            expand="block" 
+            fill="outline" 
+            color="danger"
+            (click)="regenerateRoutine()"
+            [disabled]="loading">
+            <ion-icon name="refresh-outline" slot="start"></ion-icon>
+            Generar Nueva Rutina
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+
+  <!-- SIN RUTINA -->
+  <div *ngIf="routineState.status === RoutineStatus.NONE" class="routine-container">
+    
+    <ion-card class="status-card medium">
+      <ion-card-header>
+        <div class="status-icon">
+          <ion-icon name="document-outline" color="medium"></ion-icon>
+        </div>
+        <ion-card-title class="status-title">Sin Rutina</ion-card-title>
+        <ion-card-subtitle>No tienes ninguna rutina generada.</ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-button 
+          expand="block" 
+          routerLink="/tabs/tab3">
+          <ion-icon name="add-outline" slot="start"></ion-icon>
+          Generar Rutina Ahora
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
   </div>
 
 </ion-content>
+
+<!-- Floating Status -->
+<div class="connection-status">
+  <ion-chip [color]="connectionStatus === 'connected' ? 'success' : 'warning'">
+    <ion-icon name="wifi-outline"></ion-icon>
+    <ion-label>{{ getConnectionStatusText() }}</ion-label>
+  </ion-chip>
+</div>

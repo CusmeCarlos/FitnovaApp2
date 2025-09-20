@@ -1,5 +1,5 @@
 // src/app/tab3/tab3.page.ts
-// ✅ TAB3 COMPLETO CON RUTINAS ADAPTATIVAS IA
+// ✅ TAB3 COMPLETO CON RUTINAS ADAPTATIVAS IA Y SINCRONIZACIÓN TIEMPO REAL
 
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -47,7 +47,7 @@ import {
   IonCheckbox,
   ToastController,
   AlertController,
-  IonRadio,        // ✅ AGREGAR
+  IonRadio,
   IonRadioGroup,
 } from "@ionic/angular/standalone";
 
@@ -90,6 +90,8 @@ export class Tab3Page implements OnInit, OnDestroy {
   
   private userSubscription: Subscription = new Subscription();
   private profileSubscription: Subscription = new Subscription();
+  // ✅ NUEVA SUSCRIPCIÓN PARA RUTINAS TIEMPO REAL
+  private routineStateSubscription?: Subscription;
 
   // ✅ FORMULARIOS REACTIVOS
   personalInfoForm!: FormGroup;
@@ -108,6 +110,7 @@ export class Tab3Page implements OnInit, OnDestroy {
   aiReadinessPercentage = 0;
   isAIReady = false;
   isGeneratingRoutine = false;
+  isGeneratingAI = false;
   selectedBodyAreas: string[] = [];
 
   // ✅ DATOS DE OPCIONES PARA SELECTS
@@ -190,7 +193,6 @@ export class Tab3Page implements OnInit, OnDestroy {
     private router: Router,
     private routineStateService: RoutineStateService,
     private firestore: AngularFirestore,
-
   ) {
     this.initializeForms();
   }
@@ -198,25 +200,54 @@ export class Tab3Page implements OnInit, OnDestroy {
   ngOnInit() {
     this.initializeSubscriptions();
     this.setupFormChangeListeners();
+    
+    // ✅ NUEVO: Suscribirse a cambios de rutina en tiempo real
+    this.initializeRoutineStateSubscription();
   }
 
   ngOnDestroy() {
     this.userSubscription.unsubscribe();
     this.profileSubscription.unsubscribe();
+    // ✅ NUEVO: Limpiar suscripción de rutina
+    this.routineStateSubscription?.unsubscribe();
   }
-  
+
+  // ✅ NUEVO: Inicializar suscripción a estado de rutina
+  private initializeRoutineStateSubscription(): void {
+    this.routineStateSubscription = this.routineStateService.routineState$.subscribe(
+      (state) => {
+        console.log('📡 Tab3 - Estado de rutina actualizado:', state.status);
+        
+        // Actualizar UI basado en el estado
+        switch (state.status) {
+          case RoutineStatus.APPROVED:
+            this.showToast('🎉 ¡Tu rutina ha sido aprobada!', 'success');
+            break;
+          case RoutineStatus.REJECTED:
+            this.showToast('❌ Tu rutina fue rechazada. Puedes generar una nueva.', 'warning');
+            break;
+          case RoutineStatus.ERROR:
+            this.showToast('⚠️ Error en la rutina. Intenta sincronizar.', 'danger');
+            break;
+        }
+      }
+    );
+  }
+
+  // ✅ ACTUALIZADO: hasActiveRoutine ahora usa el listener
   hasActiveRoutine(): boolean {
     try {
-      // Verificar en RoutineStateService
+      // Usar directamente el estado del service que ahora tiene listeners
       const hasRoutineInService = this.routineStateService.hasActiveRoutine();
       
-      // También verificar en localStorage por si acaso
+      // También verificar en localStorage por compatibilidad
       const activeRoutine = localStorage.getItem('activeRoutine');
-      const hasRoutineInStorage = !!activeRoutine;
+      const hasRoutineInStorage = !!activeRoutine && activeRoutine !== 'null' && activeRoutine !== 'undefined';
       
       console.log('🔍 Verificando rutina activa:', {
         enService: hasRoutineInService,
-        enStorage: hasRoutineInStorage
+        enStorage: hasRoutineInStorage,
+        estadoActual: this.routineStateService.getCurrentState().status
       });
       
       return hasRoutineInService || hasRoutineInStorage;
@@ -227,20 +258,25 @@ export class Tab3Page implements OnInit, OnDestroy {
     }
   }
   
-  // ✅ NAVEGAR A VER RUTINA ACTUAL
+  // ✅ ACTUALIZADO: viewCurrentRoutine ya no necesita cargar manualmente
   async viewCurrentRoutine(): Promise<void> {
     try {
-      console.log('🔍 Intentando ver rutina actual...');
+      console.log('🔍 Navegando a rutina actual...');
       
-      // Verificar si hay rutina en el service
+      // El RoutineStateService ahora mantiene el estado actualizado automáticamente
       const routineState = this.routineStateService.getCurrentState();
       console.log('🔍 Estado actual de rutina:', routineState);
       
-      if (!routineState || !routineState.routine) {
-        // Intentar cargar desde Firestore
-        const user = await this.auth.getCurrentUser();
-        if (user) {
-          await this.loadUserRoutineFromFirestore(user.uid);
+      // Si no hay rutina o está en estado NONE, forzar sincronización
+      if (!routineState.routine || routineState.status === RoutineStatus.NONE) {
+        await this.showToast('Sincronizando rutina...', 'medium');
+        await this.routineStateService.forceSyncFromFirebase();
+        
+        // Verificar de nuevo después de sincronizar
+        const updatedState = this.routineStateService.getCurrentState();
+        if (!updatedState.routine || updatedState.status === RoutineStatus.NONE) {
+          await this.showToast('No tienes rutinas generadas', 'warning');
+          return;
         }
       }
       
@@ -249,7 +285,8 @@ export class Tab3Page implements OnInit, OnDestroy {
       
       if (navigationResult) {
         console.log('✅ Navegación exitosa a routine-view');
-        await this.showToast('Navegando al dashboard', 'success');      } else {
+        await this.showToast('Navegando a tu rutina', 'success');
+      } else {
         console.error('❌ Error en navegación a routine-view');
         await this.showToast('Error navegando a rutina', 'danger');
       }
@@ -257,48 +294,6 @@ export class Tab3Page implements OnInit, OnDestroy {
     } catch (error) {
       console.error('❌ Error en viewCurrentRoutine:', error);
       await this.showToast('Error cargando rutina', 'danger');
-    }
-  }
-
-  private async loadUserRoutineFromFirestore(uid: string): Promise<void> {
-    try {
-      console.log('🔍 Cargando rutina desde Firestore para:', uid);
-      
-      // ✅ USAR FIREBASE DIRECTO EN LUGAR DE ANGULARFIRE
-      const db = firebase.firestore();
-      const routinesSnapshot = await db
-        .collection('aiRoutines')
-        .where('uid', '==', uid)
-        .where('status', 'in', ['approved', 'active', 'waiting_approval'])
-        .orderBy('createdAt', 'desc')
-        .limit(1)
-        .get();
-      
-      if (!routinesSnapshot.empty) {
-        const routineDoc = routinesSnapshot.docs[0];
-        const routineData = { id: routineDoc.id, ...routineDoc.data() } as any;
-        
-        console.log('✅ Rutina encontrada en Firestore:', routineData);
-        
-        // Actualizar el estado en el service
-        const status = routineData.status === 'approved' ? RoutineStatus.APPROVED :
-                      routineData.status === 'active' ? RoutineStatus.ACTIVE :
-                      RoutineStatus.WAITING_APPROVAL;
-        
-        this.routineStateService.updateRoutineState({
-          status: status,
-          routine: routineData,
-          generatedAt: routineData.createdAt?.toDate?.() || new Date(),
-          approvedAt: routineData.approvedAt?.toDate?.() || undefined
-        });
-        
-      } else {
-        console.log('❌ No se encontró rutina en Firestore');
-        await this.showToast('No tienes rutinas generadas', 'warning');
-      }
-      
-    } catch (error) {
-      console.error('❌ Error cargando rutina desde Firestore:', error);
     }
   }
 
@@ -580,44 +575,46 @@ export class Tab3Page implements OnInit, OnDestroy {
       this.currentSection = section as 'personal' | 'medical' | 'goals' | 'level' | 'preferences';
     }
   }
-// ✅ AGREGAR ESTE NUEVO MÉTODO
-private calculateProfileCompletion(): void {
-  let completedSections = 0;
-  const totalSections = 5;
 
-  // Sección Personal
-  const personalForm = this.personalInfoForm.value;
-  if (personalForm.age && personalForm.gender && personalForm.weight && personalForm.height) {
-    completedSections++;
+  // ✅ CALCULAR COMPLETACIÓN DE PERFIL
+  private calculateProfileCompletion(): void {
+    let completedSections = 0;
+    const totalSections = 5;
+
+    // Sección Personal
+    const personalForm = this.personalInfoForm.value;
+    if (personalForm.age && personalForm.gender && personalForm.weight && personalForm.height) {
+      completedSections++;
+    }
+
+    // Sección Médica 
+    const medicalForm = this.medicalHistoryForm.value;
+    if (medicalForm.walkingCapacity && medicalForm.stairsCapacity && 
+        medicalForm.weightExperience && medicalForm.energyLevel) {
+      completedSections++;
+    }
+
+    // Sección Objetivos
+    const goalsForm = this.fitnessGoalsForm.value;
+    if (goalsForm.primaryGoals && goalsForm.primaryGoals.length > 0) {
+      completedSections++;
+    }
+
+    // Sección Nivel
+    const levelForm = this.fitnessLevelForm.value;
+    if (levelForm.overallLevel) {
+      completedSections++;
+    }
+
+    // Sección Preferencias
+    const preferencesForm = this.trainingPreferencesForm.value;
+    if (preferencesForm.availableDays && preferencesForm.availableDays.length > 0) {
+      completedSections++;
+    }
+
+    this.profileCompletionPercentage = Math.round((completedSections / totalSections) * 100);
   }
 
-  // Sección Médica 
-  const medicalForm = this.medicalHistoryForm.value;
-  if (medicalForm.walkingCapacity && medicalForm.stairsCapacity && 
-      medicalForm.weightExperience && medicalForm.energyLevel) {
-    completedSections++;
-  }
-
-  // Sección Objetivos
-  const goalsForm = this.fitnessGoalsForm.value;
-  if (goalsForm.primaryGoals && goalsForm.primaryGoals.length > 0) {
-    completedSections++;
-  }
-
-  // Sección Nivel
-  const levelForm = this.fitnessLevelForm.value;
-  if (levelForm.overallLevel) {
-    completedSections++;
-  }
-
-  // Sección Preferencias
-  const preferencesForm = this.trainingPreferencesForm.value;
-  if (preferencesForm.availableDays && preferencesForm.availableDays.length > 0) {
-    completedSections++;
-  }
-
-  this.profileCompletionPercentage = Math.round((completedSections / totalSections) * 100);
-}
   // ✅ GUARDAR INFORMACIÓN PERSONAL
   async savePersonalInfo(): Promise<void> {
     if (this.personalInfoForm.invalid) {
@@ -633,12 +630,12 @@ private calculateProfileCompletion(): void {
       const success = await this.profileService.updatePersonalInfo(personalInfo);
       
       if (success) {
-        await this.showToast('✅ Información personal guardada correctamente', 'success');
+        await this.showToast('Información personal guardada correctamente', 'success');
       } else {
-        await this.showToast('❌ Error al guardar la información personal', 'danger');
+        await this.showToast('Error al guardar la información personal', 'danger');
       }
     } catch (error) {
-      await this.showToast('❌ Error inesperado al guardar', 'danger');
+      await this.showToast('Error inesperado al guardar', 'danger');
     } finally {
       this.isSaving = false;
     }
@@ -690,17 +687,17 @@ private calculateProfileCompletion(): void {
       const success = await this.profileService.updateMedicalHistory(expandedMedicalHistory);
       
       if (success) {
-        await this.showToast('✅ Historial médico guardado - Listo para IA', 'success');
+        await this.showToast('Historial médico guardado - Listo para IA', 'success');
         
         if (this.isAIReady) {
           await this.showAIReadyAlert();
         }
       } else {
-        await this.showToast('❌ Error al guardar el historial médico', 'danger');
+        await this.showToast('Error al guardar el historial médico', 'danger');
       }
     } catch (error) {
       console.error('Error guardando historial médico:', error);
-      await this.showToast('❌ Error inesperado al guardar', 'danger');
+      await this.showToast('Error inesperado al guardar', 'danger');
     } finally {
       this.isSaving = false;
     }
@@ -721,12 +718,12 @@ private calculateProfileCompletion(): void {
       const success = await this.profileService.updateFitnessGoals(fitnessGoals);
       
       if (success) {
-        await this.showToast('✅ Objetivos de fitness guardados', 'success');
+        await this.showToast('Objetivos de fitness guardados', 'success');
       } else {
-        await this.showToast('❌ Error al guardar objetivos', 'danger');
+        await this.showToast('Error al guardar objetivos', 'danger');
       }
     } catch (error) {
-      await this.showToast('❌ Error inesperado al guardar', 'danger');
+      await this.showToast('Error inesperado al guardar', 'danger');
     } finally {
       this.isSaving = false;
     }
@@ -745,12 +742,12 @@ private calculateProfileCompletion(): void {
       const success = await this.profileService.updateFitnessLevel(formValue.overallLevel);
       
       if (success) {
-        await this.showToast('✅ Nivel de fitness guardado', 'success');
+        await this.showToast('Nivel de fitness guardado', 'success');
       } else {
-        await this.showToast('❌ Error al guardar nivel', 'danger');
+        await this.showToast('Error al guardar nivel', 'danger');
       }
     } catch (error) {
-      await this.showToast('❌ Error inesperado al guardar', 'danger');
+      await this.showToast('Error inesperado al guardar', 'danger');
     } finally {
       this.isSaving = false;
     }
@@ -766,12 +763,12 @@ private calculateProfileCompletion(): void {
       const success = await this.profileService.updateTrainingPreferences(trainingPreferences);
       
       if (success) {
-        await this.showToast('✅ Preferencias de entrenamiento guardadas', 'success');
+        await this.showToast('Preferencias de entrenamiento guardadas', 'success');
       } else {
-        await this.showToast('❌ Error al guardar preferencias', 'danger');
+        await this.showToast('Error al guardar preferencias', 'danger');
       }
     } catch (error) {
-      await this.showToast('❌ Error inesperado al guardar', 'danger');
+      await this.showToast('Error inesperado al guardar', 'danger');
     } finally {
       this.isSaving = false;
     }
@@ -780,7 +777,7 @@ private calculateProfileCompletion(): void {
   // ✅ MOSTRAR ALERTA CUANDO ESTÉ LISTO PARA IA
   async showAIReadyAlert(): Promise<void> {
     const alert = await this.alertController.create({
-      header: '🧠 ¡Listo para IA!',
+      header: 'Listo para IA!',
       message: 'Tu perfil está completo. ¿Quieres que la IA genere una rutina personalizada para ti?',
       buttons: [
         {
@@ -788,7 +785,7 @@ private calculateProfileCompletion(): void {
           role: 'cancel'
         },
         {
-          text: '🏋️ Generar Rutina',
+          text: 'Generar Rutina',
           handler: () => {
             this.generateAIRoutine();
           }
@@ -799,91 +796,90 @@ private calculateProfileCompletion(): void {
   }
 
   async generateAIRoutine(): Promise<void> {
-    if (!this.isAIReady) {
-      await this.showToast('⚠️ Completa tu perfil médico primero', 'warning');
+    if (!this.canGenerateAI()) {
+      await this.showToast('Completa tu perfil para generar rutina IA', 'warning');
       return;
     }
   
-    const loading = await this.loadingController.create({
-      message: '🧠 La IA está creando tu rutina personalizada...',
-      spinner: 'dots'
-    });
-    await loading.present();
-  
-    this.isGeneratingRoutine = true;
-  
     try {
-      // Recopilar todos los datos del perfil
-      const profileData: Profile = {
-        uid: this.user?.uid || '',
-        personalInfo: this.personalInfoForm.value,
-        medicalHistory: {
-          ...this.medicalHistoryForm.value,
-          physicalCapacity: {
-            walkingCapacity: this.medicalHistoryForm.value.walkingCapacity,
-            stairsCapacity: this.medicalHistoryForm.value.stairsCapacity,
-            weightExperience: this.medicalHistoryForm.value.weightExperience,
-            maxComfortableWeight: this.medicalHistoryForm.value.maxComfortableWeight || 0,
-            energyLevel: this.medicalHistoryForm.value.energyLevel
-          },
-          painfulAreas: this.selectedBodyAreas,
-          aiReadiness: this.aiReadinessPercentage,
-          readyForAI: this.isAIReady
-        },
-        fitnessGoals: this.fitnessGoalsForm.value,
-        fitnessLevel: this.fitnessLevelForm.get('overallLevel')?.value || 'beginner',
-        trainingPreferences: this.trainingPreferencesForm.value,
-        profileComplete: true,
-        aiReadinessPercentage: this.aiReadinessPercentage
-      };
-  
-      console.log('🧠 Enviando datos a AI-Routine Service:', profileData);
-  
-      // Llamar al servicio para generar rutina
-      const result = await this.aiRoutineService.generateAdaptiveRoutine(profileData);
+      // Mostrar loading
+      this.isGeneratingAI = true;
+      this.routineStateService.setGenerating();
       
-      console.log('🔍 Resultado generación:', result);
-      
+      await this.showToast('Generando rutina personalizada...', 'medium');
+  
+      // Obtener perfil actualizado
+      const currentProfile = await this.profileService.getCurrentProfile().pipe(take(1)).toPromise();
+      if (!currentProfile) {
+        throw new Error('Perfil no encontrado');
+      }
+  
+      console.log('Iniciando generación IA con perfil:', currentProfile.uid);
+  
+      // Generar rutina
+      const result = await this.aiRoutineService.generateAdaptiveRoutine(currentProfile);
+  
       if (result.success && result.routine) {
-        // ✅ ACTUALIZAR ESTADO CORRECTAMENTE
-        const routineStatus = result.needsTrainerApproval ? 
-          RoutineStatus.WAITING_APPROVAL : 
-          RoutineStatus.APPROVED;
-  
-        this.routineStateService.updateRoutineState({
-          status: routineStatus,
-          routine: result.routine,
-          generatedAt: new Date(),
-          approvedAt: result.needsTrainerApproval ? undefined : new Date()
-        });
-  
-        await this.showToast('🎉 ¡Rutina generada exitosamente!', 'success');
+        console.log('Rutina IA generada exitosamente');
         
-        console.log('🚀 Navegando a routine-view...');
+        // ✅ ACTUALIZAR ESTADO MANUAL INMEDIATAMENTE 
+        this.routineStateService.setWaitingApproval(result.routine);
         
-        // ✅ PEQUEÑA PAUSA PARA ASEGURAR ESTADO ACTUALIZADO
+        // ✅ FORZAR SINCRONIZACIÓN PARA ACTIVAR LISTENERS
         setTimeout(async () => {
-          const navigationResult = await this.router.navigate(['/routine-view']);
-          console.log('🔍 Resultado navegación:', navigationResult);
-        }, 500);
+          await this.routineStateService.forceSyncFromFirebase();
+        }, 2000);
+        
+        await this.showToast('Rutina generada! Esperando aprobación del entrenador.', 'success');
+        
+        // Navegar automáticamente a ver la rutina
+        setTimeout(() => {
+          this.router.navigate(['/routine-view']);
+        }, 1500);
         
       } else {
-        throw new Error(result.error || 'Error generando rutina');
+        throw new Error(result.error || 'Error generando rutina IA');
       }
   
     } catch (error: any) {
-      console.error('❌ Error generando rutina IA:', error);
-      await this.showToast(`❌ Error: ${error.message}`, 'danger');
+      console.error('Error generando rutina IA:', error);
+      this.routineStateService.setError(error.message || 'Error inesperado');
+      await this.showToast('Error generando rutina: ' + error.message, 'danger');
     } finally {
-      await loading.dismiss();
-      this.isGeneratingRoutine = false;
+      this.isGeneratingAI = false;
+    }
+  }
+
+  // ✅ NUEVO: Método para verificar si puede generar IA
+  canGenerateAI(): boolean {
+    return this.isAIReady;
+  }
+
+  // ✅ NUEVO: Método para obtener el estado de rutina actual
+  getCurrentRoutineStatus(): RoutineStatus {
+    return this.routineStateService.getCurrentState().status;
+  }
+
+  // ✅ NUEVO: Método para verificar si está sincronizado
+  isRoutineSynced(): boolean {
+    return this.routineStateService.isConnected();
+  }
+
+  // ✅ NUEVO: Método para forzar sincronización
+  async forceRoutineSync(): Promise<void> {
+    try {
+      await this.showToast('Sincronizando...', 'medium');
+      await this.routineStateService.forceSyncFromFirebase();
+      await this.showToast('Sincronización completada', 'success');
+    } catch (error) {
+      await this.showToast('Error en sincronización', 'danger');
     }
   }
 
   // ✅ MOSTRAR DETALLES DE RUTINA GENERADA
   async showRoutineDetails(result: any): Promise<void> {
     const alert = await this.alertController.create({
-      header: '🏋️ Rutina Generada por IA',
+      header: 'Rutina Generada por IA',
       message: `
         <strong>Duración:</strong> ${result.routine?.routine?.duration || 30} minutos<br>
         <strong>Dificultad:</strong> ${result.routine?.routine?.difficulty || 'Personalizada'}<br>
@@ -945,7 +941,7 @@ private calculateProfileCompletion(): void {
   }
 
   // ✅ MÉTODOS DE UI
-  async showToast(message: string, color: 'success' | 'warning' | 'danger' = 'success'): Promise<void> {
+  async showToast(message: string, color: 'success' | 'warning' | 'danger' | 'medium' = 'success'): Promise<void> {
     const toast = await this.toastController.create({
       message,
       duration: 3000,
@@ -1002,14 +998,14 @@ private calculateProfileCompletion(): void {
       if (image.dataUrl) {
         const success = await this.profileService.updateProfilePhoto(image.dataUrl);
         if (success) {
-          await this.showToast('✅ Foto de perfil actualizada', 'success');
+          await this.showToast('Foto de perfil actualizada', 'success');
         } else {
-          await this.showToast('❌ Error al actualizar foto', 'danger');
+          await this.showToast('Error al actualizar foto', 'danger');
         }
       }
     } catch (error) {
       console.error('Error capturando imagen:', error);
-      await this.showToast('❌ Error al capturar imagen', 'danger');
+      await this.showToast('Error al capturar imagen', 'danger');
     }
   }
 
@@ -1052,7 +1048,7 @@ private calculateProfileCompletion(): void {
 
   // ✅ MÉTODO goToRoutines CORREGIDO
   async goToRoutines(): Promise<void> {
-    console.log('🔍 Navegando a dashboard (Tab1)...');
+    console.log('Navegando a dashboard (Tab1)...');
     
     try {
       const navigationResult = await this.router.navigate(['/tabs/tab1']);
@@ -1062,7 +1058,7 @@ private calculateProfileCompletion(): void {
       }
       
     } catch (error) {
-      console.error('❌ Error navegando al dashboard:', error);
+      console.error('Error navegando al dashboard:', error);
       await this.showToast('Error en navegación', 'danger');
     }
   }
@@ -1070,26 +1066,26 @@ private calculateProfileCompletion(): void {
   // ✅ VER PROGRESO DE IA
   async showAIProgress(): Promise<void> {
     const alert = await this.alertController.create({
-      header: '🧠 Progreso para IA',
+      header: 'Progreso para IA',
       message: `
         <div style="text-align: left;">
           <p><strong>Preparación actual: ${this.aiReadinessPercentage}%</strong></p>
           <p>Para generar rutinas personalizadas necesitas:</p>
           <ul>
-            <li>✅ Información personal básica</li>
-            <li>✅ Capacidad física actual</li>
-            <li>✅ Objetivos de entrenamiento</li>
-            <li>✅ Nivel de experiencia</li>
+            <li>Información personal básica</li>
+            <li>Capacidad física actual</li>
+            <li>Objetivos de entrenamiento</li>
+            <li>Nivel de experiencia</li>
           </ul>
           ${this.isAIReady ? 
-            '<p style="color: green;"><strong>🎉 ¡Listo para generar rutinas!</strong></p>' : 
-            '<p style="color: orange;">⚠️ Completa la información faltante</p>'
+            '<p style="color: green;"><strong>Listo para generar rutinas!</strong></p>' : 
+            '<p style="color: orange;">Completa la información faltante</p>'
           }
         </div>
       `,
       buttons: [
         {
-          text: this.isAIReady ? '🏋️ Generar Rutina' : 'Completar Perfil',
+          text: this.isAIReady ? 'Generar Rutina' : 'Completar Perfil',
           handler: () => {
             if (this.isAIReady) {
               this.generateAIRoutine();
@@ -1126,7 +1122,7 @@ private calculateProfileCompletion(): void {
       routinesList += '</ul>';
 
       const alert = await this.alertController.create({
-        header: '📋 Mis Rutinas',
+        header: 'Mis Rutinas',
         message: routinesList,
         buttons: [
           {
@@ -1148,312 +1144,315 @@ private calculateProfileCompletion(): void {
   }
 
   // ✅ TOGGLE OBJETIVO FITNESS
-toggleGoal(goalValue: string): void {
-  const currentGoals = this.fitnessGoalsForm.get('primaryGoals')?.value || [];
-  let updatedGoals: string[];
+  toggleGoal(goalValue: string): void {
+    const currentGoals = this.fitnessGoalsForm.get('primaryGoals')?.value || [];
+    let updatedGoals: string[];
 
-  if (currentGoals.includes(goalValue)) {
-    updatedGoals = currentGoals.filter((goal: string) => goal !== goalValue);
-  } else {
-    updatedGoals = [...currentGoals, goalValue];
+    if (currentGoals.includes(goalValue)) {
+      updatedGoals = currentGoals.filter((goal: string) => goal !== goalValue);
+    } else {
+      updatedGoals = [...currentGoals, goalValue];
+    }
+
+    this.fitnessGoalsForm.patchValue({
+      primaryGoals: updatedGoals
+    });
+
+    this.calculateAIReadiness();
   }
 
-  this.fitnessGoalsForm.patchValue({
-    primaryGoals: updatedGoals
-  });
+  // ✅ OBTENER DESCRIPCIÓN DE NIVEL FITNESS
+  getLevelDescription(level: string): string {
+    const descriptions = {
+      'beginner': 'Nuevo en el ejercicio o con menos de 6 meses de experiencia',
+      'intermediate': 'Entre 6 meses y 2 años de entrenamiento regular',
+      'advanced': 'Más de 2 años de experiencia con rutinas complejas'
+    };
+    return descriptions[level as keyof typeof descriptions] || '';
+  }
 
-  this.calculateAIReadiness();
-}
-
-// ✅ OBTENER DESCRIPCIÓN DE NIVEL FITNESS
-getLevelDescription(level: string): string {
-  const descriptions = {
-    'beginner': 'Nuevo en el ejercicio o con menos de 6 meses de experiencia',
-    'intermediate': 'Entre 6 meses y 2 años de entrenamiento regular',
-    'advanced': 'Más de 2 años de experiencia con rutinas complejas'
-  };
-  return descriptions[level as keyof typeof descriptions] || '';
-}
-async changeAvatar(): Promise<void> {
-  const actionSheet = await this.actionSheetController.create({
-    header: 'Cambiar foto de perfil',
-    cssClass: 'custom-action-sheet',
-    buttons: [
-      {
-        text: 'Tomar foto',
-        icon: 'camera-outline',
-        handler: () => {
-          this.takePictureFromCamera();
-        }
-      },
-      {
-        text: 'Elegir de galería', 
-        icon: 'images-outline',
-        handler: () => {
-          this.selectFromGallery();
-        }
-      },
-      {
-        text: 'Cancelar',
-        icon: 'close-outline',
-        role: 'cancel'
-      }
-    ]
-  });
-  await actionSheet.present();
-}
-
-
-private async takePictureFromCamera(): Promise<void> {
-  try {
-    console.log('📸 Abriendo cámara web...');
-    
-    const video = document.createElement('video');
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) {
-      throw new Error('No se pudo obtener contexto del canvas');
-    }
-    
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-        facingMode: 'user'
-      }
-    });
-    
-    console.log('✅ Stream de cámara obtenido');
-    
-    canvas.width = 640;
-    canvas.height = 480;
-    video.srcObject = stream;
-    video.play();
-    
-    const alert = await this.alertController.create({
-      header: '📸 Capturar Foto',
-      message: `
-        <div style="text-align: center;">
-          <p>Sonríe para la cámara</p>
-          <div style="position: relative; width: 300px; height: 225px; margin: 10px auto; border: 2px solid #3880ff; border-radius: 8px; overflow: hidden;">
-            <video id="preview-video" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
-          </div>
-        </div>
-      `,
+  // ✅ CAMBIAR AVATAR
+  async changeAvatar(): Promise<void> {
+    const actionSheet = await this.actionSheetController.create({
+      header: 'Cambiar foto de perfil',
+      cssClass: 'custom-action-sheet',
       buttons: [
         {
-          text: 'Cancelar',
-          role: 'cancel',
+          text: 'Tomar foto',
+          icon: 'camera-outline',
           handler: () => {
-            stream.getTracks().forEach(track => track.stop());
+            this.takePictureFromCamera();
           }
         },
         {
-          text: '📸 Capturar',
+          text: 'Elegir de galería', 
+          icon: 'images-outline',
           handler: () => {
-            this.capturePhotoFromVideo(video, canvas, ctx, stream);
+            this.selectFromGallery();
           }
+        },
+        {
+          text: 'Cancelar',
+          icon: 'close-outline',
+          role: 'cancel'
         }
-      ],
-      cssClass: 'camera-modal'
+      ]
     });
-    
-    await alert.present();
-    
-    setTimeout(() => {
-      const previewVideo = document.getElementById('preview-video') as HTMLVideoElement;
-      if (previewVideo) {
-        previewVideo.srcObject = stream;
-        previewVideo.play();
-        console.log('✅ Preview de cámara activo');
-      }
-    }, 200);
-    
-  } catch (error) {
-    console.error('❌ Error accediendo a cámara:', error);
-    await this.showToast('Error accediendo a la cámara', 'danger');
+    await actionSheet.present();
   }
-}
-private async capturePhotoFromVideo(
-  video: HTMLVideoElement,
-  canvas: HTMLCanvasElement, 
-  ctx: CanvasRenderingContext2D,
-  stream: MediaStream
-): Promise<void> {
-  try {
-    console.log('📸 Capturando foto...');
-    
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    const blob = await new Promise<Blob>((resolve) => {
-      canvas.toBlob((blob) => {
-        resolve(blob!);
-      }, 'image/jpeg', 0.8);
-    });
-    
-    stream.getTracks().forEach(track => track.stop());
-    console.log('✅ Stream detenido');
-    
-    await this.uploadProfilePhoto(blob);
-    
-  } catch (error) {
-    console.error('❌ Error capturando foto:', error);
-    stream.getTracks().forEach(track => track.stop());
-    await this.showToast('Error capturando foto', 'danger');
-  }
-}
 
-private async selectFromGallery(): Promise<void> {
-  try {
-    console.log('📁 Abriendo selector de archivos...');
-    
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.style.display = 'none';
-    
-    const fileSelected = new Promise<File | null>((resolve) => {
-      input.addEventListener('change', (e) => {
-        const target = e.target as HTMLInputElement;
-        const file = target.files?.[0] || null;
-        resolve(file);
+  private async takePictureFromCamera(): Promise<void> {
+    try {
+      console.log('Abriendo cámara web...');
+      
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('No se pudo obtener contexto del canvas');
+      }
+      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: 'user'
+        }
       });
       
-      input.addEventListener('cancel', () => resolve(null));
-    });
-    
-    document.body.appendChild(input);
-    input.click();
-    
-    const file = await fileSelected;
-    document.body.removeChild(input);
-    
-    if (file) {
-      console.log('✅ Archivo seleccionado:', file.name);
+      console.log('Stream de cámara obtenido');
       
-      if (!file.type.startsWith('image/')) {
-        throw new Error('El archivo debe ser una imagen');
-      }
+      canvas.width = 640;
+      canvas.height = 480;
+      video.srcObject = stream;
+      video.play();
       
-      if (file.size > 5 * 1024 * 1024) {
-        throw new Error('La imagen es muy grande (max 5MB)');
-      }
+      const alert = await this.alertController.create({
+        header: 'Capturar Foto',
+        message: `
+          <div style="text-align: center;">
+            <p>Sonríe para la cámara</p>
+            <div style="position: relative; width: 300px; height: 225px; margin: 10px auto; border: 2px solid #3880ff; border-radius: 8px; overflow: hidden;">
+              <video id="preview-video" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+            </div>
+          </div>
+        `,
+        buttons: [
+          {
+            text: 'Cancelar',
+            role: 'cancel',
+            handler: () => {
+              stream.getTracks().forEach(track => track.stop());
+            }
+          },
+          {
+            text: 'Capturar',
+            handler: () => {
+              this.capturePhotoFromVideo(video, canvas, ctx, stream);
+            }
+          }
+        ],
+        cssClass: 'camera-modal'
+      });
       
-      await this.uploadProfilePhoto(file);
+      await alert.present();
+      
+      setTimeout(() => {
+        const previewVideo = document.getElementById('preview-video') as HTMLVideoElement;
+        if (previewVideo) {
+          previewVideo.srcObject = stream;
+          previewVideo.play();
+          console.log('Preview de cámara activo');
+        }
+      }, 200);
+      
+    } catch (error) {
+      console.error('Error accediendo a cámara:', error);
+      await this.showToast('Error accediendo a la cámara', 'danger');
     }
-    
-  } catch (error) {
-    console.error('❌ Error seleccionando de galería:', error);
-    await this.showToast(error instanceof Error ? error.message : 'Error seleccionando imagen', 'danger');
   }
-}
-private async uploadProfilePhoto(file: Blob | File): Promise<void> {
-  try {
-    this.isSaving = true;
-    await this.showToast('Procesando imagen...', 'warning');
-    
-    const base64 = await this.fileToBase64(file);
-    
-    console.log('💾 Guardando en Firestore...');
-    
-    if (this.user?.uid) {
-      // Guardar en Firestore users collection
-      await firebase.firestore().collection('users').doc(this.user.uid).update({
-        photoURL: base64,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+
+  private async capturePhotoFromVideo(
+    video: HTMLVideoElement,
+    canvas: HTMLCanvasElement, 
+    ctx: CanvasRenderingContext2D,
+    stream: MediaStream
+  ): Promise<void> {
+    try {
+      console.log('Capturando foto...');
+      
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => {
+          resolve(blob!);
+        }, 'image/jpeg', 0.8);
       });
       
-      // También actualizar en profiles collection
-      const profileRef = firebase.firestore().collection('profiles').doc(this.user.uid);
-      const profileDoc = await profileRef.get();
-      if (profileDoc.exists) {
-        await profileRef.update({
-          'personalInfo.photoURL': base64,
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      stream.getTracks().forEach(track => track.stop());
+      console.log('Stream detenido');
+      
+      await this.uploadProfilePhoto(blob);
+      
+    } catch (error) {
+      console.error('Error capturando foto:', error);
+      stream.getTracks().forEach(track => track.stop());
+      await this.showToast('Error capturando foto', 'danger');
+    }
+  }
+
+  private async selectFromGallery(): Promise<void> {
+    try {
+      console.log('Abriendo selector de archivos...');
+      
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.display = 'none';
+      
+      const fileSelected = new Promise<File | null>((resolve) => {
+        input.addEventListener('change', (e) => {
+          const target = e.target as HTMLInputElement;
+          const file = target.files?.[0] || null;
+          resolve(file);
         });
-      }
+        
+        input.addEventListener('cancel', () => resolve(null));
+      });
       
-      // ✅ ACTUALIZAR INTERFAZ LOCAL
-      if (this.user) {
-        this.user.photoURL = base64;
-      }
+      document.body.appendChild(input);
+      input.click();
       
-      console.log('✅ Foto guardada correctamente');
-      await this.showToast('✅ Foto actualizada correctamente', 'success');
-    }
-    
-  } catch (error) {
-    console.error('❌ Error guardando foto:', error);
-    await this.showToast('Error guardando la imagen', 'danger');
-  } finally {
-    this.isSaving = false;
-  }
-}
-private fileToBase64(file: Blob | File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result);
-    };
-    reader.onerror = () => reject(new Error('Error leyendo archivo'));
-    reader.readAsDataURL(file);
-  });
-}
-
-
-// ✅ MÉTODO VERIFICAR EMAIL EN TAB3
-async verifyEmail(): Promise<void> {
-  try {
-    const success = await this.auth.sendEmailVerification();
-    if (success) {
-      await this.showToast('✅ Email de verificación enviado', 'success');
-    } else {
-      await this.showToast('❌ Error enviando verificación', 'danger');
-    }
-  } catch (error) {
-    await this.showToast('❌ Error inesperado', 'danger');
-  }
-}
-  // ✅ ACTUALIZAR EL MÉTODO resetSection()
-async resetSection(section: string): Promise<void> {
-  const alert = await this.alertController.create({
-    header: 'Resetear Sección',
-    message: `¿Estás seguro que quieres borrar todos los datos de ${section}?`,
-    buttons: [
-      {
-        text: 'Cancelar',
-        role: 'cancel'
-      },
-      {
-        text: 'Resetear',
-        handler: () => {
-          switch(section) {
-            case 'personal':
-              this.personalInfoForm.reset();
-              break;
-            case 'medical':
-              this.medicalHistoryForm.reset();
-              this.selectedBodyAreas = [];
-              break;
-            case 'goals':
-              this.fitnessGoalsForm.reset();
-              break;
-            case 'level':
-              this.fitnessLevelForm.reset();
-              break;
-            case 'preferences':
-              this.trainingPreferencesForm.reset();
-              break;
-          }
-          // ✅ AGREGAR ESTA LÍNEA
-          this.calculateProfileCompletion();
-          this.calculateAIReadiness();
+      const file = await fileSelected;
+      document.body.removeChild(input);
+      
+      if (file) {
+        console.log('Archivo seleccionado:', file.name);
+        
+        if (!file.type.startsWith('image/')) {
+          throw new Error('El archivo debe ser una imagen');
         }
+        
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error('La imagen es muy grande (max 5MB)');
+        }
+        
+        await this.uploadProfilePhoto(file);
       }
-    ]
-  });
-  await alert.present();
-}
+      
+    } catch (error) {
+      console.error('Error seleccionando de galería:', error);
+      await this.showToast(error instanceof Error ? error.message : 'Error seleccionando imagen', 'danger');
+    }
+  }
+
+  private async uploadProfilePhoto(file: Blob | File): Promise<void> {
+    try {
+      this.isSaving = true;
+      await this.showToast('Procesando imagen...', 'warning');
+      
+      const base64 = await this.fileToBase64(file);
+      
+      console.log('Guardando en Firestore...');
+      
+      if (this.user?.uid) {
+        // Guardar en Firestore users collection
+        await firebase.firestore().collection('users').doc(this.user.uid).update({
+          photoURL: base64,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // También actualizar en profiles collection
+        const profileRef = firebase.firestore().collection('profiles').doc(this.user.uid);
+        const profileDoc = await profileRef.get();
+        if (profileDoc.exists) {
+          await profileRef.update({
+            'personalInfo.photoURL': base64,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        
+        // Actualizar interfaz local
+        if (this.user) {
+          this.user.photoURL = base64;
+        }
+        
+        console.log('Foto guardada correctamente');
+        await this.showToast('Foto actualizada correctamente', 'success');
+      }
+      
+    } catch (error) {
+      console.error('Error guardando foto:', error);
+      await this.showToast('Error guardando la imagen', 'danger');
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  private fileToBase64(file: Blob | File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result);
+      };
+      reader.onerror = () => reject(new Error('Error leyendo archivo'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ✅ MÉTODO VERIFICAR EMAIL EN TAB3
+  async verifyEmail(): Promise<void> {
+    try {
+      const success = await this.auth.sendEmailVerification();
+      if (success) {
+        await this.showToast('Email de verificación enviado', 'success');
+      } else {
+        await this.showToast('Error enviando verificación', 'danger');
+      }
+    } catch (error) {
+      await this.showToast('Error inesperado', 'danger');
+    }
+  }
+
+  // ✅ RESETEAR SECCIÓN
+  async resetSection(section: string): Promise<void> {
+    const alert = await this.alertController.create({
+      header: 'Resetear Sección',
+      message: `¿Estás seguro que quieres borrar todos los datos de ${section}?`,
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel'
+        },
+        {
+          text: 'Resetear',
+          handler: () => {
+            switch(section) {
+              case 'personal':
+                this.personalInfoForm.reset();
+                break;
+              case 'medical':
+                this.medicalHistoryForm.reset();
+                this.selectedBodyAreas = [];
+                break;
+              case 'goals':
+                this.fitnessGoalsForm.reset();
+                break;
+              case 'level':
+                this.fitnessLevelForm.reset();
+                break;
+              case 'preferences':
+                this.trainingPreferencesForm.reset();
+                break;
+            }
+            this.calculateProfileCompletion();
+            this.calculateAIReadiness();
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
 }
