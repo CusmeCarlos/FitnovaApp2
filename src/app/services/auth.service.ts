@@ -29,6 +29,7 @@ export class AuthService {
         });
       })
     );
+    this.setupAppStateListeners();
 
     // Debug para desarrollo
     this.user$.subscribe(user => {
@@ -36,7 +37,6 @@ export class AuthService {
     });
   }
 
-  // LOGIN - Solo credenciales entrenador
   async login(email: string, password: string): Promise<void> {
     try {
       console.log('🔐 Iniciando login para:', email);
@@ -44,28 +44,141 @@ export class AuthService {
       const userCredential = await this.afAuth.signInWithEmailAndPassword(email, password);
       
       if (userCredential.user) {
+        // 🔥 1. Actualizar última actividad inmediatamente
+        await this.updateLastActiveAt(userCredential.user.uid);
+        
+        // 🔥 2. Iniciar timer de actividad automática
+        this.startActivityTimer();
+        
         await this.showSuccessToast('¡Bienvenido a FitNova!');
-        console.log('✅ Login exitoso para:', email);
         this.router.navigate(['/tabs']);
       }
     } catch (error: any) {
       console.error('❌ Error en login:', error);
-      await this.showErrorToast(this.getErrorMessage(error));
       throw error;
     }
   }
 
-  // LOGOUT
-  async logout(): Promise<void> {
+  private async updateLastActiveAt(uid: string): Promise<void> {
     try {
-      await this.afAuth.signOut();
-      await this.showSuccessToast('Sesión cerrada correctamente');
-      this.router.navigate(['/auth/login']);
-      console.log('✅ Logout exitoso');
+      const db = firebase.firestore();
+      const now = firebase.firestore.FieldValue.serverTimestamp();
+      
+      console.log('🕒 Actualizando lastActiveAt para:', uid);
+      
+      // Batch para actualizar ambas colecciones atomicamente
+      const batch = db.batch();
+      
+      // Actualizar en la colección users
+      const userRef = db.collection('users').doc(uid);
+      batch.update(userRef, {
+        lastActiveAt: now,
+        updatedAt: now
+      });
+      
+      // Actualizar en userStats (crear si no existe)
+      const userStatsRef = db.collection('userStats').doc(uid);
+      batch.set(userStatsRef, {
+        lastActiveAt: now,
+        updatedAt: now
+      }, { merge: true }); // merge: true para no sobrescribir otros campos
+      
+      // Ejecutar batch
+      await batch.commit();
+      
+      console.log('✅ lastActiveAt actualizado correctamente con batch');
     } catch (error) {
-      console.error('❌ Error en logout:', error);
-      await this.showErrorToast('Error al cerrar sesión');
+      console.error('❌ Error actualizando lastActiveAt:', error);
+      // No lanzar error para no interrumpir login/logout
     }
+  }
+
+// 🔥 TAMBIÉN AGREGAR ESTE MÉTODO PARA TABS
+async updateUserActivity(): Promise<void> {
+  try {
+    const user = await this.afAuth.currentUser;
+    if (user) {
+      await this.updateLastActiveAt(user.uid);
+    } else {
+      console.log('⚠️ No hay usuario autenticado para actualizar actividad');
+    }
+  } catch (error) {
+    console.error('❌ Error actualizando actividad:', error);
+  }
+}
+
+private activityTimer?: any;
+
+startActivityTimer(): void {
+  // Limpiar timer anterior si existe
+  if (this.activityTimer) {
+    clearInterval(this.activityTimer);
+  }
+
+  // Actualizar actividad cada 5 minutos mientras la app está abierta
+  this.activityTimer = setInterval(async () => {
+    const user = await this.afAuth.currentUser;
+    if (user) {
+      console.log('⏰ Timer: Actualizando actividad automáticamente');
+      await this.updateLastActiveAt(user.uid);
+    }
+  }, 5 * 60 * 1000); // 5 minutos
+}
+
+stopActivityTimer(): void {
+  if (this.activityTimer) {
+    clearInterval(this.activityTimer);
+    this.activityTimer = null;
+  }
+}
+async logout(): Promise<void> {
+  try {
+    console.log('🚪 Iniciando logout...');
+    
+    // 🔥 1. Actualizar lastActiveAt ANTES de cerrar sesión
+    const user = await this.afAuth.currentUser;
+    if (user) {
+      await this.updateLastActiveAt(user.uid);
+      console.log('✅ Última actividad actualizada antes del logout');
+    }
+    
+    // 🔥 2. Detener timer de actividad
+    this.stopActivityTimer();
+    
+    // 3. Limpiar datos locales
+    localStorage.clear();
+    
+    // 4. Cerrar sesión en Firebase
+    await this.afAuth.signOut();
+    
+    await this.showSuccessToast('Sesión cerrada correctamente');
+    console.log('✅ Logout completado');
+    
+    // 5. Navegar al login
+    this.router.navigate(['/login']);
+    
+  } catch (error: any) {
+    console.error('❌ Error en logout:', error);
+    await this.showErrorToast('Error al cerrar sesión');
+    throw error;
+  }
+}
+
+// 🔥 TAMBIÉN AGREGAR LISTENER PARA DETECTAR CUANDO SE CIERRA LA APP
+async setupAppStateListeners(): Promise<void> {
+  // Detectar cuando la app va al background
+  document.addEventListener('visibilitychange', async () => {
+    if (document.hidden) {
+      // App va al background - actualizar actividad
+      console.log('📱 App va al background - actualizando actividad');
+      await this.updateUserActivity();
+    }
+  });
+    // Detectar cuando se cierra la app (beforeunload)
+    window.addEventListener('beforeunload', async () => {
+      console.log('📱 App cerrándose - actualizando actividad');
+      await this.updateUserActivity();
+    });
   }
 
   // CREAR USUARIO (Solo para entrenadores - según documento)
