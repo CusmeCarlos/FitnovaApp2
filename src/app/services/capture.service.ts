@@ -1,5 +1,5 @@
 // src/app/services/capture.service.ts
-// 📸 CAPTURESERVICE - COMPATIBLE CON REGLAS FIRESTORE EXISTENTES
+// 📸 CAPTURESERVICE - CORREGIDO PARA FIREBASE
 
 import { Injectable } from '@angular/core';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
@@ -8,38 +8,38 @@ import { AuthService } from './auth.service';
 import { ErrorHandlerService } from './error-handler.service';
 import { take } from 'rxjs/operators';
 
-// ✅ INTERFACES COMPATIBLES CON TUS REGLAS
-export interface CriticalError {
+// ✅ INTERFACES CORREGIDAS PARA FIREBASE
+export interface CriticalAlert {
   id?: string;
-  userId: string;
+  uid: string; // ← CORREGIDO: uid no userId
   errorType: string;
-  severity: number; // 1-10 según tus reglas
-  timestamp: any; // Firestore timestamp
+  severity: string; // ← CORREGIDO: string no number
+  exercise: string;
   exerciseType: string;
-  sessionId: string;
+  timestamp: any;
+  processedAt: any;
   biomechanicsData?: any;
-  deviceInfo?: any;
-  reviewed?: boolean;
-  trainerNotes?: string;
-  reviewedAt?: any;
-}
-
-export interface ErrorCapture {
-  id?: string;
-  userId: string;
-  errorId: string;
-  captureUrl: string;
-  timestamp: any; // Firestore timestamp
-  storagePath: string;
+  affectedJoints?: string[];
+  angles?: any;
+  confidence: number;
+  lastSessionId: string;
   sessionId: string;
-  metadata?: any;
+  status: string;
+  captureURL: string; // ← IMPORTANTE: URL de la imagen
+  deviceInfo?: any;
+  readAt?: any;
+  readBy?: string;
+  resolvedAt?: any;
+  resolvedBy?: string;
+  trainerNotes?: string;
+  followUpRequired?: boolean;
 }
 
 export interface TrainingSession {
   id?: string;
   userId: string;
   exerciseType: string;
-  startTime: any; // Firestore timestamp
+  startTime: any;
   endTime?: any;
   completed?: boolean;
   finalStats?: any;
@@ -52,8 +52,8 @@ export interface TrainingSession {
 })
 export class CaptureService {
   private currentSession: TrainingSession | null = null;
-  private capturedErrorsInSession = new Set<string>(); // Para evitar duplicados
-  private readonly MAX_CAPTURES_PER_SESSION = 3; // Límite conservador
+  private capturedErrorsInSession = new Set<string>();
+  private readonly MAX_CAPTURES_PER_SESSION = 3;
   private readonly MIN_TIME_BETWEEN_CAPTURES = 30000; // 30 segundos
   private lastCaptureTime: number = 0;
 
@@ -73,11 +73,10 @@ export class CaptureService {
         return null;
       }
 
-      // ✅ CREAR SESIÓN SEGÚN TUS REGLAS
       const sessionData: Omit<TrainingSession, 'id'> = {
         userId,
         exerciseType,
-        startTime: new Date(), // Firestore lo convertirá a timestamp
+        startTime: new Date(),
         errorsDetected: 0,
         capturesTaken: 0
       };
@@ -89,7 +88,6 @@ export class CaptureService {
         ...sessionData
       };
 
-      // ✅ LIMPIAR ESTADO DE SESIÓN ANTERIOR
       this.capturedErrorsInSession.clear();
       this.lastCaptureTime = 0;
 
@@ -102,35 +100,35 @@ export class CaptureService {
     }
   }
 
-  // ✅ CAPTURA AUTOMÁTICA ÚNICA POR ERROR EN SESIÓN
+  // ✅ CAPTURA AUTOMÁTICA CORREGIDA
   async captureErrorIfNeeded(
     canvas: HTMLCanvasElement,
     errorType: string,
-    severity: number, // 1-10 según tus reglas
+    severity: string, // ← CAMBIADO: string en lugar de number
     biomechanicsData?: any
   ): Promise<boolean> {
     
-    // ✅ VALIDACIONES PREVIAS
     if (!this.currentSession) {
       console.warn('📸 No hay sesión activa para captura');
       return false;
     }
 
-    // ✅ SOLO CAPTURAR ERRORES CRÍTICOS (severity >= 7)
-    if (severity < 7) {
+    // ✅ CAPTURAR ERRORES CRÍTICOS Y HIGH
+    const shouldCapture = severity === 'critical' || severity === 'high';
+    
+    if (!shouldCapture) {
+      console.log(`📸 Severidad ${severity} no requiere captura`);
       return false;
     }
 
-    // ✅ VERIFICAR SI YA SE CAPTURÓ ESTE ERROR EN LA SESIÓN
     const errorKey = `${errorType}_${this.currentSession.exerciseType}`;
     if (this.capturedErrorsInSession.has(errorKey)) {
       console.log(`📸 Error ${errorKey} ya capturado en esta sesión`);
       return false;
     }
 
-    // ✅ VERIFICAR LÍMITES DE TIEMPO Y CANTIDAD
     const now = Date.now();
-    if ((this.currentSession.capturesTaken || 0) + this.MAX_CAPTURES_PER_SESSION >= this.MAX_CAPTURES_PER_SESSION) {
+    if ((this.currentSession.capturesTaken || 0) >= this.MAX_CAPTURES_PER_SESSION) {
       console.log('📸 Límite de capturas por sesión alcanzado');
       return false;
     }
@@ -141,18 +139,23 @@ export class CaptureService {
     }
 
     try {
-      // ✅ 1. CREAR ERROR CRÍTICO EN FIRESTORE
-      const errorId = await this.createCriticalError(errorType, severity, biomechanicsData);
-      if (!errorId) return false;
+      console.log(`📸 ¡Iniciando captura para error ${severity}: ${errorType}!`);
+
+      // ✅ 1. CREAR ALERTA EN FIREBASE (SIN CAPTURA PRIMERO)
+      const alertId = await this.createCriticalAlert(errorType, severity, biomechanicsData);
+      if (!alertId) return false;
 
       // ✅ 2. REALIZAR CAPTURA Y SUBIR A STORAGE
-      const captureUrl = await this.performCapture(canvas, errorId);
-      if (!captureUrl) return false;
+      const captureUrl = await this.performCapture(canvas, alertId);
+      if (!captureUrl) {
+        console.error('❌ No se pudo generar captureURL');
+        return false;
+      }
 
-      // ✅ 3. REGISTRAR CAPTURA EN FIRESTORE
-      await this.createErrorCapture(errorId, captureUrl);
+      // ✅ 3. ACTUALIZAR ALERTA CON URL DE CAPTURA
+      await this.updateAlertWithCapture(alertId, captureUrl);
 
-      // ✅ 4. ACTUALIZAR ESTADO DE SESIÓN
+      // ✅ 4. ACTUALIZAR SESIÓN
       this.capturedErrorsInSession.add(errorKey);
       this.lastCaptureTime = now;
       
@@ -168,7 +171,7 @@ export class CaptureService {
         this.currentSession.capturesTaken = (this.currentSession.capturesTaken || 0) + 1;
       }
 
-      console.log(`📸 Captura exitosa: ${errorType} (severity: ${severity})`);
+      console.log(`📸 ¡Captura exitosa! URL: ${captureUrl}`);
       return true;
 
     } catch (error) {
@@ -177,61 +180,83 @@ export class CaptureService {
     }
   }
 
-  // ✅ CREAR ERROR CRÍTICO SEGÚN TUS REGLAS
-  private async createCriticalError(
+  // ✅ CREAR ALERTA CRÍTICA (ESTRUCTURA CORRECTA)
+  private async createCriticalAlert(
     errorType: string,
-    severity: number,
+    severity: string,
     biomechanicsData?: any
   ): Promise<string | null> {
     try {
       const userId = await this.auth.getCurrentUserId();
       if (!userId || !this.currentSession) return null;
 
-      const errorData: Omit<CriticalError, 'id'> = {
-        userId,
+      // ✅ ESTRUCTURA EXACTA QUE ESPERA FIREBASE
+      const alertData: Omit<CriticalAlert, 'id'> = {
+        uid: userId, // ← CORRECTO: uid no userId
         errorType,
-        severity,
-        timestamp: new Date(), // Firestore timestamp
+        severity, // ← CORRECTO: string
+        exercise: this.currentSession.exerciseType,
         exerciseType: this.currentSession.exerciseType,
+        timestamp: new Date(),
+        processedAt: new Date(),
+        biomechanicsData: biomechanicsData || {},
+        affectedJoints: biomechanicsData?.affectedJoints || [],
+        angles: biomechanicsData?.angles || {},
+        confidence: biomechanicsData?.confidence || 0.8,
+        lastSessionId: this.currentSession.id!,
         sessionId: this.currentSession.id!,
-        biomechanicsData,
+        status: 'unread',
+        captureURL: '', // ← Se actualiza después
         deviceInfo: {
           userAgent: navigator.userAgent,
           platform: navigator.platform,
           screenResolution: `${screen.width}x${screen.height}`
-        },
-        reviewed: false
+        }
       };
 
-      const errorRef = await this.firestore.collection('critical-errors').add(errorData);
-      console.log('🚨 Error crítico registrado:', errorRef.id);
-      return errorRef.id;
+      // ✅ COLECCIÓN CORRECTA
+      const docRef = await this.firestore.collection('criticalAlerts').add(alertData);
+      console.log('🚨 Alerta crítica creada con ID:', docRef.id);
+      return docRef.id;
 
     } catch (error) {
-      console.error('🛑 Error creando error crítico:', error);
+      console.error('🛑 Error creando alerta crítica:', error);
       return null;
     }
   }
 
-  // ✅ REALIZAR CAPTURA Y SUBIR A STORAGE
-  private async performCapture(canvas: HTMLCanvasElement, errorId: string): Promise<string | null> {
+  // ✅ ACTUALIZAR ALERTA CON URL DE CAPTURA
+  private async updateAlertWithCapture(alertId: string, captureUrl: string): Promise<void> {
     try {
-      // ✅ CONVERTIR CANVAS A BLOB
+      await this.firestore.collection('criticalAlerts').doc(alertId).update({
+        captureURL: captureUrl,
+        hasCaptureImage: true,
+        captureTimestamp: new Date()
+      });
+      
+      console.log(`✅ Alerta ${alertId} actualizada con captureURL`);
+    } catch (error) {
+      console.error('❌ Error actualizando alerta con captura:', error);
+      throw error;
+    }
+  }
+
+  // ✅ REALIZAR CAPTURA Y SUBIR A STORAGE (SIN CAMBIOS)
+  private async performCapture(canvas: HTMLCanvasElement, alertId: string): Promise<string | null> {
+    try {
       const blob = await this.canvasToBlob(canvas);
       if (!blob) return null;
 
       const userId = await this.auth.getCurrentUserId();
       if (!userId || !this.currentSession) return null;
 
-      // ✅ GENERAR PATH ÚNICO
       const timestamp = Date.now();
-      const filename = `error_${errorId}_${timestamp}.png`;
+      const filename = `error_${alertId}_${timestamp}.png`;
       const storagePath = `captures/${userId}/${this.currentSession.id}/${filename}`;
 
-      // ✅ SUBIR A CLOUD STORAGE
       const uploadTask = this.storage.upload(storagePath, blob, {
         customMetadata: {
-          errorId,
+          errorId: alertId,
           errorType: 'critical',
           sessionId: this.currentSession.id!,
           uploadedAt: new Date().toISOString()
@@ -240,7 +265,6 @@ export class CaptureService {
 
       await uploadTask;
       
-      // ✅ OBTENER URL DE DESCARGA
       const downloadURL = await this.storage.ref(storagePath).getDownloadURL().toPromise();
       
       console.log(`📸 Imagen subida: ${filename}`);
@@ -252,32 +276,9 @@ export class CaptureService {
     }
   }
 
-  // ✅ REGISTRAR CAPTURA EN FIRESTORE
-  private async createErrorCapture(errorId: string, captureUrl: string): Promise<void> {
-    try {
-      const userId = await this.auth.getCurrentUserId();
-      if (!userId || !this.currentSession) return;
-
-      const captureData: Omit<ErrorCapture, 'id'> = {
-        userId,
-        errorId,
-        captureUrl,
-        timestamp: new Date(), // Firestore timestamp
-        storagePath: captureUrl,
-        sessionId: this.currentSession.id!
-      };
-
-      await this.firestore.collection('error-captures').add(captureData);
-      console.log('📸 Captura registrada en Firestore');
-
-    } catch (error) {
-      console.error('🛑 Error registrando captura:', error);
-    }
-  }
-
-  // ✅ FINALIZAR SESIÓN DE ENTRENAMIENTO
+  // ✅ FINALIZAR SESIÓN
   async endTrainingSession(): Promise<void> {
-    if (!this.currentSession || !this.currentSession.id) return;
+    if (!this.currentSession?.id) return;
 
     try {
       await this.firestore.collection('training-sessions')
@@ -301,7 +302,7 @@ export class CaptureService {
     }
   }
 
-  // ✅ MÉTODOS AUXILIARES
+  // ✅ MÉTODOS AUXILIARES CON NULL SAFETY
   private canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
     return new Promise((resolve) => {
       canvas.toBlob((blob) => resolve(blob), 'image/png', 0.9);
@@ -322,8 +323,8 @@ export class CaptureService {
 
   getSessionStats() {
     return {
-      sessionId: this.currentSession?.id,
-      exerciseType: this.currentSession?.exerciseType,
+      sessionId: this.currentSession?.id || null,
+      exerciseType: this.currentSession?.exerciseType || null,
       errorsDetected: this.currentSession?.errorsDetected || 0,
       capturesTaken: this.currentSession?.capturesTaken || 0,
       canCaptureMore: (this.currentSession?.capturesTaken || 0) < this.MAX_CAPTURES_PER_SESSION
