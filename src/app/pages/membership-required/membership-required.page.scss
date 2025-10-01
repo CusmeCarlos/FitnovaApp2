@@ -1,0 +1,75 @@
+// src/app/pages/membership-required/membership-required.page.scss
+.membership-required-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 120px);
+    text-align: center;
+    padding: 2rem 1rem;
+  
+    .icon-container {
+      margin-bottom: 2rem;
+  
+      ion-icon {
+        font-size: 120px;
+        opacity: 0.8;
+      }
+    }
+  
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--ion-color-danger);
+      margin-bottom: 1rem;
+    }
+  
+    .subtitle {
+      font-size: 1.1rem;
+      color: var(--ion-color-medium);
+      margin-bottom: 2rem;
+      max-width: 400px;
+      line-height: 1.6;
+    }
+  
+    .info-card, .contact-card {
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 1.5rem;
+  
+      h3 {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+        color: var(--ion-color-dark);
+  
+        ion-icon {
+          font-size: 1.5rem;
+        }
+      }
+  
+      p {
+        color: var(--ion-color-medium-shade);
+        line-height: 1.6;
+        margin-bottom: 0.8rem;
+      }
+  
+      .highlight {
+        font-weight: 600;
+        color: #ffffff; // ✅ TEXTO BLANCO
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); // ✅ GRADIENTE
+        padding: 1rem;
+        border-radius: 12px;
+        margin-top: 1rem;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        line-height: 1.5;
+      }
+  
+      ion-chip {
+        margin-top: 0.5rem;
+      }
+    }
+  }

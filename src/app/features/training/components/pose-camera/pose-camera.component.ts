@@ -299,7 +299,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       const success = await this.captureService.captureErrorIfNeeded(
         canvas,
         error.type,
-        error.severity,
+        error.severity.toString(),
         {
           affectedJoints: error.affectedJoints,
           confidence: error.confidence,
