@@ -267,7 +267,9 @@
               <ion-label position="stacked">Fecha de Nacimiento</ion-label>
               <ion-datetime 
                 formControlName="dateOfBirth" 
-                presentation="date" 
+                presentation="date"
+                displayFormat="DD/MM/YYYY"
+                [max]="maxDate"
                 placeholder="Selecciona tu fecha de nacimiento">
               </ion-datetime>
             </ion-item>
@@ -718,134 +720,134 @@
     </ion-card>
 
     <!-- ===== SECCIÓN NIVEL FITNESS ===== -->
-    <ion-card *ngIf="currentSection === 'level'" class="section-card">
-      <ion-card-header>
-        <ion-card-title>
-          <ion-icon name="barbell-outline"></ion-icon>
-          Nivel de Fitness
-        </ion-card-title>
-      </ion-card-header>
+<ion-card *ngIf="currentSection === 'level'" class="section-card">
+  <ion-card-header>
+    <ion-card-title>
+      <ion-icon name="barbell-outline"></ion-icon>
+      Nivel de Fitness
+    </ion-card-title>
+  </ion-card-header>
+  
+  <ion-card-content>
+    <form [formGroup]="fitnessLevelForm" (ngSubmit)="saveFitnessLevel()">
       
-      <ion-card-content>
-        <form [formGroup]="fitnessLevelForm" (ngSubmit)="saveFitnessLevel()">
-          
-          <div class="form-section">
-            <h4>Nivel General *</h4>
-            <p class="section-description">¿Cómo describirías tu nivel actual de fitness?</p>
-            
-            <div class="level-options">
-              <ion-item 
-                *ngFor="let level of fitnessLevelOptions" 
-                class="level-item"
-                [class.selected]="fitnessLevelForm.get('overallLevel')?.value === level.value">
-                <ion-radio 
-                  slot="start" 
-                  [value]="level.value"  
-                  formControlName="overallLevel">
-                </ion-radio>
-                <ion-label class="level-label">
-                  <h3>{{ level.label }}</h3>
-                  <p>{{ getLevelDescription(level.value) }}</p>
-                </ion-label>
-              </ion-item>
-            </div>
-          </div>
+      <div class="form-section">
+        <h4>Nivel General *</h4>
+        <p class="section-description">¿Cómo describirías tu nivel actual de fitness?</p>
+        
+        <!-- ✅ CORRECCIÓN: ion-radio-group CON formControlName -->
+        <ion-radio-group formControlName="overallLevel">
+          <ion-item 
+            *ngFor="let level of fitnessLevelOptions" 
+            class="level-item"
+            [class.selected]="fitnessLevelForm.get('overallLevel')?.value === level.value">
+            <ion-radio 
+              slot="start" 
+              [value]="level.value">
+            </ion-radio>
+            <ion-label class="level-label">
+              <h3>{{ level.label }}</h3>
+              <p>{{ getLevelDescription(level.value) }}</p>
+            </ion-label>
+          </ion-item>
+        </ion-radio-group>
+      </div>
 
-          <div class="form-section">
-            <h4>Experiencia por Categoría</h4>
-            
-            <ion-item class="form-item">
-              <ion-label position="stacked">Entrenamiento de Fuerza</ion-label>
-              <ion-select formControlName="strengthTraining" placeholder="Nivel de experiencia">
-                <ion-select-option 
-                  *ngFor="let exp of experienceLevelOptions" 
-                  [value]="exp.value">
-                  {{ exp.label }}
-                </ion-select-option>
-              </ion-select>
-            </ion-item>
+      <div class="form-section">
+        <h4>Experiencia por Categoría</h4>
+        
+        <ion-item class="form-item">
+          <ion-label position="stacked">Entrenamiento de Fuerza</ion-label>
+          <ion-select formControlName="strengthTraining" placeholder="Nivel">
+            <ion-select-option 
+              *ngFor="let exp of experienceLevelOptions" 
+              [value]="exp.value">
+              {{ exp.label }}
+            </ion-select-option>
+          </ion-select>
+        </ion-item>
 
-            <ion-item class="form-item">
-              <ion-label position="stacked">Entrenamiento Cardiovascular</ion-label>
-              <ion-select formControlName="cardioTraining" placeholder="Nivel de experiencia">
-                <ion-select-option 
-                  *ngFor="let exp of experienceLevelOptions" 
-                  [value]="exp.value">
-                  {{ exp.label }}
-                </ion-select-option>
-              </ion-select>
-            </ion-item>
+        <ion-item class="form-item">
+          <ion-label position="stacked">Entrenamiento Cardiovascular</ion-label>
+          <ion-select formControlName="cardioTraining" placeholder="Nivel">
+            <ion-select-option 
+              *ngFor="let exp of experienceLevelOptions" 
+              [value]="exp.value">
+              {{ exp.label }}
+            </ion-select-option>
+          </ion-select>
+        </ion-item>
 
-            <ion-item class="form-item">
-              <ion-label position="stacked">Flexibilidad/Yoga</ion-label>
-              <ion-select formControlName="flexibilityTraining" placeholder="Nivel de experiencia">
-                <ion-select-option 
-                  *ngFor="let exp of experienceLevelOptions" 
-                  [value]="exp.value">
-                  {{ exp.label }}
-                </ion-select-option>
-              </ion-select>
-            </ion-item>
+        <ion-item class="form-item">
+          <ion-label position="stacked">Flexibilidad</ion-label>
+          <ion-select formControlName="flexibilityTraining" placeholder="Nivel">
+            <ion-select-option 
+              *ngFor="let exp of experienceLevelOptions" 
+              [value]="exp.value">
+              {{ exp.label }}
+            </ion-select-option>
+          </ion-select>
+        </ion-item>
 
-            <ion-item class="form-item">
-              <ion-label position="stacked">Experiencia en Deportes</ion-label>
-              <ion-select formControlName="sportsExperience" placeholder="Nivel de experiencia">
-                <ion-select-option 
-                  *ngFor="let exp of experienceLevelOptions" 
-                  [value]="exp.value">
-                  {{ exp.label }}
-                </ion-select-option>
-              </ion-select>
-            </ion-item>
-          </div>
+        <ion-item class="form-item">
+          <ion-label position="stacked">Experiencia Deportiva</ion-label>
+          <ion-select formControlName="sportsExperience" placeholder="Nivel">
+            <ion-select-option 
+              *ngFor="let exp of experienceLevelOptions" 
+              [value]="exp.value">
+              {{ exp.label }}
+            </ion-select-option>
+          </ion-select>
+        </ion-item>
+      </div>
 
-          <div class="form-section">
-            <h4>Experiencia Temporal</h4>
-            
-            <div class="form-row">
-              <ion-item class="form-item half">
-                <ion-label position="stacked">Años Entrenando</ion-label>
-                <ion-input 
-                  formControlName="yearsOfTraining" 
-                  type="number" 
-                  placeholder="Ej: 2"
-                  min="0" 
-                  max="50">
-                </ion-input>
-              </ion-item>
+      <div class="form-section">
+        <h4>Experiencia Temporal</h4>
+        
+        <div class="form-row">
+          <ion-item class="form-item half">
+            <ion-label position="stacked">Años Entrenando</ion-label>
+            <ion-input 
+              formControlName="yearsOfTraining" 
+              type="number" 
+              placeholder="Ej: 2"
+              min="0" 
+              max="50">
+            </ion-input>
+          </ion-item>
 
-              <ion-item class="form-item half">
-                <ion-label position="stacked">Meses Adicionales</ion-label>
-                <ion-input 
-                  formControlName="monthsOfTraining" 
-                  type="number" 
-                  placeholder="Ej: 6"
-                  min="0" 
-                  max="11">
-                </ion-input>
-              </ion-item>
-            </div>
+          <ion-item class="form-item half">
+            <ion-label position="stacked">Meses Adicionales</ion-label>
+            <ion-input 
+              formControlName="monthsOfTraining" 
+              type="number" 
+              placeholder="Ej: 6"
+              min="0" 
+              max="11">
+            </ion-input>
+          </ion-item>
+        </div>
 
-            <ion-item class="form-item">
-              <ion-checkbox formControlName="previousGymExperience"></ion-checkbox>
-              <ion-label class="checkbox-label">
-                He entrenado en gimnasio anteriormente
-              </ion-label>
-            </ion-item>
-          </div>
+        <ion-item class="form-item">
+          <ion-checkbox formControlName="previousGymExperience"></ion-checkbox>
+          <ion-label class="checkbox-label">
+            He entrenado en gimnasio anteriormente
+          </ion-label>
+        </ion-item>
+      </div>
 
-          <div class="form-actions">
-            <ion-button 
-              type="submit" 
-              expand="block" 
-              [disabled]="fitnessLevelForm.invalid || isSaving">
-              {{ isSaving ? 'Guardando...' : 'Guardar Nivel de Fitness' }}
-              <ion-spinner *ngIf="isSaving" slot="end"></ion-spinner>
-            </ion-button>
-          </div>
-        </form>
-      </ion-card-content>
-    </ion-card>
+      <div class="form-actions">
+        <ion-button 
+          type="submit" 
+          expand="block" 
+          [disabled]="fitnessLevelForm.invalid || isSaving">
+          {{ isSaving ? 'Guardando...' : 'Guardar Nivel de Fitness' }}
+          <ion-spinner *ngIf="isSaving" slot="end"></ion-spinner>
+        </ion-button>
+      </div>
+    </form>
+  </ion-card-content>
+</ion-card>
 
     <!-- ===== SECCIÓN PREFERENCIAS ===== -->
     <ion-card *ngIf="currentSection === 'preferences'" class="section-card">

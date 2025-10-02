@@ -8,7 +8,7 @@ import { ProfileService } from '../services/profile.service';
 import { AiRoutineService } from '../services/ai-routine.service';
 import { CloudFunctionsService } from '../services/cloud-functions.service';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { ActionSheetController, LoadingController } from '@ionic/angular';
+import { ActionSheetController, IonicModule, LoadingController } from '@ionic/angular';
 import { User } from '../interfaces/user.interface';
 import { Profile } from '../interfaces/profile.interface';
 import { CommonModule } from '@angular/common';
@@ -82,11 +82,13 @@ import {
     IonDatetime,
     IonCheckbox,
     IonRadio,
+    IonRadioGroup
   ]
 })
 export class Tab3Page implements OnInit, OnDestroy {
   user: User | null = null;
   profile: Profile | null = null;
+  maxDate: string = new Date().toISOString();
   
   private userSubscription: Subscription = new Subscription();
   private profileSubscription: Subscription = new Subscription();
@@ -244,12 +246,7 @@ export class Tab3Page implements OnInit, OnDestroy {
       const activeRoutine = localStorage.getItem('activeRoutine');
       const hasRoutineInStorage = !!activeRoutine && activeRoutine !== 'null' && activeRoutine !== 'undefined';
       
-      console.log('🔍 Verificando rutina activa:', {
-        enService: hasRoutineInService,
-        enStorage: hasRoutineInStorage,
-        estadoActual: this.routineStateService.getCurrentState().status
-      });
-      
+
       return hasRoutineInService || hasRoutineInStorage;
       
     } catch (error) {
@@ -615,18 +612,30 @@ export class Tab3Page implements OnInit, OnDestroy {
     this.profileCompletionPercentage = Math.round((completedSections / totalSections) * 100);
   }
 
-  // ✅ GUARDAR INFORMACIÓN PERSONAL
   async savePersonalInfo(): Promise<void> {
     if (this.personalInfoForm.invalid) {
       await this.showValidationErrors('Información Personal');
       return;
     }
-
+  
     this.isSaving = true;
     try {
       const formValue = this.personalInfoForm.value;
-      const personalInfo = { ...formValue };
-
+      
+      // Extraer solo la parte de fecha (YYYY-MM-DD)
+      let dateOfBirth = null;
+      if (formValue.dateOfBirth) {
+        const dateStr = formValue.dateOfBirth.split('T')[0]; // "2004-10-12"
+        dateOfBirth = dateStr;
+      }
+      
+      const personalInfo = { 
+        ...formValue,
+        dateOfBirth: dateOfBirth
+      };
+  
+      console.log('📅 Fecha que se va a guardar:', dateOfBirth);
+  
       const success = await this.profileService.updatePersonalInfo(personalInfo);
       
       if (success) {
@@ -635,6 +644,7 @@ export class Tab3Page implements OnInit, OnDestroy {
         await this.showToast('Error al guardar la información personal', 'danger');
       }
     } catch (error) {
+      console.error('Error guardando:', error);
       await this.showToast('Error inesperado al guardar', 'danger');
     } finally {
       this.isSaving = false;
@@ -729,24 +739,45 @@ export class Tab3Page implements OnInit, OnDestroy {
     }
   }
 
-  // ✅ GUARDAR NIVEL FITNESS
   async saveFitnessLevel(): Promise<void> {
     if (this.fitnessLevelForm.invalid) {
       await this.showValidationErrors('Nivel de Fitness');
       return;
     }
-
+  
     this.isSaving = true;
     try {
       const formValue = this.fitnessLevelForm.value;
+      
+      // ✅ Guardar nivel principal
       const success = await this.profileService.updateFitnessLevel(formValue.overallLevel);
       
       if (success) {
-        await this.showToast('Nivel de fitness guardado', 'success');
+        // ✅ También guardar los campos adicionales
+        const userDoc = await this.profileService.getCurrentProfile().pipe(take(1)).toPromise();
+        if (userDoc?.uid) {
+          const docRef = firebase.firestore().collection('profiles').doc(userDoc.uid);
+          await docRef.set({
+            fitnessLevelDetails: {
+              strengthTraining: formValue.strengthTraining || null,
+              cardioTraining: formValue.cardioTraining || null,
+              flexibilityTraining: formValue.flexibilityTraining || null,
+              sportsExperience: formValue.sportsExperience || null,
+              yearsOfTraining: formValue.yearsOfTraining || 0,
+              monthsOfTraining: formValue.monthsOfTraining || 0,
+              previousGymExperience: formValue.previousGymExperience || false,
+              lastUpdated: new Date()
+            },
+            lastUpdated: new Date()
+          }, { merge: true });
+        }
+        
+        await this.showToast('Nivel de fitness guardado correctamente', 'success');
       } else {
         await this.showToast('Error al guardar nivel', 'danger');
       }
     } catch (error) {
+      console.error('Error guardando nivel fitness:', error);
       await this.showToast('Error inesperado al guardar', 'danger');
     } finally {
       this.isSaving = false;

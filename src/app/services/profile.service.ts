@@ -63,19 +63,19 @@ export class ProfileService {
     try {
       const user = await this.auth.user$.pipe(take(1)).toPromise();
       if (!user?.uid) throw new Error('Usuario no autenticado');
-
+  
       console.log('💾 Guardando información personal:', personalInfo);
-
+  
       const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
       
-      await docRef.update({
+      // ✅ CAMBIO: set con merge en lugar de update
+      await docRef.set({
         personalInfo: personalInfo,
         lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
+      }, { merge: true });
+  
       console.log('✅ Información personal guardada');
       
-      // Recargar perfil para actualizar UI
       await this.loadUserProfile(user.uid);
       
       return true;
@@ -99,9 +99,9 @@ export class ProfileService {
       };
   
       const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
-      await docRef.update(updateData);
+      // ✅ CAMBIO: set con merge en lugar de update
+      await docRef.set(updateData, { merge: true });
   
-      // Actualizar el BehaviorSubject
       const currentProfile = this.profileSubject.value;
       if (currentProfile) {
         const updatedProfile = {
@@ -132,9 +132,9 @@ export class ProfileService {
       };
   
       const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
-      await docRef.update(updateData);
+      // ✅ CAMBIO: set con merge en lugar de update
+      await docRef.set(updateData, { merge: true });
   
-      // Actualizar el BehaviorSubject
       const currentProfile = this.profileSubject.value;
       if (currentProfile) {
         const updatedProfile = {
@@ -150,7 +150,7 @@ export class ProfileService {
       return false;
     }
   }
-
+  
   async updateFitnessLevel(fitnessLevel: 'beginner' | 'intermediate' | 'advanced'): Promise<boolean> {
     try {
       const user = await this.auth.user$.pipe(take(1)).toPromise();
@@ -162,13 +162,14 @@ export class ProfileService {
       };
   
       const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
-      await docRef.update(updateData);
+      // ✅ CAMBIO: set con merge
+      await docRef.set(updateData, { merge: true });
   
       const currentProfile = this.profileSubject.value;
       if (currentProfile) {
         const updatedProfile: Profile = {
           ...currentProfile,
-          fitnessLevel, // ✅ TIPO CORRECTO
+          fitnessLevel,
           lastUpdated: new Date()
         };
         this.profileSubject.next(updatedProfile);
@@ -180,7 +181,7 @@ export class ProfileService {
       return false;
     }
   }
-
+  
   async updateTrainingPreferences(trainingPreferences: any): Promise<boolean> {
     try {
       const user = await this.auth.user$.pipe(take(1)).toPromise();
@@ -195,9 +196,9 @@ export class ProfileService {
       };
   
       const docRef = firebase.firestore().collection(this.COLLECTION).doc(user.uid);
-      await docRef.update(updateData);
+      // ✅ CAMBIO: set con merge
+      await docRef.set(updateData, { merge: true });
   
-      // Actualizar el BehaviorSubject
       const currentProfile = this.profileSubject.value;
       if (currentProfile) {
         const updatedProfile = {
@@ -213,6 +214,7 @@ export class ProfileService {
       return false;
     }
   }
+  
 
   async updateProfilePhoto(photoDataUrl: string): Promise<boolean> {
     try {
