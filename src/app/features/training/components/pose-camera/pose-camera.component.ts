@@ -56,7 +56,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('canvasElement', { static: true }) canvasElementRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('overlayElement', { static: true }) overlayElementRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('readinessCanvas', { static: true }) readinessCanvasRef!: ElementRef<HTMLCanvasElement>; // ✅ NUEVO
-
+  
 
   // ✅ INPUTS Y OUTPUTS
   @Input() exerciseType: ExerciseType = ExerciseType.SQUATS;
@@ -372,6 +372,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       
       const captureSuccess = await this.captureService.captureErrorIfNeeded(
         this.canvasElementRef.nativeElement, // Canvas, NO video
+        this.videoElementRef.nativeElement,
         mostCritical.type,
         severityString, // ✅ AHORA ES STRING
         {
@@ -503,6 +504,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       
       const success = await this.captureService.captureErrorIfNeeded(
         canvas,
+        this.videoElementRef.nativeElement,
         error.type,
         error.severity.toString(),
         {
@@ -659,6 +661,7 @@ async forceCapture(): Promise<void> {
   try {
     const captureURL = await this.captureService.captureErrorIfNeeded(
       this.canvasElementRef.nativeElement,
+      this.videoElementRef.nativeElement,
       PostureErrorType.POOR_ALIGNMENT,
       'critical',
       this.currentSessionId

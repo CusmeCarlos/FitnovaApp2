@@ -1,19 +1,20 @@
 // src/app/services/capture.service.ts
-// 📸 CAPTURESERVICE - CORREGIDO PARA FIREBASE
+// 📸 CAPTURESERVICE - CAPTURA CON VIDEO REAL
 
 import { Injectable } from '@angular/core';
 import { AngularFireStorage } from '@angular/fire/compat/storage';
-import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AuthService } from './auth.service';
 import { ErrorHandlerService } from './error-handler.service';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 import { take } from 'rxjs/operators';
 
-// ✅ INTERFACES CORREGIDAS PARA FIREBASE
+// ✅ INTERFACES
 export interface CriticalAlert {
   id?: string;
-  uid: string; // ← CORREGIDO: uid no userId
+  uid: string;
   errorType: string;
-  severity: string; // ← CORREGIDO: string no number
+  severity: string;
   exercise: string;
   exerciseType: string;
   timestamp: any;
@@ -25,7 +26,7 @@ export interface CriticalAlert {
   lastSessionId: string;
   sessionId: string;
   status: string;
-  captureURL: string; // ← IMPORTANTE: URL de la imagen
+  captureURL: string;
   deviceInfo?: any;
   readAt?: any;
   readBy?: string;
@@ -56,20 +57,27 @@ export class CaptureService {
   private readonly MAX_CAPTURES_PER_SESSION = 3;
   private readonly MIN_TIME_BETWEEN_CAPTURES = 30000; // 30 segundos
   private lastCaptureTime: number = 0;
+  
+  private db = firebase.firestore();
 
   constructor(
     private storage: AngularFireStorage,
-    private firestore: AngularFirestore,
     private auth: AuthService,
     private errorHandler: ErrorHandlerService
-  ) {}
+  ) {
+    console.log('📸 CaptureService inicializado (Firebase directo)');
+  }
 
   // ✅ INICIALIZAR SESIÓN DE ENTRENAMIENTO
   async startTrainingSession(exerciseType: string): Promise<string | null> {
     try {
+      console.log('🔍 startTrainingSession() iniciado');
+      
       const userId = await this.auth.getCurrentUserId();
+      console.log('🔍 Usuario ID:', userId);
+      
       if (!userId) {
-        console.warn('📸 No hay usuario autenticado para iniciar sesión');
+        console.warn('📸 No hay usuario autenticado');
         return null;
       }
 
@@ -81,30 +89,35 @@ export class CaptureService {
         capturesTaken: 0
       };
 
-      const sessionRef = await this.firestore.collection('training-sessions').add(sessionData);
+      console.log('🔍 Creando sesión en Firestore...');
+      
+      const docRef = await this.db.collection('training-sessions').add(sessionData);
+      
+      console.log('✅ Sesión creada con ID:', docRef.id);
       
       this.currentSession = {
-        id: sessionRef.id,
+        id: docRef.id,
         ...sessionData
       };
 
       this.capturedErrorsInSession.clear();
       this.lastCaptureTime = 0;
 
-      console.log('📸 Sesión de entrenamiento iniciada:', sessionRef.id);
-      return sessionRef.id;
+      console.log('✅ 📸 Sesión de entrenamiento iniciada exitosamente');
+      return docRef.id;
       
     } catch (error) {
-      console.error('🛑 Error iniciando sesión de entrenamiento:', error);
+      console.error('🛑 Error iniciando sesión:', error);
       return null;
     }
   }
 
-  // ✅ CAPTURA AUTOMÁTICA CORREGIDA
+  // ✅ CAPTURA AUTOMÁTICA - FIRMA CORREGIDA
   async captureErrorIfNeeded(
     canvas: HTMLCanvasElement,
+    videoElement: HTMLVideoElement, // 👈 PARÁMETRO AGREGADO
     errorType: string,
-    severity: string, // ← CAMBIADO: string en lugar de number
+    severity: string,
     biomechanicsData?: any
   ): Promise<boolean> {
     
@@ -113,7 +126,6 @@ export class CaptureService {
       return false;
     }
 
-    // ✅ CAPTURAR ERRORES CRÍTICOS Y HIGH
     const shouldCapture = severity === 'critical' || severity === 'high';
     
     if (!shouldCapture) {
@@ -129,38 +141,41 @@ export class CaptureService {
 
     const now = Date.now();
     if ((this.currentSession.capturesTaken || 0) >= this.MAX_CAPTURES_PER_SESSION) {
-      console.log('📸 Límite de capturas por sesión alcanzado');
+      console.log('📸 Límite de capturas alcanzado');
       return false;
     }
 
     if (now - this.lastCaptureTime < this.MIN_TIME_BETWEEN_CAPTURES) {
-      console.log('📸 Muy pronto para otra captura');
+      console.log('📸 Cooldown activo');
+      return false;
+    }
+
+    // ✅ VERIFICAR QUE EL VIDEO ESTÉ LISTO
+    if (!videoElement || videoElement.readyState < 2) {
+      console.warn('⚠️ Video no está listo para captura');
       return false;
     }
 
     try {
-      console.log(`📸 ¡Iniciando captura para error ${severity}: ${errorType}!`);
+      console.log(`📸 Iniciando captura para ${errorType}...`);
 
-      // ✅ 1. CREAR ALERTA EN FIREBASE (SIN CAPTURA PRIMERO)
+      // 1. Crear alerta
       const alertId = await this.createCriticalAlert(errorType, severity, biomechanicsData);
       if (!alertId) return false;
 
-      // ✅ 2. REALIZAR CAPTURA Y SUBIR A STORAGE
-      const captureUrl = await this.performCapture(canvas, alertId);
-      if (!captureUrl) {
-        console.error('❌ No se pudo generar captureURL');
-        return false;
-      }
+      // 2. Capturar y subir imagen - AHORA CON VIDEO Y ERRORTYPE
+      const captureUrl = await this.performCapture(canvas, videoElement, alertId, errorType);
+      if (!captureUrl) return false;
 
-      // ✅ 3. ACTUALIZAR ALERTA CON URL DE CAPTURA
+      // 3. Actualizar alerta con URL
       await this.updateAlertWithCapture(alertId, captureUrl);
 
-      // ✅ 4. ACTUALIZAR SESIÓN
+      // 4. Actualizar sesión
       this.capturedErrorsInSession.add(errorKey);
       this.lastCaptureTime = now;
       
       if (this.currentSession.id) {
-        await this.firestore.collection('training-sessions')
+        await this.db.collection('training-sessions')
           .doc(this.currentSession.id)
           .update({
             errorsDetected: (this.currentSession.errorsDetected || 0) + 1,
@@ -171,7 +186,7 @@ export class CaptureService {
         this.currentSession.capturesTaken = (this.currentSession.capturesTaken || 0) + 1;
       }
 
-      console.log(`📸 ¡Captura exitosa! URL: ${captureUrl}`);
+      console.log(`✅ Captura exitosa! URL: ${captureUrl}`);
       return true;
 
     } catch (error) {
@@ -180,7 +195,7 @@ export class CaptureService {
     }
   }
 
-  // ✅ CREAR ALERTA CRÍTICA (ESTRUCTURA CORRECTA)
+  // ✅ CREAR ALERTA CRÍTICA
   private async createCriticalAlert(
     errorType: string,
     severity: string,
@@ -190,11 +205,10 @@ export class CaptureService {
       const userId = await this.auth.getCurrentUserId();
       if (!userId || !this.currentSession) return null;
 
-      // ✅ ESTRUCTURA EXACTA QUE ESPERA FIREBASE
       const alertData: Omit<CriticalAlert, 'id'> = {
-        uid: userId, // ← CORRECTO: uid no userId
+        uid: userId,
         errorType,
-        severity, // ← CORRECTO: string
+        severity,
         exercise: this.currentSession.exerciseType,
         exerciseType: this.currentSession.exerciseType,
         timestamp: new Date(),
@@ -206,7 +220,7 @@ export class CaptureService {
         lastSessionId: this.currentSession.id!,
         sessionId: this.currentSession.id!,
         status: 'unread',
-        captureURL: '', // ← Se actualiza después
+        captureURL: '',
         deviceInfo: {
           userAgent: navigator.userAgent,
           platform: navigator.platform,
@@ -214,21 +228,20 @@ export class CaptureService {
         }
       };
 
-      // ✅ COLECCIÓN CORRECTA
-      const docRef = await this.firestore.collection('criticalAlerts').add(alertData);
-      console.log('🚨 Alerta crítica creada con ID:', docRef.id);
+      const docRef = await this.db.collection('criticalAlerts').add(alertData);
+      console.log('🚨 Alerta creada con ID:', docRef.id);
       return docRef.id;
 
     } catch (error) {
-      console.error('🛑 Error creando alerta crítica:', error);
+      console.error('🛑 Error creando alerta:', error);
       return null;
     }
   }
 
-  // ✅ ACTUALIZAR ALERTA CON URL DE CAPTURA
+  // ✅ ACTUALIZAR ALERTA CON URL
   private async updateAlertWithCapture(alertId: string, captureUrl: string): Promise<void> {
     try {
-      await this.firestore.collection('criticalAlerts').doc(alertId).update({
+      await this.db.collection('criticalAlerts').doc(alertId).update({
         captureURL: captureUrl,
         hasCaptureImage: true,
         captureTimestamp: new Date()
@@ -236,17 +249,52 @@ export class CaptureService {
       
       console.log(`✅ Alerta ${alertId} actualizada con captureURL`);
     } catch (error) {
-      console.error('❌ Error actualizando alerta con captura:', error);
+      console.error('❌ Error actualizando alerta:', error);
       throw error;
     }
   }
 
-  // ✅ REALIZAR CAPTURA Y SUBIR A STORAGE (SIN CAMBIOS)
-  private async performCapture(canvas: HTMLCanvasElement, alertId: string): Promise<string | null> {
+  // ✅ CAPTURAR Y SUBIR IMAGEN - FIRMA CORREGIDA CON ERRORTYPE
+  private async performCapture(
+    canvas: HTMLCanvasElement,
+    videoElement: HTMLVideoElement,
+    alertId: string,
+    errorType: string // 👈 PARÁMETRO AGREGADO
+  ): Promise<string | null> {
     try {
-      const blob = await this.canvasToBlob(canvas);
+      // 🎨 CREAR CANVAS TEMPORAL PARA COMPOSICIÓN
+      const captureCanvas = document.createElement('canvas');
+      captureCanvas.width = videoElement.videoWidth;
+      captureCanvas.height = videoElement.videoHeight;
+      const ctx = captureCanvas.getContext('2d');
+      
+      if (!ctx) {
+        console.error('❌ No se pudo crear contexto 2D');
+        return null;
+      }
+
+      // 1️⃣ DIBUJAR VIDEO REAL DE FONDO
+      ctx.drawImage(videoElement, 0, 0, captureCanvas.width, captureCanvas.height);
+
+      // 2️⃣ DIBUJAR ESQUELETO ENCIMA (con transparencia)
+      ctx.globalAlpha = 0.7; // Esqueleto semi-transparente
+      ctx.drawImage(canvas, 0, 0, captureCanvas.width, captureCanvas.height);
+      ctx.globalAlpha = 1.0; // Restaurar opacidad
+
+      // 3️⃣ AGREGAR MARCA DE TIEMPO Y TIPO DE ERROR
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+      ctx.fillRect(10, 10, 400, 60);
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 20px Arial';
+      ctx.fillText(`⚠️ ERROR: ${errorType}`, 20, 40); // 👈 AHORA EXISTE errorType
+      ctx.font = '16px Arial';
+      ctx.fillText(new Date().toLocaleString(), 20, 60);
+
+      // 4️⃣ CONVERTIR A BLOB
+      const blob = await this.canvasToBlob(captureCanvas);
       if (!blob) return null;
 
+      // 5️⃣ SUBIR A FIREBASE STORAGE
       const userId = await this.auth.getCurrentUserId();
       if (!userId || !this.currentSession) return null;
 
@@ -257,17 +305,16 @@ export class CaptureService {
       const uploadTask = this.storage.upload(storagePath, blob, {
         customMetadata: {
           errorId: alertId,
-          errorType: 'critical',
+          errorType: errorType,
           sessionId: this.currentSession.id!,
           uploadedAt: new Date().toISOString()
         }
       });
 
       await uploadTask;
-      
       const downloadURL = await this.storage.ref(storagePath).getDownloadURL().toPromise();
       
-      console.log(`📸 Imagen subida: ${filename}`);
+      console.log(`📸 Imagen compuesta subida: ${filename}`);
       return downloadURL;
 
     } catch (error) {
@@ -276,24 +323,33 @@ export class CaptureService {
     }
   }
 
+  // ✅ CONVERTIR CANVAS A BLOB
+  private async canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          console.error('❌ No se pudo crear blob del canvas');
+          resolve(null);
+        }
+      }, 'image/png', 0.95);
+    });
+  }
+
   // ✅ FINALIZAR SESIÓN
   async endTrainingSession(): Promise<void> {
     if (!this.currentSession?.id) return;
 
     try {
-      await this.firestore.collection('training-sessions')
+      await this.db.collection('training-sessions')
         .doc(this.currentSession.id)
         .update({
           endTime: new Date(),
-          completed: true,
-          finalStats: {
-            totalErrors: this.currentSession.errorsDetected || 0,
-            totalCaptures: this.currentSession.capturesTaken || 0,
-            duration: Date.now() - (this.currentSession.startTime?.getTime() || Date.now())
-          }
+          completed: true
         });
 
-      console.log('📸 Sesión de entrenamiento finalizada:', this.currentSession.id);
+      console.log('📸 Sesión finalizada:', this.currentSession.id);
       this.currentSession = null;
       this.capturedErrorsInSession.clear();
 
@@ -302,32 +358,20 @@ export class CaptureService {
     }
   }
 
-  // ✅ MÉTODOS AUXILIARES CON NULL SAFETY
-  private canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), 'image/png', 0.9);
-    });
-  }
-
-  getCurrentSession(): TrainingSession | null {
-    return this.currentSession;
-  }
-
+  // ✅ VERIFICAR SI PUEDE CAPTURAR ERROR
   canCaptureError(errorType: string): boolean {
     if (!this.currentSession) return false;
     
     const errorKey = `${errorType}_${this.currentSession.exerciseType}`;
-    return !this.capturedErrorsInSession.has(errorKey) &&
-           (this.currentSession.capturesTaken || 0) < this.MAX_CAPTURES_PER_SESSION;
+    return !this.capturedErrorsInSession.has(errorKey);
   }
 
+  // ✅ OBTENER ESTADÍSTICAS DE SESIÓN
   getSessionStats() {
     return {
-      sessionId: this.currentSession?.id || null,
-      exerciseType: this.currentSession?.exerciseType || null,
-      errorsDetected: this.currentSession?.errorsDetected || 0,
       capturesTaken: this.currentSession?.capturesTaken || 0,
-      canCaptureMore: (this.currentSession?.capturesTaken || 0) < this.MAX_CAPTURES_PER_SESSION
+      maxCaptures: this.MAX_CAPTURES_PER_SESSION,
+      errorsDetected: this.currentSession?.errorsDetected || 0
     };
   }
 }
