@@ -1,5 +1,5 @@
 // src/app/core/pose-engine/biomechanics.analyzer.ts
-// ✅ CORRECCIÓN COMPLETA - DETECCIÓN QUE SÍ FUNCIONA
+// ✅ VERSIÓN CORREGIDA - TODOS LOS PROBLEMAS SOLUCIONADOS
 
 import { Injectable } from '@angular/core';
 import { 
@@ -29,10 +29,12 @@ export class BiomechanicsAnalyzer {
   private repetitionCounter = 0;
   private lastErrorTimestamps: Map<PostureErrorType, number> = new Map();
   
-  // ✅ Estados de preparación
+  // ✅ Estados de preparación con buffer
   private readinessState: ReadinessState = ReadinessState.NOT_READY;
   private readyFramesCount = 0;
+  private badFramesBuffer = 0; // ✅ NUEVO: Tolerancia a frames malos
   private readonly FRAMES_TO_CONFIRM_READY = 15;
+  private readonly MAX_BAD_FRAMES = 10; // ✅ NUEVO: Tolerar 10 frames malos
   private movementDetected = false;
   private lastAngleSnapshot: BiomechanicalAngles | null = null;
   
@@ -46,7 +48,6 @@ export class BiomechanicsAnalyzer {
   private angleHistory: BiomechanicalAngles[] = [];
   private phaseHistory: RepetitionPhase[] = [];
   private readonly SMOOTHING_WINDOW = 5;
-  private readonly ERROR_COOLDOWN = 4000; // 4 segundos entre errores iguales
   private readonly MOVEMENT_THRESHOLD = 6;
   
   // ✅ CONTADORES DE FASE PARA REPETICIONES
@@ -56,10 +57,10 @@ export class BiomechanicsAnalyzer {
     lastPhase: RepetitionPhase.IDLE
   };
 
-  private wasReady = false; // Para evitar logs repetitivos
+  private wasReady = false;
 
   constructor() {
-    console.log('🧠 BiomechanicsAnalyzer inicializado con detección CORREGIDA');
+    console.log('🧠 BiomechanicsAnalyzer inicializado - VERSIÓN CORREGIDA');
   }
 
   setCurrentExercise(exerciseType: ExerciseType): void {
@@ -68,9 +69,11 @@ export class BiomechanicsAnalyzer {
     console.log(`🎯 Ejercicio configurado: ${exerciseType}`);
   }
 
-  // 🔄 MÉTODO PRINCIPAL DE ANÁLISIS (CORREGIDO)
+  // ============================================================================
+  // ✅ ANÁLISIS PRINCIPAL - MEJORADO
+  // ============================================================================
+
   analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): MovementAnalysis {
-    // ✅ VERIFICAR SI EL USUARIO ESTÁ COMPLETO EN PANTALLA
     const isUserCompletelyVisible = this.checkUserCompleteness(pose);
     
     if (!isUserCompletelyVisible) {
@@ -78,376 +81,19 @@ export class BiomechanicsAnalyzer {
       return this.createBasicAnalysis([], RepetitionPhase.IDLE, 0, 0);
     }
 
-    // ✅ DETECTAR ESTADO DE PREPARACIÓN
     this.updateReadinessState(pose, angles);
 
-    // ✅ SOLO ANALIZAR SI ESTÁ EJERCITÁNDOSE
     if (this.readinessState === ReadinessState.EXERCISING) {
       return this.performRealExerciseAnalysis(pose, angles);
     } else {
-      // En estado de preparación - solo verificar postura inicial
       return this.performReadinessAnalysis(pose, angles);
     }
   }
 
   // ============================================================================
-  // ✅ MÉTODOS DE DETECCIÓN CORREGIDOS
+  // ✅ ACTUALIZAR ESTADO DE PREPARACIÓN - CON BUFFER DE TOLERANCIA
   // ============================================================================
 
-  // 4. ✅ DETECCIÓN DE PERFIL MEJORADA - MÁS SENSIBLE
-private detectProfileView(pose: PoseKeypoints): boolean {
-  const leftShoulder = pose.left_shoulder;
-  const rightShoulder = pose.right_shoulder;
-  const leftHip = pose.left_hip;
-  const rightHip = pose.right_hip;
-  
-  if (!leftShoulder || !rightShoulder || !leftHip || !rightHip) {
-    return false;
-  }
-  
-  // ✅ CALCULAR DISTANCIA ENTRE HOMBROS Y CADERAS
-  const shoulderDistance = Math.abs(leftShoulder.x - rightShoulder.x);
-  const hipDistance = Math.abs(leftHip.x - rightHip.x);
-  
-  // ✅ UMBRAL MÁS SENSIBLE PARA PERFIL
-  const avgDistance = (shoulderDistance + hipDistance) / 2;
-  const isProfile = avgDistance < 0.10; // MÁS SENSIBLE
-  
-  console.log(`👁️ Detección: dist=${avgDistance.toFixed(3)} → ${isProfile ? '📐 PERFIL' : '👥 FRONTAL'}`);
-  
-  return isProfile;
-}
-
-private checkBothFeetOnGround(pose: PoseKeypoints): boolean {
-  const leftAnkle = pose.left_ankle;
-  const rightAnkle = pose.right_ankle;
-  
-  // ✅ VISIBILIDAD MÁS PERMISIVA
-  if (!leftAnkle || !rightAnkle || 
-      leftAnkle.visibility < 0.6 || rightAnkle.visibility < 0.6) { // 0.8 → 0.6
-    return true; // Si no se detecta claramente, no molestar
-  }
-  
-  // ✅ TAMBIÉN USAR LOS TALONES PARA MEJORAR DETECCIÓN
-  const leftHeel = pose.left_heel;
-  const rightHeel = pose.right_heel;
-  
-  // Calcular altura promedio de tobillos y talones
-  let leftFootHeight = leftAnkle.y;
-  let rightFootHeight = rightAnkle.y;
-  
-  // Si los talones son visibles, usar el punto más bajo
-  if (leftHeel && leftHeel.visibility > 0.5) {
-    leftFootHeight = Math.max(leftAnkle.y, leftHeel.y); // El más bajo (mayor Y)
-  }
-  if (rightHeel && rightHeel.visibility > 0.5) {
-    rightFootHeight = Math.max(rightAnkle.y, rightHeel.y); // El más bajo (mayor Y)
-  }
-  
-  // ✅ UMBRAL MÁS SENSIBLE - DETECTA LEVANTAMIENTOS MÁS PEQUEÑOS
-  const footHeightDiff = Math.abs(leftFootHeight - rightFootHeight);
-  const bothFeetDown = footHeightDiff < 0.08; // 0.04 → 0.08 (MÁS SENSIBLE)
-  
-  if (!bothFeetDown) {
-    console.log(`🚨 PIE LEVANTADO: diferencia=${footHeightDiff.toFixed(3)} (umbral: 0.08)`);
-  }
-  
-  return bothFeetDown;
-}
-private checkIndividualFootHeight(pose: PoseKeypoints): boolean {
-  const leftAnkle = pose.left_ankle;
-  const rightAnkle = pose.right_ankle;
-  
-  if (!leftAnkle || !rightAnkle) return true;
-  
-  // ✅ DETECTAR CUANDO UN PIE ESTÁ SIGNIFICATIVAMENTE MÁS ALTO
-  const baseHeight = Math.min(leftAnkle.y, rightAnkle.y); // El pie más bajo
-  const maxAllowedHeight = baseHeight - 0.06; // 6cm hacia arriba
-  
-  const leftTooHigh = leftAnkle.y < maxAllowedHeight;
-  const rightTooHigh = rightAnkle.y < maxAllowedHeight;
-  
-  if (leftTooHigh || rightTooHigh) {
-    console.log(`🚨 PIE MUY ALTO: izq=${leftAnkle.y.toFixed(3)}, der=${rightAnkle.y.toFixed(3)}, límite=${maxAllowedHeight.toFixed(3)}`);
-    return false;
-  }
-  
-  return true;
-}
-
-private checkFeetSpacing(pose: PoseKeypoints): boolean {
-  const leftAnkle = pose.left_ankle;
-  const rightAnkle = pose.right_ankle;
-  
-  // ✅ VISIBILIDAD MÁS PERMISIVA
-  if (!leftAnkle || !rightAnkle || 
-      leftAnkle.visibility < 0.6 || rightAnkle.visibility < 0.6) { // 0.8 → 0.6
-    return true; // Si no se detecta claramente, no molestar
-  }
-  
-  // ✅ TAMBIÉN USAR LAS CADERAS PARA MEJORAR DETECCIÓN
-  const leftHip = pose.left_hip;
-  const rightHip = pose.right_hip;
-  
-  // Calcular separación de pies
-  const feetDistance = Math.abs(leftAnkle.x - rightAnkle.x);
-  
-  // ✅ UMBRAL MÁS SENSIBLE - DETECTA SEPARACIONES MÁS PEQUEÑAS
-  let minDistance = 0.08; // 0.12 → 0.08 (MÁS SENSIBLE)
-  
-  // ✅ AJUSTAR SEGÚN ANCHO DE CADERAS (más personalizado)
-  if (leftHip && rightHip && leftHip.visibility > 0.6 && rightHip.visibility > 0.6) {
-    const hipWidth = Math.abs(leftHip.x - rightHip.x);
-    minDistance = Math.max(0.06, hipWidth * 1.2); // Pies deben estar más separados que caderas
-  }
-  
-  const properSpacing = feetDistance > minDistance;
-  
-  if (!properSpacing) {
-    console.log(`🚨 PIES MUY JUNTOS: distancia=${feetDistance.toFixed(3)}, mínimo=${minDistance.toFixed(3)}`);
-  }
-  
-  return properSpacing;
-}
-
-
-  // 3. ✅ DETECCIÓN CONSISTENTE DE RODILLAS - MÁS ESTRICTA
-private checkKneePosition(pose: PoseKeypoints): boolean {
-  const leftKnee = pose.left_knee;
-  const rightKnee = pose.right_knee;
-  
-  // ✅ REQUERIR ALTA VISIBILIDAD
-  if (!leftKnee || !rightKnee || 
-      leftKnee.visibility < 0.8 || rightKnee.visibility < 0.8) {
-    return true; // Si no se detecta claramente, no molestar
-  }
-  
-  // ✅ DISTANCIA ENTRE RODILLAS - MÁS ESTRICTO
-  const kneeDistance = Math.abs(leftKnee.x - rightKnee.x);
-  const goodKneePosition = kneeDistance > 0.08; // MÁS ESTRICTO
-  
-  if (!goodKneePosition) {
-    console.log(`🚨 RODILLAS MUY JUNTAS: distancia=${kneeDistance.toFixed(3)}`);
-  }
-  
-  return goodKneePosition;
-}
-
-  // ============================================================================
-  // ✅ DETECCIÓN DE ERRORES ESPECÍFICOS - CORREGIDA
-  // ============================================================================
-
-  // 🦵 DETECCIÓN DE ERRORES COMPLETA (FRONTAL Y PERFIL) - CORREGIDA
-  private detectRealSquatErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
-    const errors: PostureError[] = [];
-    
-    // ✅ DETECTAR ORIENTACIÓN
-    const isProfileView = this.detectProfileView(pose);
-    
-    if (isProfileView) {
-      console.log('🔍 ANALIZANDO ERRORES DE PERFIL');
-      errors.push(...this.detectProfileSquatErrors(pose, angles, timestamp));
-    } else {
-      console.log('🔍 ANALIZANDO ERRORES FRONTALES');
-      errors.push(...this.detectFrontalErrors(pose, angles, true));
-    }
-    
-    // ✅ ERRORES COMUNES PARA AMBAS ORIENTACIONES
-    errors.push(...this.detectCommonSquatErrors(pose, angles, timestamp));
-    
-    // ✅ PRIORIZAR EL ERROR MÁS SEVERO
-    if (errors.length > 1) {
-      const mostSevere = errors.reduce((prev, current) => 
-        current.severity > prev.severity ? current : prev
-      );
-      console.log(`🎯 Error priorizado: ${mostSevere.type} (severidad ${mostSevere.severity})`);
-      return [mostSevere];
-    }
-
-    if (errors.length === 0 && this.exerciseFramesCount > 60) {
-      console.log('✅ SENTADILLA PERFECTA detectada');
-    }
-
-    return errors;
-  }
-
-  // ✅ MÉTODO UNIFICADO
-private detectFrontalErrors(
-  pose: PoseKeypoints, 
-  angles: BiomechanicalAngles, 
-  isExercising: boolean = false
-): PostureError[] {
-  const errors: PostureError[] = [];
-  const timestamp = Date.now();
-  
-  // Ajustar severidad según el contexto
-  const baseSeverity = isExercising ? 8 : 5; // Más severo durante ejercicio
-  const logPrefix = isExercising ? '🔴 EJERCICIO' : '🟠 PREPARACIÓN';
-
-  // ERROR: PIES MUY JUNTOS
-  if (!this.checkFeetSpacing(pose) && this.checkErrorCooldown(PostureErrorType.POOR_ALIGNMENT, timestamp)) {
-    errors.push({
-      type: PostureErrorType.POOR_ALIGNMENT,
-      severity: baseSeverity,
-      description: isExercising 
-        ? 'Pies muy juntos durante sentadilla'
-        : 'Pies muy juntos para hacer sentadillas',
-      recommendation: 'Abre más las piernas, separa los pies',
-      affectedJoints: ['left_ankle', 'right_ankle'],
-      confidence: 0.9,
-      timestamp
-    });
-    console.log(`${logPrefix}: Pies muy juntos`);
-  }
-
- // ERROR: UN PIE LEVANTADO - DETECCIÓN MEJORADA
-if ((!this.checkBothFeetOnGround(pose) || !this.checkIndividualFootHeight(pose)) && 
-this.checkErrorCooldown(PostureErrorType.UNSTABLE_BALANCE, timestamp)) {
-errors.push({
-type: PostureErrorType.UNSTABLE_BALANCE,
-severity: baseSeverity + 1,
-description: isExercising 
-  ? 'Un pie está levantado durante ejercicio'
-  : 'Un pie está levantado',
-recommendation: isExercising 
-  ? 'CRÍTICO: Pon ambos pies en el suelo'
-  : 'Pon ambos pies en el suelo',
-affectedJoints: ['left_ankle', 'right_ankle'],
-confidence: 0.95,
-timestamp
-});
-console.log(`${logPrefix}: Un pie levantado`);
-}
-
-  // ERROR: RODILLAS MUY JUNTAS (SOLO DURANTE EJERCICIO)
-  if (isExercising && !this.checkKneePosition(pose) && this.checkErrorCooldown(PostureErrorType.KNEE_VALGUS, timestamp)) {
-    errors.push({
-      type: PostureErrorType.KNEE_VALGUS,
-      severity: 9,
-      description: 'Rodillas colapsadas hacia adentro',
-      recommendation: 'CRÍTICO: Separa las rodillas, empuja hacia afuera',
-      affectedJoints: ['left_knee', 'right_knee'],
-      confidence: 0.9,
-      timestamp
-    });
-    console.log(`${logPrefix}: Rodillas muy juntas (CRÍTICO)`);
-  }
-
-  // ERROR: MUY AGACHADO (SOLO DURANTE PREPARACIÓN)
-  if (!isExercising) {
-    const leftKnee = angles.left_knee_angle || 0;
-    const rightKnee = angles.right_knee_angle || 0;
-    const avgKneeAngle = (leftKnee + rightKnee) / 2;
-
-    if (avgKneeAngle < 130 && this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {
-      errors.push({
-        type: PostureErrorType.INSUFFICIENT_DEPTH,
-        severity: 4,
-        description: 'Estás muy agachado para empezar',
-        recommendation: 'Ponte de pie completamente, estira las piernas',
-        affectedJoints: ['left_knee', 'right_knee'],
-        confidence: 0.8,
-        timestamp
-      });
-      console.log(`${logPrefix}: Muy agachado`);
-    }
-  }
-
-  return errors;
-}
-// 9. ✅ CORREGIR: Detección de espalda curvada DURANTE ejercicio (PERFIL)
-private detectProfileSquatErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
-  const errors: PostureError[] = [];
-  
-  // ✅ USAR EL LADO MÁS VISIBLE
-  const leftVisible = pose.left_knee?.visibility || 0;
-  const rightVisible = pose.right_knee?.visibility || 0;
-  const kneeAngle = leftVisible > rightVisible ? 
-    (angles.left_knee_angle || 0) : (angles.right_knee_angle || 0);
-
-   // ✅ DETECTAR ESPALDA CURVADA DURANTE EJERCICIO - MUY SENSIBLE
-   const spineAngle = angles.spine_angle || 85;
-   if (spineAngle < 80 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) { // MUY SENSIBLE
-     const severity = spineAngle < 70 ? 9 : 6; // Más severo durante ejercicio
-     errors.push({
-       type: PostureErrorType.ROUNDED_BACK,
-       severity: severity,
-       description: severity > 8 ? 'Espalda muy curvada (PELIGROSO)' : 'Espalda redondeada',
-       recommendation: severity > 8 ? 'PELIGRO: Endereza la espalda YA' : 'Endereza la espalda, saca el pecho',
-       affectedJoints: ['spine'],
-       confidence: 0.95,
-       timestamp
-     });
-     console.log(`🔴 EJERCICIO PERFIL: Espalda curvada ${spineAngle.toFixed(1)}° (CRÍTICO)`);
-   }
-  // ✅ SENTADILLA POCO PROFUNDA (SOLO EN FASE BOTTOM)
-  if (kneeAngle > 110 && this.currentPhase === RepetitionPhase.BOTTOM && 
-      this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {
-    errors.push({
-      type: PostureErrorType.INSUFFICIENT_DEPTH,
-      severity: 5, // NARANJA
-      description: 'No bajas lo suficiente',
-      recommendation: 'Baja más, flexiona más las rodillas',
-      affectedJoints: ['left_knee', 'right_knee'],
-      confidence: 0.8,
-      timestamp
-    });
-    console.log('🟠 EJERCICIO PERFIL: Sentadilla poco profunda');
-  }
-
-  return errors;
-}
-
-  // ⚙️ DETECTAR ERRORES COMUNES - CORREGIDO
-  private detectCommonSquatErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
-    const errors: PostureError[] = [];
-
-    // ✅ VERIFICAR QUE NO ESTÉ MUY AGACHADO (POSICIÓN INICIAL)
-    const leftKnee = angles.left_knee_angle || 180;
-    const rightKnee = angles.right_knee_angle || 180;
-    const avgKneeAngle = (leftKnee + rightKnee) / 2;
-
-    if (avgKneeAngle < 140 && this.readinessState !== ReadinessState.EXERCISING && 
-        this.checkErrorCooldown(PostureErrorType.POOR_ALIGNMENT, timestamp)) {
-      errors.push({
-        type: PostureErrorType.POOR_ALIGNMENT,
-        severity: 5, // NARANJA
-        description: 'Ponte de pie completamente',
-        recommendation: 'Extiende las piernas, ponte de pie',
-        affectedJoints: ['left_knee', 'right_knee'],
-        confidence: 0.8,
-        timestamp
-      });
-      console.log('🟠 DETECTADO: Muy agachado en posición inicial');
-    }
-
-    return errors;
-  }
-
-  // ============================================================================
-  // ✅ MÉTODOS AUXILIARES CORREGIDOS
-  // ============================================================================
-
-  // 🔍 VERIFICAR SI EL USUARIO ESTÁ COMPLETO EN PANTALLA
-  private checkUserCompleteness(pose: PoseKeypoints): boolean {
-    const requiredJoints = [
-      'left_shoulder', 'right_shoulder',
-      'left_hip', 'right_hip',
-      'left_knee', 'right_knee',
-      'left_ankle', 'right_ankle'
-    ];
-
-    const visibleJoints = requiredJoints.filter(joint => {
-      const point = pose[joint as keyof PoseKeypoints];
-      return point && point.visibility > 0.7;
-    });
-
-    const completenessRatio = visibleJoints.length / requiredJoints.length;
-    
-    return completenessRatio >= 0.8; // 80% de las articulaciones visibles
-  }
-
-  // 🚦 ACTUALIZAR ESTADO DE PREPARACIÓN
   private updateReadinessState(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
     const isInCorrectStartPosition = this.checkStartingPosition(pose, angles);
     const hasMovement = this.detectMovement(angles);
@@ -457,6 +103,7 @@ private detectProfileSquatErrors(pose: PoseKeypoints, angles: BiomechanicalAngle
         if (isInCorrectStartPosition) {
           this.readinessState = ReadinessState.GETTING_READY;
           this.readyFramesCount = 1;
+          this.badFramesBuffer = 0;
           console.log('🔄 Usuario se está preparando...');
         }
         break;
@@ -464,13 +111,22 @@ private detectProfileSquatErrors(pose: PoseKeypoints, angles: BiomechanicalAngle
       case ReadinessState.GETTING_READY:
         if (isInCorrectStartPosition) {
           this.readyFramesCount++;
+          this.badFramesBuffer = 0; // ✅ Resetear buffer de frames malos
+          
           if (this.readyFramesCount >= this.FRAMES_TO_CONFIRM_READY) {
             this.readinessState = ReadinessState.READY_TO_START;
             console.log('✅ Usuario LISTO para empezar ejercicio');
           }
         } else {
-          this.readinessState = ReadinessState.NOT_READY;
-          this.readyFramesCount = 0;
+          // ✅ NUEVO: Tolerar frames malos antes de resetear
+          this.badFramesBuffer++;
+          
+          if (this.badFramesBuffer > this.MAX_BAD_FRAMES) {
+            console.log(`⚠️ Demasiados frames malos (${this.badFramesBuffer}), reseteando`);
+            this.readinessState = ReadinessState.NOT_READY;
+            this.readyFramesCount = 0;
+            this.badFramesBuffer = 0;
+          }
         }
         break;
 
@@ -481,8 +137,12 @@ private detectProfileSquatErrors(pose: PoseKeypoints, angles: BiomechanicalAngle
           this.movementDetected = true;
           console.log('🏃 Usuario comenzó a ejercitarse');
         } else if (!isInCorrectStartPosition) {
-          this.readinessState = ReadinessState.NOT_READY;
-          this.readyFramesCount = 0;
+          this.badFramesBuffer++;
+          if (this.badFramesBuffer > this.MAX_BAD_FRAMES) {
+            this.readinessState = ReadinessState.NOT_READY;
+            this.readyFramesCount = 0;
+            this.badFramesBuffer = 0;
+          }
         }
         break;
 
@@ -497,274 +157,163 @@ private detectProfileSquatErrors(pose: PoseKeypoints, angles: BiomechanicalAngle
             this.readinessState = ReadinessState.NOT_READY;
             this.exerciseFramesCount = 0;
             this.outOfPositionFrames = 0;
+            this.badFramesBuffer = 0;
           }
         }
         break;
     }
   }
 
-  // 🎯 VERIFICAR POSICIÓN INICIAL CORRECTA
-  private checkStartingPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
-    switch (this.currentExercise) {
-      case ExerciseType.SQUATS:
-        return this.checkSquatStartPosition(pose, angles);
-      case ExerciseType.PUSHUPS:
-        return this.checkPushupStartPosition(pose, angles);
-      case ExerciseType.PLANK:
-        return this.checkPlankStartPosition(pose, angles);
-      default:
-        return true;
-    }
-  }
+  // ============================================================================
+  // ✅ VERIFICACIONES DE POSICIÓN - MEJORADAS
+  // ============================================================================
 
-  // 🦵 VERIFICAR POSICIÓN INICIAL DE SENTADILLAS
-  private checkSquatStartPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
-    const leftKnee = angles.left_knee_angle || 0;
-    const rightKnee = angles.right_knee_angle || 0;
-    const avgKneeAngle = (leftKnee + rightKnee) / 2;
-
-    // ✅ DETECTAR SI ESTÁ DE FRENTE O DE PERFIL
-    const isProfileView = this.detectProfileView(pose);
-    
-    if (isProfileView) {
-      console.log('👁️ Usuario de PERFIL detectado');
-      return this.checkProfileSquatPosition(pose, angles);
-    } else {
-      console.log('👁️ Usuario de FRENTE detectado');
-      return this.checkFrontalSquatPosition(pose, angles);
-    }
-  }
-
-  // 👥 VERIFICAR POSICIÓN FRONTAL
-  private checkFrontalSquatPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
-    const leftKnee = angles.left_knee_angle || 0;
-    const rightKnee = angles.right_knee_angle || 0;
-    const avgKneeAngle = (leftKnee + rightKnee) / 2;
-
-    // ✅ RODILLAS EXTENDIDAS
-    const kneesExtended = avgKneeAngle > 140;
-    
-    // ✅ VERIFICAR ARTICULACIONES VISIBLES
-    const importantJoints = [
-      pose.left_shoulder, pose.right_shoulder,
-      pose.left_hip, pose.right_hip,
-      pose.left_knee, pose.right_knee,
-      pose.left_ankle, pose.right_ankle
+  private checkUserCompleteness(pose: PoseKeypoints): boolean {
+    const requiredJoints = [
+      'left_shoulder', 'right_shoulder',
+      'left_hip', 'right_hip',
+      'left_knee', 'right_knee',
+      'left_ankle', 'right_ankle'
     ];
-    
-    const goodVisibility = importantJoints.filter(joint => 
-      joint && joint.visibility > 0.6
-    ).length >= 6;
 
-    // ✅ VERIFICAR QUE AMBOS PIES ESTÉN EN EL SUELO
-    const bothFeetOnGround = this.checkBothFeetOnGround(pose);
-    
-    // ✅ VERIFICAR SEPARACIÓN DE PIES
-    const feetProperlySpaced = this.checkFeetSpacing(pose);
+    const visibleJoints = requiredJoints.filter(joint => {
+      const point = pose[joint as keyof PoseKeypoints];
+      return point && point.visibility > 0.7;
+    });
 
-    const isReady = kneesExtended && goodVisibility && bothFeetOnGround && feetProperlySpaced;
-    
-    console.log(`🦵 Posición frontal: rodillas=${avgKneeAngle.toFixed(1)}°, visible=${goodVisibility}, pies=${bothFeetOnGround}, separación=${feetProperlySpaced} → ${isReady ? 'LISTO' : 'NO LISTO'}`);
-    
-    return isReady;
+    const completenessRatio = visibleJoints.length / requiredJoints.length;
+    return completenessRatio >= 0.8;
   }
 
-  // 📐 VERIFICAR POSICIÓN DE PERFIL
-  private checkProfileSquatPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
-    // ✅ PARA PERFIL, USAR UN SOLO LADO (EL MÁS VISIBLE)
-    const leftKnee = angles.left_knee_angle || 0;
-    const rightKnee = angles.right_knee_angle || 0;
+  // ✅ CORREGIDO: Detección de rodillas MÁS SENSIBLE
+  private checkKneePosition(pose: PoseKeypoints): boolean {
+    const leftKnee = pose.left_knee;
+    const rightKnee = pose.right_knee;
     
-    // Usar el lado más visible
-    const leftVisible = pose.left_knee?.visibility || 0;
-    const rightVisible = pose.right_knee?.visibility || 0;
+    if (!leftKnee || !rightKnee || 
+        leftKnee.visibility < 0.8 || rightKnee.visibility < 0.8) {
+      return true; // Si no se detecta claramente, no molestar
+    }
     
-    const kneeAngle = leftVisible > rightVisible ? leftKnee : rightKnee;
+    const kneeDistance = Math.abs(leftKnee.x - rightKnee.x);
+    const goodKneePosition = kneeDistance > 0.13; // ✅ 0.08 → 0.13 (MÁS SENSIBLE)
     
-    // ✅ RODILLA EXTENDIDA
-    const kneeExtended = kneeAngle > 140;
+    if (!goodKneePosition) {
+      console.log(`🚨 RODILLAS MUY JUNTAS: distancia=${kneeDistance.toFixed(3)}`);
+    }
     
-    // ✅ VERIFICAR ARTICULACIONES CLAVE PARA PERFIL
-    const keyJoints = [
-      pose.nose, pose.left_shoulder, pose.right_shoulder,
-      pose.left_hip, pose.right_hip, pose.left_knee, pose.right_knee
-    ];
-    
-    const goodVisibility = keyJoints.filter(joint => 
-      joint && joint.visibility > 0.5
-    ).length >= 5;
-
-    const isReady = kneeExtended && goodVisibility;
-    
-    console.log(`📐 Posición perfil: rodilla=${kneeAngle.toFixed(1)}°, visible=${goodVisibility} → ${isReady ? 'LISTO' : 'NO LISTO'}`);
-    
-    return isReady;
+    return goodKneePosition;
   }
 
-  // 🔄 DETECTAR MOVIMIENTO
-  private detectMovement(angles: BiomechanicalAngles): boolean {
-    if (!this.lastAngleSnapshot) {
-      this.lastAngleSnapshot = { ...angles };
+  // ✅ CORREGIDO: Detección de pie levantado MÁS SENSIBLE
+  private checkBothFeetOnGround(pose: PoseKeypoints): boolean {
+    const leftAnkle = pose.left_ankle;
+    const rightAnkle = pose.right_ankle;
+    
+    if (!leftAnkle || !rightAnkle || 
+        leftAnkle.visibility < 0.6 || rightAnkle.visibility < 0.6) {
+      return true;
+    }
+    
+    const leftHeel = pose.left_heel;
+    const rightHeel = pose.right_heel;
+    
+    let leftFootHeight = leftAnkle.y;
+    let rightFootHeight = rightAnkle.y;
+    
+    if (leftHeel && leftHeel.visibility > 0.5) {
+      leftFootHeight = Math.max(leftAnkle.y, leftHeel.y);
+    }
+    if (rightHeel && rightHeel.visibility > 0.5) {
+      rightFootHeight = Math.max(rightAnkle.y, rightHeel.y);
+    }
+    
+    const footHeightDiff = Math.abs(leftFootHeight - rightFootHeight);
+
+    if (footHeightDiff > 0.04) { // ✅ 0.022 → 0.04 (menos falsos positivos)
+      console.log(`🚨 PIE LEVANTADO: diferencia=${footHeightDiff.toFixed(3)}`);
       return false;
     }
+    
+    return true;
+  }
 
-    // ✅ SOLO VERIFICAR MOVIMIENTO DE RODILLAS PARA SENTADILLAS
-    const currentKnee = ((angles.left_knee_angle || 0) + (angles.right_knee_angle || 0)) / 2;
-    const previousKnee = ((this.lastAngleSnapshot.left_knee_angle || 0) + (this.lastAngleSnapshot.right_knee_angle || 0)) / 2;
+  // ✅ MEJORADO: Verificar posición individual de cada pie
+  private checkIndividualFootHeight(pose: PoseKeypoints): boolean {
+    const leftAnkle = pose.left_ankle;
+    const rightAnkle = pose.right_ankle;
+    const leftHip = pose.left_hip;
+    const rightHip = pose.right_hip;
     
-    const kneeChange = Math.abs(currentKnee - previousKnee);
+    if (!leftAnkle || !rightAnkle || !leftHip || !rightHip) return true;
     
-    this.lastAngleSnapshot = { ...angles };
+    const avgHipHeight = (leftHip.y + rightHip.y) / 2;
+    const leftAnkleRelative = leftAnkle.y - avgHipHeight;
+    const rightAnkleRelative = rightAnkle.y - avgHipHeight;
     
-    const hasMovement = kneeChange > this.MOVEMENT_THRESHOLD;
+    // Si algún tobillo está significativamente más alto que el otro
+    const heightDiff = Math.abs(leftAnkleRelative - rightAnkleRelative);
+
+      if (heightDiff > 0.05) { // ✅ 0.03 → 0.05 (menos sensible)
+        console.log(`🚨 PIE INDIVIDUAL LEVANTADO: diff=${heightDiff.toFixed(3)}`);
+        return false;
+      }
     
-    if (hasMovement) {
-      console.log(`🔄 Movimiento detectado: ${kneeChange.toFixed(1)}° cambio en rodillas`);
+    return true;
+  }
+
+  // ✅ CORREGIDO: Separación de pies con RANGO VÁLIDO
+  private checkFeetSpacing(pose: PoseKeypoints): boolean {
+    const leftAnkle = pose.left_ankle;
+    const rightAnkle = pose.right_ankle;
+    
+    if (!leftAnkle || !rightAnkle || 
+        leftAnkle.visibility < 0.7 || rightAnkle.visibility < 0.7) {
+      return true;
     }
     
-    return hasMovement;
-  }
-
-// 5. ✅ CORREGIR ANÁLISIS DURANTE EJERCICIO - NO MENSAJES ALEATORIOS
-private performRealExerciseAnalysis(pose: PoseKeypoints, angles: BiomechanicalAngles): MovementAnalysis {
-  let errors: PostureError[] = [];
-  
-  // ✅ SOLO ANALIZAR ERRORES DURANTE MOVIMIENTO ACTIVO
-  const isActivelyExercising = this.exerciseFramesCount > this.MIN_EXERCISE_FRAMES && 
-      (this.currentPhase === RepetitionPhase.DESCENDING || 
-       this.currentPhase === RepetitionPhase.BOTTOM || 
-       this.currentPhase === RepetitionPhase.ASCENDING);
-  
-  if (isActivelyExercising) {
-    errors = this.detectRealPosturalErrors(pose, angles);
-    console.log(`🏃 ANALIZANDO ERRORES: fase=${this.currentPhase}, errores=${errors.length}`);
-  } else {
-    console.log(`⏸️ NO ANALIZANDO: frames=${this.exerciseFramesCount}, fase=${this.currentPhase}`);
-  }
-
-  // Agregar a historia
-  this.angleHistory.push(angles);
-  if (this.angleHistory.length > this.SMOOTHING_WINDOW) {
-    this.angleHistory.shift();
-  }
-
-  // Detectar fase actual
-  const currentPhase = this.detectPhase(angles);
-  this.currentPhase = currentPhase;
-
-  // Contar repeticiones
-  this.updateRepetitionCount(currentPhase);
-
-  // Calcular puntuación
-  const qualityScore = this.calculateQualityScore(errors, angles);
-
-  return {
-    errors,
-    phase: currentPhase,
-    repetitionCount: this.repetitionCounter,
-    qualityScore
-  };
-}
-// 6. ✅ CORREGIR DETECCIÓN EN PREPARACIÓN - PERFIL VS FRONTAL
-private performReadinessAnalysis(pose: PoseKeypoints, angles: BiomechanicalAngles): MovementAnalysis {
-  const errors: PostureError[] = [];
-  
-  // ✅ SOLO DAR CONSEJOS SI NO ESTÁ LISTO
-  if (this.readinessState === ReadinessState.NOT_READY) {
-    const isProfileView = this.detectProfileView(pose);
+    const feetDistance = Math.abs(leftAnkle.x - rightAnkle.x);
     
-    if (isProfileView) {
-      console.log('📐 ANALIZANDO ERRORES DE PREPARACIÓN - PERFIL');
-      const profileErrors = this.checkProfileReadinessErrors(pose, angles);
-      errors.push(...profileErrors);
-    } else {
-      console.log('👥 ANALIZANDO ERRORES DE PREPARACIÓN - FRONTAL');
-      const frontalErrors = this.detectFrontalErrors(pose, angles, false);
-      errors.push(...frontalErrors);
+    // ✅ RANGO VÁLIDO: ni muy juntos (< 0.15) ni muy separados (> 0.40)
+    const isGoodSpacing = feetDistance >= 0.15 && feetDistance <= 0.40;
+    
+    if (!isGoodSpacing) {
+      if (feetDistance < 0.15) {
+        console.log(`🚨 PIES MUY JUNTOS: distancia=${feetDistance.toFixed(3)}`);
+      } else {
+        console.log(`🚨 PIES MUY SEPARADOS: distancia=${feetDistance.toFixed(3)}`);
+      }
     }
-  }
-
-  return this.createBasicAnalysis(errors, RepetitionPhase.IDLE, this.repetitionCounter, 70);
-}
-
-
-// 8. ✅ CORREGIR: Errores de preparación PERFIL - DETECTAR ESPALDA CURVADA
-private checkProfileReadinessErrors(pose: PoseKeypoints, angles: BiomechanicalAngles): PostureError[] {
-  const errors: PostureError[] = [];
-  const timestamp = Date.now();
-
-// ✅ DETECTAR ESPALDA CURVADA EN PERFIL (PREPARACIÓN) - MUCHO MÁS SENSIBLE
-const spineAngle = angles.spine_angle || 85;
-if (spineAngle < 82 && this.checkErrorCooldown(PostureErrorType.FORWARD_LEAN, timestamp)) { // 78 → 82
-  const severity = spineAngle < 70 ? 8 : 5; // 65 → 70 (más sensible)
-  errors.push({
-    type: PostureErrorType.FORWARD_LEAN,
-    severity: severity,
-    description: severity > 7 ? 'Espalda muy curvada (crítico)' : 'Endereza la espalda',
-    recommendation: severity > 7 ? 'CRÍTICO: Endereza la espalda, saca el pecho' : 'Mantén la espalda más recta',
-    affectedJoints: ['spine'],
-    confidence: 0.9,
-    timestamp
-  });
-  console.log(`${severity > 7 ? '🔴' : '🟠'} PREPARACIÓN PERFIL: Espalda curvada ${spineAngle.toFixed(1)}°`);
-}
-
-  // ✅ VERIFICAR RODILLA EXTENDIDA EN PERFIL
-  const leftKnee = angles.left_knee_angle || 0;
-  const rightKnee = angles.right_knee_angle || 0;
-  const leftVisible = pose.left_knee?.visibility || 0;
-  const rightVisible = pose.right_knee?.visibility || 0;
-  const kneeAngle = leftVisible > rightVisible ? leftKnee : rightKnee;
-
-  if (kneeAngle < 130 && this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {
-    errors.push({
-      type: PostureErrorType.INSUFFICIENT_DEPTH,
-      severity: 4,
-      description: 'Ponte de pie completamente',
-      recommendation: 'Extiende las piernas, ponte de pie',
-      affectedJoints: ['left_knee', 'right_knee'],
-      confidence: 0.8,
-      timestamp
-    });
-    console.log('🟠 PREPARACIÓN PERFIL: Muy agachado');
-  }
-
-  return errors;
-}
-
-  // 🔄 RESETEAR A NO LISTO
-  private resetToNotReady(): void {
-    if (this.readinessState !== ReadinessState.NOT_READY) {
-      console.log('🔄 Usuario fuera de cámara - reseteando a NOT_READY');
-      this.readinessState = ReadinessState.NOT_READY;
-      this.exerciseFramesCount = 0;
-      this.outOfPositionFrames = 0;
-      this.readyFramesCount = 0;
-    }
+    
+    return isGoodSpacing;
   }
 
   // ============================================================================
-  // ✅ MÉTODOS AUXILIARES ESTÁNDAR
+  // ✅ ERROR COOLDOWN - MÁS LARGO PARA EVITAR SPAM
   // ============================================================================
 
-  // 11. ✅ CORREGIR COOLDOWN - MÁS AGRESIVO PARA DETECTAR ERRORES
   private checkErrorCooldown(errorType: PostureErrorType, timestamp: number): boolean {
     const lastDetection = this.lastErrorTimestamps.get(errorType) || 0;
     
-    // ✅ COOLDOWNS MÁS CORTOS PARA DETECCIÓN RÁPIDA
-    let cooldownTime = 1000; // 2000 → 1000ms (1 segundo por defecto)
+    // ✅ COOLDOWNS MÁS LARGOS
+    let cooldownTime = 3000; // 1000 → 3000ms (3 segundos)
     
-    // Errores críticos: cooldown corto
+    // Errores críticos: cooldown largo
     if (errorType === PostureErrorType.KNEE_VALGUS || 
-        errorType === PostureErrorType.FORWARD_LEAN ||
-        errorType === PostureErrorType.UNSTABLE_BALANCE) {
-      cooldownTime = 1200; // 2000 → 1200ms
+        errorType === PostureErrorType.ROUNDED_BACK ||
+        errorType === PostureErrorType.FORWARD_LEAN) {
+      cooldownTime = 4000; // 4 segundos
     }
     
-    // Errores de posición: cooldown muy corto
+    // Errores de posición: cooldown medio
     if (errorType === PostureErrorType.POOR_ALIGNMENT || 
-        errorType === PostureErrorType.INSUFFICIENT_DEPTH) {
-      cooldownTime = 800; // 1500 → 800ms (MUY RÁPIDO)
+        errorType === PostureErrorType.UNSTABLE_BALANCE) {
+      cooldownTime = 3000; // 3 segundos
+    }
+    
+    // Errores de profundidad: cooldown corto (pero más largo que antes)
+    if (errorType === PostureErrorType.INSUFFICIENT_DEPTH) {
+      cooldownTime = 2500; // 2.5 segundos
     }
     
     if (timestamp - lastDetection >= cooldownTime) {
@@ -775,214 +324,231 @@ if (spineAngle < 82 && this.checkErrorCooldown(PostureErrorType.FORWARD_LEAN, ti
     return false;
   }
 
+  // ============================================================================
+  // ✅ DETECCIÓN DE ERRORES FRONTALES - MEJORADA
+  // ============================================================================
 
-  private detectRealPosturalErrors(pose: PoseKeypoints, angles: BiomechanicalAngles): PostureError[] {
+  private detectFrontalErrors(
+    pose: PoseKeypoints, 
+    angles: BiomechanicalAngles, 
+    isExercising: boolean = false
+  ): PostureError[] {
     const errors: PostureError[] = [];
     const timestamp = Date.now();
+    const baseSeverity = isExercising ? 8 : 5;
+    const logPrefix = isExercising ? '🔴 EJERCICIO' : '🟠 PREPARACIÓN';
 
-    switch (this.currentExercise) {
-      case ExerciseType.SQUATS:
-        errors.push(...this.detectRealSquatErrors(pose, angles, timestamp));
-        break;
-      case ExerciseType.PUSHUPS:
-        errors.push(...this.detectPushupErrors(pose, angles, timestamp));
-        break;
-      case ExerciseType.PLANK:
-        errors.push(...this.detectPlankErrors(pose, angles, timestamp));
-        break;
-      case ExerciseType.LUNGES:
-        errors.push(...this.detectLungeErrors(pose, angles, timestamp));
-        break;
+    const feetDistance = Math.abs((pose.left_ankle?.x || 0) - (pose.right_ankle?.x || 0));
+
+    // ✅ ERROR: PIES MUY JUNTOS
+    if (feetDistance < 0.15 && this.checkErrorCooldown(PostureErrorType.POOR_ALIGNMENT, timestamp)) {
+      errors.push({
+        type: PostureErrorType.POOR_ALIGNMENT,
+        severity: baseSeverity,
+        description: isExercising 
+          ? 'Pies muy juntos durante sentadilla'
+          : 'Pies muy juntos para hacer sentadillas',
+        recommendation: 'Abre más las piernas, separa los pies',
+        affectedJoints: ['left_ankle', 'right_ankle'],
+        confidence: 0.9,
+        timestamp
+      });
+      console.log(`${logPrefix}: Pies muy juntos`);
+    }
+
+    // ✅ NUEVO: ERROR PIES MUY SEPARADOS
+    if (feetDistance > 0.40 && this.checkErrorCooldown(PostureErrorType.POOR_ALIGNMENT, timestamp)) {
+      errors.push({
+        type: PostureErrorType.POOR_ALIGNMENT,
+        severity: baseSeverity,
+        description: isExercising 
+          ? 'Piernas muy abiertas durante sentadilla'
+          : 'Piernas muy abiertas para hacer sentadillas',
+        recommendation: 'Junta un poco los pies, ancho de hombros',
+        affectedJoints: ['left_ankle', 'right_ankle'],
+        confidence: 0.9,
+        timestamp
+      });
+      console.log(`${logPrefix}: Pies muy separados`);
+    }
+
+    // ✅ ERROR: UN PIE LEVANTADO - DETECCIÓN MEJORADA
+    if ((!this.checkBothFeetOnGround(pose) || !this.checkIndividualFootHeight(pose)) && 
+        this.checkErrorCooldown(PostureErrorType.UNSTABLE_BALANCE, timestamp)) {
+      errors.push({
+        type: PostureErrorType.UNSTABLE_BALANCE,
+        severity: baseSeverity + 1,
+        description: isExercising 
+          ? 'Un pie está levantado durante ejercicio'
+          : 'Un pie está levantado',
+        recommendation: isExercising 
+          ? 'CRÍTICO: Pon ambos pies en el suelo'
+          : 'Pon ambos pies en el suelo',
+        affectedJoints: ['left_ankle', 'right_ankle'],
+        confidence: 0.95,
+        timestamp
+      });
+      console.log(`${logPrefix}: Un pie levantado`);
+    }
+
+    // ✅ ERROR: RODILLAS MUY JUNTAS (SOLO DURANTE EJERCICIO)
+    if (isExercising && !this.checkKneePosition(pose) && 
+        this.checkErrorCooldown(PostureErrorType.KNEE_VALGUS, timestamp)) {
+      errors.push({
+        type: PostureErrorType.KNEE_VALGUS,
+        severity: 9,
+        description: 'Rodillas colapsadas hacia adentro',
+        recommendation: 'CRÍTICO: Separa las rodillas, empuja hacia afuera',
+        affectedJoints: ['left_knee', 'right_knee'],
+        confidence: 0.9,
+        timestamp
+      });
+      console.log(`${logPrefix}: Rodillas muy juntas (CRÍTICO)`);
     }
 
     return errors;
   }
 
-  private detectPhase(angles: BiomechanicalAngles): RepetitionPhase {
-    switch (this.currentExercise) {
-      case ExerciseType.SQUATS:
-        return this.detectSquatPhase(angles);
-      case ExerciseType.PUSHUPS:
-        return this.detectPushupPhase(angles);
-      case ExerciseType.PLANK:
-        return RepetitionPhase.HOLD;
-      case ExerciseType.LUNGES:
-        return this.detectLungePhase(angles);
-      default:
-        return RepetitionPhase.IDLE;
+  // ============================================================================
+  // ✅ DETECCIÓN DE POCA PROFUNDIDAD - MEJORADA
+  // ============================================================================
+
+  private detectProfileSquatErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
+    const errors: PostureError[] = [];
+    
+    const leftVisible = pose.left_knee?.visibility || 0;
+    const rightVisible = pose.right_knee?.visibility || 0;
+    const kneeAngle = leftVisible > rightVisible ? 
+      (angles.left_knee_angle || 0) : (angles.right_knee_angle || 0);
+
+    // ✅ ESPALDA CURVADA DURANTE EJERCICIO
+      const spineAngle = angles.spine_angle || 85;
+      if (spineAngle < 85 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) { // ✅ 80 → 85 (más sensible)
+        const severity = spineAngle < 75 ? 9 : 6; // ✅ 70 → 75 (detecta crítico antes)
+      errors.push({
+        type: PostureErrorType.ROUNDED_BACK,
+        severity: severity,
+        description: severity > 8 ? 'Espalda muy curvada (PELIGROSO)' : 'Espalda redondeada',
+        recommendation: severity > 8 ? 'PELIGRO: Endereza la espalda YA' : 'Endereza la espalda, saca el pecho',
+        affectedJoints: ['spine'],
+        confidence: 0.95,
+        timestamp
+      });
+      console.log(`🔴 EJERCICIO PERFIL: Espalda curvada ${spineAngle.toFixed(1)}° (CRÍTICO)`);
     }
+
+    // ✅ SENTADILLA POCO PROFUNDA - DETECTAR EN MÁS FASES
+    if (kneeAngle > 110 && 
+        (this.currentPhase === RepetitionPhase.BOTTOM || 
+         this.currentPhase === RepetitionPhase.DESCENDING) &&
+        this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {
+      errors.push({
+        type: PostureErrorType.INSUFFICIENT_DEPTH,
+        severity: 5, // AMARILLO
+        description: 'No bajas lo suficiente',
+        recommendation: 'Baja más, flexiona más las rodillas',
+        affectedJoints: ['left_knee', 'right_knee'],
+        confidence: 0.8,
+        timestamp
+      });
+      console.log('🟠 EJERCICIO PERFIL: Sentadilla poco profunda');
+    }
+
+    return errors;
   }
 
-  // 12. ✅ CORREGIR FASES DE REPETICIÓN - MÁS ESTRICTAS
-private detectSquatPhase(angles: BiomechanicalAngles): RepetitionPhase {
-  const leftKnee = angles.left_knee_angle || 180;
-  const rightKnee = angles.right_knee_angle || 180;
-  const avgKneeAngle = (leftKnee + rightKnee) / 2;
+  // ============================================================================
+  // ✅ MÉTODOS AUXILIARES
+  // ============================================================================
 
-  // ✅ FASES MÁS ESTRICTAS
-  if (avgKneeAngle > 150) {
-    return RepetitionPhase.TOP;
-  } else if (avgKneeAngle < 100) {
-    return RepetitionPhase.BOTTOM;
-  } else {
-    if (this.angleHistory.length >= 2) {
-      const prevAngles = this.angleHistory[this.angleHistory.length - 2];
-      const prevLeftKnee = prevAngles.left_knee_angle || 180;
-      const prevRightKnee = prevAngles.right_knee_angle || 180;
-      const prevAvgKnee = (prevLeftKnee + prevRightKnee) / 2;
-      
-      return avgKneeAngle < prevAvgKnee ? RepetitionPhase.DESCENDING : RepetitionPhase.ASCENDING;
+  private performRealExerciseAnalysis(pose: PoseKeypoints, angles: BiomechanicalAngles): MovementAnalysis {
+    this.angleHistory.push(angles);
+    if (this.angleHistory.length > this.SMOOTHING_WINDOW) {
+      this.angleHistory.shift();
     }
-    return RepetitionPhase.DESCENDING;
-  }
-}
-
-  private detectPushupPhase(angles: BiomechanicalAngles): RepetitionPhase {
-    const leftElbow = angles.left_elbow_angle || 180;
-    const rightElbow = angles.right_elbow_angle || 180;
-    const avgElbowAngle = (leftElbow + rightElbow) / 2;
-
-    if (avgElbowAngle > 160) {
-      return RepetitionPhase.TOP;
-    } else if (avgElbowAngle < 90) {
-      return RepetitionPhase.BOTTOM;
-    } else {
-      if (this.angleHistory.length >= 2) {
-        const prevAngles = this.angleHistory[this.angleHistory.length - 2];
-        const prevLeftElbow = prevAngles.left_elbow_angle || 180;
-        const prevRightElbow = prevAngles.right_elbow_angle || 180;
-        const prevAvgElbow = (prevLeftElbow + prevRightElbow) / 2;
-        
-        return avgElbowAngle < prevAvgElbow ? RepetitionPhase.DESCENDING : RepetitionPhase.ASCENDING;
-      }
-      return RepetitionPhase.DESCENDING;
+  
+    const newPhase = this.detectPhase(angles);
+    this.phaseHistory.push(newPhase);
+    if (this.phaseHistory.length > this.SMOOTHING_WINDOW) {
+      this.phaseHistory.shift();
     }
-  }
-
-  private detectLungePhase(angles: BiomechanicalAngles): RepetitionPhase {
+  
+    const smoothedPhase = this.getMostCommonPhase();
+    
+    if (smoothedPhase !== this.currentPhase) {
+      console.log(`📊 Cambio de fase: ${this.currentPhase} → ${smoothedPhase}`);
+      this.currentPhase = smoothedPhase;
+    }
+  
+    if (this.isRepetitionComplete(smoothedPhase)) {
+      this.repetitionCounter++;
+      console.log(`🎉 REPETICIÓN #${this.repetitionCounter}`);
+    }
+  
+    const errors = this.detectRealPosturalErrors(pose, angles);
     const leftKnee = angles.left_knee_angle || 180;
     const rightKnee = angles.right_knee_angle || 180;
-    const minKneeAngle = Math.min(leftKnee, rightKnee);
+    const avgKneeAngle = (leftKnee + rightKnee) / 2;
+  
+    // Solo procesar errores si está agachado (< 150°) o en posición inicial correcta (> 140°)
+    const isInExercisePosition = avgKneeAngle < 150 || avgKneeAngle > 140;
+  
+    if (!isInExercisePosition) {
+      console.log('⏸️ Ignorando errores - usuario en movimiento (no ejercitando)');
+    }
+  
+    const quality = this.calculateQualityScore(errors, angles);  
+    return this.createBasicAnalysis(errors, smoothedPhase, this.repetitionCounter, quality);
+  }
+  
+  private performReadinessAnalysis(pose: PoseKeypoints, angles: BiomechanicalAngles): MovementAnalysis {
+    const errors = this.detectReadinessErrors(pose, angles);
+    return this.createBasicAnalysis(errors, RepetitionPhase.IDLE, 0, 0);
+  }
 
-    if (minKneeAngle > 150) {
-      return RepetitionPhase.TOP;
-    } else if (minKneeAngle < 100) {
-      return RepetitionPhase.BOTTOM;
+  private detectReadinessErrors(pose: PoseKeypoints, angles: BiomechanicalAngles): PostureError[] {
+    const isProfileView = this.detectProfileView(pose);
+    const errors: PostureError[] = [];
+    
+    if (isProfileView) {
+      errors.push(...this.detectProfileReadinessErrors(pose, angles));
     } else {
-      return minKneeAngle < 130 ? RepetitionPhase.DESCENDING : RepetitionPhase.ASCENDING;
-    }
-  }
-
-  private updateRepetitionCount(currentPhase: RepetitionPhase): void {
-    if (currentPhase === RepetitionPhase.TOP && this.phaseTransitions.lastPhase !== RepetitionPhase.TOP) {
-      this.phaseTransitions.topCount++;
+      errors.push(...this.detectFrontalErrors(pose, angles, false));
     }
     
-    if (currentPhase === RepetitionPhase.BOTTOM && this.phaseTransitions.lastPhase !== RepetitionPhase.BOTTOM) {
-      this.phaseTransitions.bottomCount++;
-    }
-
-    const completedCycles = Math.min(this.phaseTransitions.topCount, this.phaseTransitions.bottomCount);
-    
-    if (completedCycles > this.repetitionCounter) {
-      this.repetitionCounter = completedCycles;
-      console.log(`🎉 ¡REPETICIÓN COMPLETADA! Total: ${this.repetitionCounter}`);
-    }
-
-    this.phaseTransitions.lastPhase = currentPhase;
+    return errors;
   }
 
-  private checkPushupStartPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
-    const leftElbow = angles.left_elbow_angle || 0;
-    const rightElbow = angles.right_elbow_angle || 0;
-    const avgElbowAngle = (leftElbow + rightElbow) / 2;
-
-    const armsExtended = avgElbowAngle > 160;
-    const hipAngle = angles.left_hip_angle || 0;
-    const bodyAligned = hipAngle > 160 && hipAngle < 185;
-
-    return armsExtended && bodyAligned;
-  }
-
-  private checkPlankStartPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
-    const hipAngle = angles.left_hip_angle || 0;
-    return hipAngle > 165 && hipAngle < 185;
-  }
-
-  private detectPushupErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
+  private detectProfileReadinessErrors(pose: PoseKeypoints, angles: BiomechanicalAngles): PostureError[] {
     const errors: PostureError[] = [];
-
-    const hipAngle = angles.left_hip_angle || 180;
-    if (hipAngle < 160 && this.checkErrorCooldown(PostureErrorType.DROPPED_HIPS, timestamp)) {
+    const timestamp = Date.now();
+    
+    const spineAngle = angles.spine_angle || 85;
+      if (spineAngle < 80 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) { // ✅ 75 → 80
+        const severity = spineAngle < 70 ? 8 : 5; // ✅ 65 → 70
       errors.push({
-        type: PostureErrorType.DROPPED_HIPS,
-        severity: 7,
-        description: `Caderas caídas (${hipAngle.toFixed(1)}°)`,
-        recommendation: 'Contrae el core, mantén cuerpo recto',
-        affectedJoints: ['left_hip', 'right_hip'],
+        type: PostureErrorType.ROUNDED_BACK,
+        severity: severity,
+        description: severity > 7 ? 'Espalda muy curvada' : 'Espalda un poco curvada',
+        recommendation: severity > 7 ? 'CRÍTICO: Endereza la espalda, saca el pecho' : 'Mantén la espalda más recta',
+        affectedJoints: ['spine'],
         confidence: 0.9,
         timestamp
       });
     }
 
-    const leftElbow = angles.left_elbow_angle || 180;
-    const rightElbow = angles.right_elbow_angle || 180;
-    if ((leftElbow < 45 || rightElbow < 45) && this.checkErrorCooldown(PostureErrorType.EXCESSIVE_ELBOW_FLARE, timestamp)) {
+    const leftKnee = angles.left_knee_angle || 0;
+    const rightKnee = angles.right_knee_angle || 0;
+    const leftVisible = pose.left_knee?.visibility || 0;
+    const rightVisible = pose.right_knee?.visibility || 0;
+    const kneeAngle = leftVisible > rightVisible ? leftKnee : rightKnee;
+
+    if (kneeAngle < 130 && this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {
       errors.push({
-        type: PostureErrorType.EXCESSIVE_ELBOW_FLARE,
-        severity: 5,
-        description: 'Codos muy abiertos, riesgo de lesión',
-        recommendation: 'Mantén codos cerca del cuerpo, ángulo 45°',
-        affectedJoints: ['left_elbow', 'right_elbow'],
-        confidence: 0.85,
-        timestamp
-      });
-    }
-
-    return errors;
-  }
-
-  private detectPlankErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
-    const errors: PostureError[] = [];
-
-    const hipAngle = angles.left_hip_angle || 180;
-    if (hipAngle > 185 && this.checkErrorCooldown(PostureErrorType.HIGH_HIPS, timestamp)) {
-      errors.push({
-        type: PostureErrorType.HIGH_HIPS,
-        severity: 6,
-        description: `Caderas muy altas (${hipAngle.toFixed(1)}°)`,
-        recommendation: 'Baja las caderas, forma línea recta',
-        affectedJoints: ['left_hip', 'right_hip'],
-        confidence: 0.88,
-        timestamp
-      });
-    }
-
-    if (hipAngle < 160 && this.checkErrorCooldown(PostureErrorType.DROPPED_HIPS, timestamp)) {
-      errors.push({
-        type: PostureErrorType.DROPPED_HIPS,
-        severity: 7,
-        description: `Caderas caídas (${hipAngle.toFixed(1)}°)`,
-        recommendation: 'Contrae el core, sube las caderas',
-        affectedJoints: ['left_hip', 'right_hip'],
-        confidence: 0.9,
-        timestamp
-      });
-    }
-
-    return errors;
-  }
-
-  private detectLungeErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
-    const errors: PostureError[] = [];
-
-    const frontKnee = Math.min(angles.left_knee_angle || 180, angles.right_knee_angle || 180);
-    if (frontKnee < 80 && this.checkErrorCooldown(PostureErrorType.KNEE_FORWARD, timestamp)) {
-      errors.push({
-        type: PostureErrorType.KNEE_FORWARD,
-        severity: 6,
-        description: `Rodilla muy adelantada (${frontKnee.toFixed(1)}°)`,
-        recommendation: 'Da un paso más largo, peso en el talón',
+        type: PostureErrorType.INSUFFICIENT_DEPTH,
+        severity: 4,
+        description: 'Ponte de pie completamente',
+        recommendation: 'Extiende las piernas, ponte de pie',
         affectedJoints: ['left_knee', 'right_knee'],
         confidence: 0.8,
         timestamp
@@ -992,31 +558,207 @@ private detectSquatPhase(angles: BiomechanicalAngles): RepetitionPhase {
     return errors;
   }
 
-  // 1. ✅ CORREGIR "TÉCNICA PERFECTA" - Solo al completar repetición COMPLETA
-private calculateQualityScore(errors: PostureError[], angles: BiomechanicalAngles): number {
-  let baseScore = 100;
+  private detectRealPosturalErrors(pose: PoseKeypoints, angles: BiomechanicalAngles): PostureError[] {
+    const errors: PostureError[] = [];
+    const timestamp = Date.now();
 
-  errors.forEach(error => {
-    if (error.severity >= 7) {
-      baseScore -= 20;
-    } else if (error.severity >= 5) {
-      baseScore -= 10;
-    } else {
-      baseScore -= 5;
+    switch (this.currentExercise) {
+      case ExerciseType.SQUATS:
+        errors.push(...this.detectRealSquatErrors(pose, angles, timestamp));
+        break;
     }
-  });
 
-  // ✅ SOLO AL COMPLETAR REPETICIÓN COMPLETA (TOP → BOTTOM → TOP)
-  if (errors.length === 0 && 
-      this.currentPhase === RepetitionPhase.TOP && 
-      this.phaseTransitions.lastPhase === RepetitionPhase.ASCENDING &&
-      this.phaseTransitions.topCount > this.phaseTransitions.bottomCount) {
-    console.log('🎉 REPETICIÓN PERFECTA COMPLETADA');
-    baseScore += 5;
+    return errors;
   }
 
-  return Math.max(0, Math.min(100, baseScore));
-}
+  private detectRealSquatErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
+    const errors: PostureError[] = [];
+    const isProfileView = this.detectProfileView(pose);
+    
+    if (isProfileView) {
+      errors.push(...this.detectProfileSquatErrors(pose, angles, timestamp));
+    } else {
+      errors.push(...this.detectFrontalErrors(pose, angles, true));
+    }
+    
+    if (errors.length > 1) {
+      const mostSevere = errors.reduce((prev, current) => 
+        current.severity > prev.severity ? current : prev
+      );
+      return [mostSevere];
+    }
+
+    return errors;
+  }
+
+  private detectProfileView(pose: PoseKeypoints): boolean {
+    const leftShoulder = pose.left_shoulder;
+    const rightShoulder = pose.right_shoulder;
+    const leftHip = pose.left_hip;
+    const rightHip = pose.right_hip;
+    
+    if (!leftShoulder || !rightShoulder || !leftHip || !rightHip) {
+      return false;
+    }
+    
+    const shoulderDistance = Math.abs(leftShoulder.x - rightShoulder.x);
+    const hipDistance = Math.abs(leftHip.x - rightHip.x);
+    const avgDistance = (shoulderDistance + hipDistance) / 2;
+    const isProfile = avgDistance < 0.10;
+    
+    return isProfile;
+  }
+
+  private checkStartingPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
+    switch (this.currentExercise) {
+      case ExerciseType.SQUATS:
+        return this.checkSquatStartPosition(pose, angles);
+      default:
+        return true;
+    }
+  }
+
+  private checkSquatStartPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
+    const leftKnee = angles.left_knee_angle || 0;
+    const rightKnee = angles.right_knee_angle || 0;
+    const avgKneeAngle = (leftKnee + rightKnee) / 2;
+
+    if (avgKneeAngle < 140) return false;
+
+    const bothFeetOnGround = this.checkBothFeetOnGround(pose);
+    if (!bothFeetOnGround) return false;
+
+    const goodFeetSpacing = this.checkFeetSpacing(pose);
+    if (!goodFeetSpacing) return false;
+
+    return true;
+  }
+
+  private detectMovement(angles: BiomechanicalAngles): boolean {
+    if (!this.lastAngleSnapshot) {
+      this.lastAngleSnapshot = angles;
+      return false;
+    }
+
+    const leftKneeDiff = Math.abs((angles.left_knee_angle || 0) - (this.lastAngleSnapshot.left_knee_angle || 0));
+    const rightKneeDiff = Math.abs((angles.right_knee_angle || 0) - (this.lastAngleSnapshot.right_knee_angle || 0));
+    const avgDiff = (leftKneeDiff + rightKneeDiff) / 2;
+
+    this.lastAngleSnapshot = angles;
+
+    return avgDiff > this.MOVEMENT_THRESHOLD;
+  }
+
+  private detectPhase(angles: BiomechanicalAngles): RepetitionPhase {
+    switch (this.currentExercise) {
+      case ExerciseType.SQUATS:
+        return this.detectSquatPhase(angles);
+      default:
+        return RepetitionPhase.IDLE;
+    }
+  }
+
+  private detectSquatPhase(angles: BiomechanicalAngles): RepetitionPhase {
+    const leftKnee = angles.left_knee_angle || 180;
+    const rightKnee = angles.right_knee_angle || 180;
+    const avgKneeAngle = (leftKnee + rightKnee) / 2;
+
+    if (avgKneeAngle > 140) {
+      return RepetitionPhase.TOP;
+    } else if (avgKneeAngle < 110) {
+      return RepetitionPhase.BOTTOM;
+    } else {
+      if (this.angleHistory.length >= 2) {
+        const prevLeftKnee = this.angleHistory[this.angleHistory.length - 2].left_knee_angle || 180;
+        const prevRightKnee = this.angleHistory[this.angleHistory.length - 2].right_knee_angle || 180;
+        const prevAvgKnee = (prevLeftKnee + prevRightKnee) / 2;
+        
+        return avgKneeAngle < prevAvgKnee 
+          ? RepetitionPhase.DESCENDING 
+          : RepetitionPhase.ASCENDING;
+      }
+      return RepetitionPhase.DESCENDING;
+    }
+  }
+
+  private getMostCommonPhase(): RepetitionPhase {
+    if (this.phaseHistory.length === 0) return RepetitionPhase.IDLE;
+
+    const phaseCounts = new Map<RepetitionPhase, number>();
+    this.phaseHistory.forEach(phase => {
+      phaseCounts.set(phase, (phaseCounts.get(phase) || 0) + 1);
+    });
+
+    let mostCommon = this.phaseHistory[0];
+    let maxCount = 0;
+
+    phaseCounts.forEach((count, phase) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommon = phase;
+      }
+    });
+
+    return mostCommon;
+  }
+  private isRepetitionComplete(currentPhase: RepetitionPhase): boolean {
+    // ✅ MEJORADO: Requiere ciclo completo
+    
+    // Solo contar si:
+    // 1. Está en TOP
+    // 2. Viene de ASCENDING
+    // 3. Ya pasó por BOTTOM
+    if (currentPhase === RepetitionPhase.TOP && 
+        this.phaseTransitions.lastPhase === RepetitionPhase.ASCENDING) {
+      
+      // ✅ VERIFICAR que haya pasado por BOTTOM
+      if (this.phaseTransitions.bottomCount > this.phaseTransitions.topCount) {
+        this.phaseTransitions.topCount++;
+        this.phaseTransitions.lastPhase = currentPhase;
+        
+        console.log('✅ REPETICIÓN COMPLETA:', {
+          topCount: this.phaseTransitions.topCount,
+          bottomCount: this.phaseTransitions.bottomCount
+        });
+        
+        return true;
+      }
+    }
+  
+    // Registrar cuando pasa por BOTTOM
+    if (currentPhase === RepetitionPhase.BOTTOM && 
+        this.phaseTransitions.lastPhase === RepetitionPhase.DESCENDING) {
+      this.phaseTransitions.bottomCount++;
+      console.log('📍 Pasó por BOTTOM:', this.phaseTransitions.bottomCount);
+    }
+  
+    this.phaseTransitions.lastPhase = currentPhase;
+    return false;
+  }
+
+  private calculateQualityScore(errors: PostureError[], angles: BiomechanicalAngles): number {
+    let baseScore = 100;
+
+    errors.forEach(error => {
+      if (error.severity >= 7) {
+        baseScore -= 20;
+      } else if (error.severity >= 5) {
+        baseScore -= 10;
+      } else {
+        baseScore -= 5;
+      }
+    });
+
+    if (errors.length === 0 && 
+        this.currentPhase === RepetitionPhase.TOP && 
+        this.phaseTransitions.lastPhase === RepetitionPhase.ASCENDING &&
+        this.phaseTransitions.topCount > this.phaseTransitions.bottomCount) {
+      console.log('🎉 REPETICIÓN PERFECTA COMPLETADA');
+      baseScore += 5;
+    }
+
+    return Math.max(0, Math.min(100, baseScore));
+  }
 
   private createBasicAnalysis(errors: PostureError[], phase: RepetitionPhase, reps: number, quality: number): MovementAnalysis {
     return {
@@ -1025,6 +767,17 @@ private calculateQualityScore(errors: PostureError[], angles: BiomechanicalAngle
       repetitionCount: reps,
       qualityScore: quality
     };
+  }
+
+  private resetToNotReady(): void {
+    if (this.readinessState !== ReadinessState.NOT_READY) {
+      console.log('🔄 Usuario fuera de cámara - reseteando a NOT_READY');
+      this.readinessState = ReadinessState.NOT_READY;
+      this.exerciseFramesCount = 0;
+      this.outOfPositionFrames = 0;
+      this.readyFramesCount = 0;
+      this.badFramesBuffer = 0;
+    }
   }
 
   // ============================================================================
@@ -1074,6 +827,7 @@ private calculateQualityScore(errors: PostureError[], angles: BiomechanicalAngle
     };
     this.readinessState = ReadinessState.NOT_READY;
     this.readyFramesCount = 0;
+    this.badFramesBuffer = 0;
     this.movementDetected = false;
     this.lastAngleSnapshot = null;
     this.exerciseFramesCount = 0;
@@ -1087,13 +841,10 @@ private calculateQualityScore(errors: PostureError[], angles: BiomechanicalAngle
     console.log('🧹 BiomechanicsAnalyzer limpiado');
   }
 
-  // ✅ MÉTODO DE DEBUG PARA VERIFICAR DETECCIONES
   debugDetections(pose: PoseKeypoints): void {
     console.log('🔍 === DEBUG DETECCIONES ===');
     console.log(`👁️ Vista de perfil: ${this.detectProfileView(pose)}`);
     console.log(`👣 Ambos pies en suelo: ${this.checkBothFeetOnGround(pose)}`);
-    console.log(`📏 Separación de pies: ${this.checkFeetSpacing(pose)}`);
-    console.log(`🦵 Posición de rodillas: ${this.checkKneePosition(pose)}`);
     console.log(`🚦 Estado de preparación: ${this.readinessState}`);
     console.log('🔍 === FIN DEBUG ===');
   }

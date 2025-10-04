@@ -1,5 +1,5 @@
 // src/app/services/audio.service.ts
-// 🎤 AUDIO SERVICE SIMPLE - SIN DEPENDENCIAS EXTERNAS
+// ✅ VERSIÓN CORREGIDA - MANEJO DE ERRORES Y TIMEOUT
 
 import { Injectable } from '@angular/core';
 
@@ -19,12 +19,14 @@ export class AudioService {
   private lastAudioTime = 0;
   private lastReadinessTime = 0;
   private currentUtterance: SpeechSynthesisUtterance | null = null;
+  private currentTimeoutId: any = null; // ✅ NUEVO: Para limpiar timeout
   
-  // ⏰ COOLDOWNS PARA EVITAR SPAM
-  private readonly AUDIO_COOLDOWN = 2500; // 2.5 segundos
-  private readonly READINESS_COOLDOWN = 4000; // 4 segundos
+  // ⏰ COOLDOWNS
+  private readonly AUDIO_COOLDOWN = 2500;
+  private readonly READINESS_COOLDOWN = 4000;
+  private readonly AUDIO_TIMEOUT = 5000; // ✅ NUEVO: 5 segundos máximo
 
-  // 🎚️ CONFIGURACIONES DE AUDIO
+  // 🎚️ CONFIGURACIONES
   private audioConfig = {
     rate: 0.9,
     pitch: 1.0,
@@ -33,11 +35,10 @@ export class AudioService {
   };
 
   constructor() {
-    console.log('🎤 AudioService inicializado');
+    console.log('🎤 AudioService inicializado - VERSIÓN CORREGIDA');
     this.initializeAudio();
   }
 
-  // 🔧 INICIALIZAR SISTEMA DE AUDIO
   private initializeAudio(): void {
     try {
       if (!window.speechSynthesis) {
@@ -46,7 +47,6 @@ export class AudioService {
         return;
       }
 
-      // Esperar a que las voces se carguen
       if (window.speechSynthesis.getVoices().length === 0) {
         window.speechSynthesis.onvoiceschanged = () => {
           console.log('✅ Voces cargadas:', window.speechSynthesis.getVoices().length);
@@ -55,130 +55,145 @@ export class AudioService {
 
       console.log('✅ AudioService configurado correctamente');
     } catch (error) {
-      console.error('❌ Error inicializando AudioService:', error);
+      console.error('❌ Error inicializando audio:', error);
       this.isEnabled = false;
     }
   }
 
-  // 🎤 MÉTODO PRINCIPAL PARA REPRODUCIR AUDIO
-  async speak(message: string, category: AudioMessage['category'] = 'info', priority: AudioMessage['priority'] = 'normal'): Promise<void> {
-    if (!this.isEnabled || !message.trim()) {
+  // ============================================================================
+  // ✅ MÉTODO PRINCIPAL DE HABLA - CON MANEJO DE ERRORES
+  // ============================================================================
+
+  async speak(
+    message: string, 
+    category: AudioMessage['category'] = 'info', 
+    priority: AudioMessage['priority'] = 'normal'
+  ): Promise<void> {
+    if (!this.isEnabled || !message || message.trim() === '') {
       return;
     }
 
-    const audioMessage: AudioMessage = {
-      text: message.trim(),
-      priority,
-      category
-    };
-
-    // 🚨 MENSAJES CRÍTICOS = INMEDIATOS
-    if (priority === 'critical') {
-      await this.speakImmediately(audioMessage);
-      return;
-    }
-
-    // ⏰ VERIFICAR COOLDOWN
     if (!this.checkCooldown(category)) {
-      console.log('⏸️ Audio en cooldown, saltando:', message);
+      console.log('⏸️ Audio en cooldown, ignorando:', message.substring(0, 30));
       return;
     }
 
-    // 🔊 REPRODUCIR O ENCOLAR
-    if (this.isSpeaking && priority !== 'high') {
-      this.messageQueue.push(audioMessage);
-      console.log('📤 Audio encolado:', message);
+    const audioMessage: AudioMessage = { text: message, priority, category };
+
+    if (priority === 'critical') {
+      this.stopCurrentAudio();
+      await this.speakMessage(audioMessage);
+    } else if (this.isSpeaking) {
+      if (priority === 'high') {
+        this.messageQueue.unshift(audioMessage);
+      } else {
+        this.messageQueue.push(audioMessage);
+      }
     } else {
       await this.speakMessage(audioMessage);
     }
+
+    this.updateLastAudioTime(category);
   }
 
-  // 🚨 REPRODUCIR MENSAJE CRÍTICO INMEDIATAMENTE
-  private async speakImmediately(message: AudioMessage): Promise<void> {
-    try {
-      // Cancelar audio actual si existe
-      this.stopCurrentAudio();
-      
-      // Limpiar cola
-      this.messageQueue = [];
-      
-      // Reproducir inmediatamente
-      await this.speakMessage(message);
-      
-    } catch (error) {
-      console.error('❌ Error en speakImmediately:', error);
-    }
-  }
-
-  // 🔊 REPRODUCIR MENSAJE
+  // ✅ NUEVO: Método con manejo completo de errores y timeout
   private async speakMessage(message: AudioMessage): Promise<void> {
-    if (!window.speechSynthesis) {
-      console.warn('⚠️ SpeechSynthesis no disponible');
+    if (!this.isEnabled || !window.speechSynthesis) {
+      this.resetSpeakingState();
       return;
     }
 
-    try {
+    return new Promise((resolve) => {
       this.isSpeaking = true;
-      this.updateLastAudioTime(message.category);
-
-      // Crear utterance
+      
       const utterance = new SpeechSynthesisUtterance(message.text);
       utterance.rate = this.audioConfig.rate;
       utterance.pitch = this.audioConfig.pitch;
       utterance.volume = this.audioConfig.volume;
       utterance.lang = this.audioConfig.language;
 
-      // Configurar eventos
-      utterance.onstart = () => {
-        console.log('🔊 Audio iniciado:', message.text);
-      };
+      // ✅ TIMEOUT DE SEGURIDAD
+      this.currentTimeoutId = setTimeout(() => {
+        console.warn('⏱️ Audio timeout después de 5 segundos, forzando limpieza');
+        window.speechSynthesis.cancel();
+        this.resetSpeakingState();
+        resolve();
+      }, this.AUDIO_TIMEOUT);
 
+      // ✅ EVENTO: Audio terminó correctamente
       utterance.onend = () => {
-        console.log('✅ Audio completado');
-        this.isSpeaking = false;
-        this.currentUtterance = null;
+        console.log('✅ Audio completado:', message.text.substring(0, 30));
+        this.clearCurrentTimeout();
+        this.resetSpeakingState();
         this.processQueue();
+        resolve();
       };
 
+      // ✅ EVENTO: Error en audio
       utterance.onerror = (event) => {
-        console.error('❌ Error en audio:', event);
-        this.isSpeaking = false;
-        this.currentUtterance = null;
+        console.error('❌ Error en audio:', event.error, message.text.substring(0, 30));
+        this.clearCurrentTimeout();
+        this.resetSpeakingState();
         this.processQueue();
+        resolve();
       };
 
-      // Buscar voz en español
-      const voices = window.speechSynthesis.getVoices();
-      const spanishVoice = voices.find(voice => 
-        voice.lang.includes('es') || voice.name.includes('Spanish')
-      );
-      
-      if (spanishVoice) {
-        utterance.voice = spanishVoice;
-      }
+      // ✅ EVENTO: Audio iniciado
+      utterance.onstart = () => {
+        console.log('🎤 Audio iniciado:', message.text.substring(0, 30));
+      };
 
-      // Reproducir
+      // ✅ EVENTO: Audio pausado
+      utterance.onpause = () => {
+        console.log('⏸️ Audio pausado');
+      };
+
+      // ✅ EVENTO: Audio resumido
+      utterance.onresume = () => {
+        console.log('▶️ Audio resumido');
+      };
+
       this.currentUtterance = utterance;
-      window.speechSynthesis.speak(utterance);
+      
+      try {
+        window.speechSynthesis.speak(utterance);
+      } catch (error) {
+        console.error('❌ Error ejecutando speechSynthesis.speak:', error);
+        this.clearCurrentTimeout();
+        this.resetSpeakingState();
+        resolve();
+      }
+    });
+  }
 
-    } catch (error) {
-      console.error('❌ Error reproduciendo audio:', error);
-      this.isSpeaking = false;
-      this.currentUtterance = null;
-      this.processQueue();
+  // ✅ NUEVO: Resetear estado de forma segura
+  private resetSpeakingState(): void {
+    this.isSpeaking = false;
+    this.currentUtterance = null;
+  }
+
+  // ✅ NUEVO: Limpiar timeout actual
+  private clearCurrentTimeout(): void {
+    if (this.currentTimeoutId) {
+      clearTimeout(this.currentTimeoutId);
+      this.currentTimeoutId = null;
     }
   }
 
   // ⏸️ DETENER AUDIO ACTUAL
   stopCurrentAudio(): void {
     try {
+      this.clearCurrentTimeout();
+      
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
-      this.isSpeaking = false;
-      this.currentUtterance = null;
+      
+      this.resetSpeakingState();
+      console.log('🛑 Audio detenido');
     } catch (error) {
       console.error('❌ Error deteniendo audio:', error);
+      this.resetSpeakingState();
     }
   }
 
@@ -228,7 +243,6 @@ export class AudioService {
     return this.isEnabled;
   }
 
-  // ✅ NUEVO: Método para verificar si está reproduciendo
   isCurrentlyPlaying(): boolean {
     return this.isSpeaking;
   }
@@ -260,15 +274,10 @@ export class AudioService {
 
   // 🧹 LIMPIEZA
   cleanup(): void {
+    this.clearCurrentTimeout();
     this.stopCurrentAudio();
     this.messageQueue = [];
-    this.isSpeaking = false;
-  }
-
-  // 📱 MÉTODO PARA FUTURA INTEGRACIÓN NATIVA
-  // (Se puede expandir cuando se instale el plugin de Capacitor)
-  private isNativePlatform(): boolean {
-    // Por ahora siempre falso, se puede detectar con Capacitor más tarde
-    return false;
+    this.resetSpeakingState();
+    console.log('🧹 AudioService limpiado');
   }
 }

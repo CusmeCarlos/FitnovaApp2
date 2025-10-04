@@ -32,8 +32,7 @@
   </div>
 
   <!-- ✅ ELEMENTOS DE CÁMARA -->
-  <div class="camera-content" 
-       [class.hidden]="isLoading || !!error">
+  <div class="camera-content" [class.hidden]="isLoading || !!error">
     
     <!-- 📹 VIDEO DE CÁMARA -->
     <video 
@@ -44,6 +43,16 @@
       playsinline>
     </video>
 
+    <!-- 🚦 CANVAS PARA ESTADOS DE PREPARACIÓN (LATERAL) -->
+    <canvas 
+      #readinessCanvas
+      class="readiness-notification-canvas">
+    </canvas>
+    <!-- 🚨 CANVAS PARA ALERTAS DE ERROR (SUPERIOR) -->
+      <canvas 
+      #overlayElement
+      class="error-alert-canvas">
+      </canvas>
     <!-- 🎨 CANVAS PARA ESQUELETO (33 PUNTOS) -->
     <canvas 
       #canvasElement
@@ -51,26 +60,33 @@
       [class.hidden]="!showSkeleton">
     </canvas>
 
-    <!-- 🚨 CANVAS PARA ALERTAS DE ERROR -->
+    <!-- 🚨 CANVAS UNIFICADO PARA TODAS LAS ALERTAS -->
+    <!-- ✅ ESTE ES EL ÚNICO SISTEMA DE ALERTAS AHORA -->
     <canvas 
       #overlayElement
-      class="error-overlay-canvas">
+      class="unified-alert-canvas">
     </canvas>
 
   </div>
-  <!-- ✅ PANEL DE ESTADO DE PREPARACIÓN -->
-<div class="readiness-panel" 
-*ngIf="currentReadinessState !== 'EXERCISING'"
-[ngClass]="{
-  'not-ready': currentReadinessState === 'NOT_READY',
-  'getting-ready': currentReadinessState === 'GETTING_READY', 
-  'ready-to-start': currentReadinessState === 'READY_TO_START'
-}">
-<ion-icon class="readiness-icon" 
-       [name]="currentReadinessState === 'READY_TO_START' ? 'checkmark-circle' : 'body'">
-</ion-icon>
-<p class="readiness-message">{{ getCurrentStateMessage() }}</p>
-</div>
+   <!-- ========================================== -->
+  <!-- ✅ PANEL DE INFORMACIÓN (NO ALERTAS) -->
+  <!-- ========================================== -->
+  
+  <!-- 📊 STATS SUPERIORES - Solo información, NO alertas -->
+  <div class="stats-panel" *ngIf="!isLoading && !error">
+    <div class="stat-item">
+      <ion-icon name="fitness-outline"></ion-icon>
+      <span>{{ getExerciseName() }}</span>
+    </div>
+    <div class="stat-item">
+      <ion-icon name="repeat-outline"></ion-icon>
+      <span>{{ repetitionCount }}</span>
+    </div>
+    <div class="stat-item">
+      <ion-icon name="speedometer-outline"></ion-icon>
+      <span>{{ fps }} FPS</span>
+    </div>
+  </div>
 
   <!-- 📊 PANEL DE INFORMACIÓN -->
   <div class="info-panel" *ngIf="isInitialized && !isLoading">
@@ -107,52 +123,41 @@
 
   </div>
 
-  <!-- 🚨 PANEL DE ERRORES ACTUALES -->
-  <div class="current-errors" *ngIf="currentErrors.length > 0">
-    <div class="error-item" 
-         *ngFor="let error of currentErrors"
-         [class]="'severity-' + getSeverityClass(error.severity)">
-      
-      <div class="error-header">
-        <ion-icon [name]="getErrorIcon(error.severity)"></ion-icon>
-        <span class="error-type">{{ getErrorTypeText(error.type) }}</span>
-      </div>
-      
-      <div class="error-description">{{ error.description }}</div>
-      <div class="error-recommendation">💡 {{ error.recommendation }}</div>
-      
-    </div>
-  </div>
-
-  <!-- 🎛️ CONTROLES -->
-  <div class="controls-panel">
+    <!-- 🎮 CONTROLES INFERIORES -->
+    <div class="controls-panel" *ngIf="!isLoading && !error">
     
-    <!-- 🎨 TOGGLE ESQUELETO -->
-    <ion-button 
-      fill="clear" 
-      size="small"
-      [color]="showSkeleton ? 'primary' : 'medium'"
-      (click)="toggleSkeleton()">
-      <ion-icon name="body-outline" slot="icon-only"></ion-icon>
-    </ion-button>
-
-    <!-- 🚨 TOGGLE DETECCIÓN DE ERRORES -->
-    <ion-button 
-      fill="clear" 
-      size="small"
-      [color]="enableErrorDetection ? 'primary' : 'medium'"
-      (click)="toggleErrorDetection()">
-      <ion-icon name="alert-circle-outline" slot="icon-only"></ion-icon>
-    </ion-button>
-
-    <!-- 🔊 TOGGLE AUDIO -->
-    <ion-button 
-      fill="clear" 
-      size="small"
-      [color]="enableAudio ? 'primary' : 'medium'"
-      (click)="toggleAudio()">
-      <ion-icon [name]="enableAudio ? 'volume-high-outline' : 'volume-mute-outline'" slot="icon-only"></ion-icon>
-    </ion-button>
+      <ion-button 
+        fill="clear" 
+        size="small"
+        (click)="toggleSkeleton()"
+        [class.active]="showSkeleton">
+        <ion-icon 
+          [name]="showSkeleton ? 'eye' : 'eye-off'" 
+          slot="icon-only">
+        </ion-icon>
+      </ion-button>
+  
+      <ion-button 
+        fill="clear" 
+        size="small"
+        (click)="toggleErrorDetection()"
+        [class.active]="enableErrorDetection">
+        <ion-icon 
+          [name]="enableErrorDetection ? 'shield-checkmark' : 'shield-outline'" 
+          slot="icon-only">
+        </ion-icon>
+      </ion-button>
+  
+      <ion-button 
+        fill="clear" 
+        size="small"
+        (click)="toggleAudio()"
+        [class.active]="enableAudio">
+        <ion-icon 
+          [name]="enableAudio ? 'volume-high' : 'volume-mute'" 
+          slot="icon-only">
+        </ion-icon>
+      </ion-button>
 
     <!-- ⏹️ PARAR CÁMARA -->
     <ion-button 
@@ -165,10 +170,9 @@
 
   </div>
 
-  <!-- 🎤 INDICADOR DE AUDIO -->
   <div class="audio-indicator" *ngIf="isPlayingAudio">
-    <ion-icon name="volume-high-outline"></ion-icon>
-    <span>Reproduciendo audio...</span>
+    <ion-icon name="volume-high-outline" class="pulse"></ion-icon>
+    <span>Audio</span>
   </div>
 
 </div>
