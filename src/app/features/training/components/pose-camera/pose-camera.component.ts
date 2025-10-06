@@ -74,6 +74,9 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   error: string | null = null;
   fps = 0;
 
+  showUI: boolean = true; // ✅ CONTROLA VISIBILIDAD DE LA UI
+
+
   // ✅ DATOS ACTUALES
   currentPose: PoseKeypoints | null = null;
   currentAngles: BiomechanicalAngles | null = null;
@@ -757,111 +760,135 @@ private showUnifiedAlert(alert: UnifiedAlert): void {
     console.log(`🎨 Alerta dibujada: "${alert.message}" (severity: ${alert.severity})`);
   }
   
-  private drawReadinessNotification(): void {
-    const canvas = this.readinessCanvasRef?.nativeElement;
-    if (!canvas) return;
+  private drawReadinessNotification(state: ReadinessState, message: string): void {
+    if (!this.readinessCtx || !this.readinessCanvasRef) return;
   
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const canvas = this.readinessCanvasRef.nativeElement;
+    const ctx = this.readinessCtx;
   
+    // Limpiar canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-    const width = 220;
-    const height = 80;
-    const padding = 15;
-    
-    const x = canvas.width - width - padding;
-    const y = padding;
+    // ✅ CONFIGURACIÓN DE TAMAÑO REDUCIDO
+    const boxWidth = Math.min(canvas.width * 0.7, 400); // ✅ Máximo 70% del ancho
+    const boxHeight = 100; // ✅ Altura fija más pequeña
+    const padding = 20;
+    const borderRadius = 16;
   
+    // ✅ POSICIÓN: CENTRADO HORIZONTALMENTE, LATERAL IZQUIERDO
+    const x = padding; // ✅ Desde el lateral izquierdo
+    const y = canvas.height / 2 - boxHeight / 2; // ✅ Centrado verticalmente
+  
+    // ✅ COLORES SEGÚN ESTADO
+    let bgColor = 'rgba(0, 0, 0, 0.85)';
+    let borderColor = 'rgba(255, 255, 255, 0.3)';
+    let textColor = '#ffffff';
+    let iconColor = '#ffffff';
+  
+    switch (state) {
+      case ReadinessState.NOT_READY:
+        borderColor = 'rgba(239, 68, 68, 0.6)'; // Rojo
+        iconColor = '#ef4444';
+        break;
+      case ReadinessState.GETTING_READY:
+        borderColor = 'rgba(251, 191, 36, 0.6)'; // Amarillo
+        iconColor = '#fbbf24';
+        break;
+      case ReadinessState.READY_TO_START:
+        borderColor = 'rgba(34, 197, 94, 0.6)'; // Verde
+        iconColor = '#22c55e';
+        break;
+      case ReadinessState.EXERCISING:
+        // No mostrar alerta cuando está ejercitando
+        return;
+    }
+  
+    // ✅ ANIMACIÓN DE ENTRADA DESDE LA IZQUIERDA
+    const slideProgress = Math.min((Date.now() % 500) / 500, 1);
+    const slideX = x - (50 * (1 - slideProgress)); // Deslizar desde fuera
+  
+    // Dibujar fondo con blur
     ctx.save();
-    
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 2;
-    
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-    this.roundRect(ctx, x, y, width, height, 12);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = bgColor;
+    this.roundRect(ctx, slideX, y, boxWidth, boxHeight, borderRadius);
     ctx.fill();
-    
-    ctx.shadowColor = 'transparent';
-    
-    ctx.strokeStyle = this.getCurrentStateColor();
+    ctx.restore();
+  
+    // Dibujar borde
+    ctx.strokeStyle = borderColor;
     ctx.lineWidth = 3;
-    this.roundRect(ctx, x, y, width, height, 12);
+    this.roundRect(ctx, slideX, y, boxWidth, boxHeight, borderRadius);
     ctx.stroke();
   
-    const iconSize = 28;
-    const iconX = x + 15;
-    const iconY = y + height / 2;
+    // ✅ ICONO MÁS PEQUEÑO
+    const iconSize = 32; // ✅ Reducido de 48 a 32
+    const iconX = slideX + 24;
+    const iconY = y + boxHeight / 2;
   
-    ctx.fillStyle = this.getCurrentStateColor();
+    ctx.fillStyle = iconColor;
     ctx.font = `${iconSize}px Arial`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(this.getReadinessIcon(), iconX, iconY);
+    
+    // Emoji según estado
+    let emoji = '⚠️';
+    if (state === ReadinessState.GETTING_READY) emoji = '⏳';
+    if (state === ReadinessState.READY_TO_START) emoji = '✅';
+    
+    ctx.fillText(emoji, iconX, iconY);
   
-    const textX = iconX + iconSize + 12;
-    const textY = iconY;
+    // ✅ TEXTO MÁS PEQUEÑO Y CENTRADO
+    const textX = slideX + iconSize + 44;
+    const textY = y + boxHeight / 2;
   
-    ctx.fillStyle = '#333';
-    ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto';
+    ctx.fillStyle = textColor;
+    ctx.font = 'bold 16px system-ui, -apple-system, sans-serif'; // ✅ Reducido de 18px a 16px
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     
-    const maxTextWidth = width - iconSize - 40;
-    const message = this.readinessMessage || ''; // ✅ Usa this.readinessMessage
-    
+    // Dividir texto en líneas si es muy largo
+    const maxWidth = boxWidth - iconSize - 80;
     const words = message.split(' ');
-    const lines: string[] = [];
-    let currentLine = words[0];
+    let line = '';
+    let lineY = textY;
   
-    for (let i = 1; i < words.length; i++) {
-      const testLine = currentLine + ' ' + words[i];
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + words[i] + ' ';
       const metrics = ctx.measureText(testLine);
       
-      if (metrics.width > maxTextWidth && currentLine.length > 0) {
-        lines.push(currentLine);
-        currentLine = words[i];
+      if (metrics.width > maxWidth && i > 0) {
+        ctx.fillText(line, textX, lineY - 10);
+        line = words[i] + ' ';
+        lineY += 20;
       } else {
-        currentLine = testLine;
+        line = testLine;
       }
     }
-    lines.push(currentLine);
+    ctx.fillText(line, textX, lineY - 10);
+  }  
   
-    const lineHeight = 18;
-    const totalTextHeight = lines.length * lineHeight;
-    let currentY = textY - (totalTextHeight / 2) + (lineHeight / 2);
-  
-    lines.forEach(line => {
-      ctx.fillText(line, textX, currentY);
-      currentY += lineHeight;
-    });
-  
-    ctx.restore();
+  private roundRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number
+  ): void {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
   }
-  
-  
-private roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number
-): void {
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height - radius);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  ctx.lineTo(x + radius, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-  ctx.closePath();
-}
 
 // ✅ Iconos según estado
 private getReadinessIcon(): string {
@@ -996,17 +1023,17 @@ private handleReadinessStateChange(prevState: ReadinessState, newState: Readines
     switch (newState) {
       case ReadinessState.NOT_READY:
         // ✅ readinessMessage ya está actualizado en analyzeMovementWithStates
-        this.drawReadinessNotification(); // ✅ Sin parámetros
+        this.drawReadinessNotification(this.currentReadinessState, this.readinessMessage);
         this.audioService.speakReadiness('Posiciónate para hacer el ejercicio');
         break;
         
       case ReadinessState.GETTING_READY:
-        this.drawReadinessNotification(); // ✅ Sin parámetros
+        this.drawReadinessNotification(this.currentReadinessState, this.readinessMessage);
         // No audio aquí para evitar spam
         break;
         
       case ReadinessState.READY_TO_START:
-        this.drawReadinessNotification(); // ✅ Sin parámetros
+        this.drawReadinessNotification(this.currentReadinessState, this.readinessMessage);
         this.audioService.speakReadiness('¡Listo para empezar! Comienza el ejercicio');
         break;
         
@@ -1394,24 +1421,22 @@ private drawSkeleton(pose: PoseKeypoints): void {
 
   toggleSkeleton(): void {
     this.showSkeleton = !this.showSkeleton;
-    if (!this.showSkeleton && this.canvasCtx) {
-      const canvas = this.canvasElementRef.nativeElement;
-      this.canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-    }
+    console.log(`🦴 Esqueleto ${this.showSkeleton ? 'activado' : 'desactivado'}`);
+    this.cdr.detectChanges();
   }
 
   toggleErrorDetection(): void {
     this.enableErrorDetection = !this.enableErrorDetection;
-    if (!this.enableErrorDetection) {
-      this.currentErrors = [];
-      this.clearErrorOverlay();
-    }
+    console.log(`🛡️ Detección de errores ${this.enableErrorDetection ? 'activada' : 'desactivada'}`);
+    this.cdr.detectChanges();
   }
 
   // ✅ TOGGLE AUDIO MEJORADO
   toggleAudio(): void {
     this.enableAudio = !this.enableAudio;
     this.audioService.setEnabled(this.enableAudio);
+    console.log(`🔊 Audio ${this.enableAudio ? 'activado' : 'desactivado'}`);
+    this.cdr.detectChanges();
     
     if (this.enableAudio) {
       this.audioService.speak('Audio activado');
@@ -1533,5 +1558,11 @@ private drawSkeleton(pose: PoseKeypoints): void {
     this.biomechanicsAnalyzer.cleanup();
 
     console.log('🧹 PoseCameraComponent limpiado completamente con todos los servicios');
+  }
+
+  toggleUI(): void {
+    this.showUI = !this.showUI;
+    console.log(`👁️ UI ${this.showUI ? 'visible' : 'oculta'}`);
+    this.cdr.detectChanges();
   }
 }

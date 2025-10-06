@@ -527,271 +527,77 @@
 // === VISTA ENTRENAMIENTO ULTRA LIMPIA ===
 
 .training-view-ultra-clean {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
   height: 100vh;
+  z-index: 9999;
+  background: #000;
+  overflow: hidden; // ✅ IMPORTANTE
+}
+
+.camera-zone-ultra {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden; // ✅ IMPORTANTE
+}
+
+// ✅ BOTÓN STOP - AJUSTAR POSICIÓN
+.stop-btn-floating {
+  position: fixed; // ✅ CAMBIO: absolute → fixed
+  top: 20px;
+  right: 20px;
+  z-index: 60;
+  --background: rgba(244, 67, 54, 0.9);
+  --background-activated: rgba(244, 67, 54, 1);
+  --color: white;
+  --border-radius: 12px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  height: 44px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
+}
+
+// ✅ STATS INFERIORES - AJUSTAR POSICIÓN
+.stats-bottom-ultra {
+  position: fixed; // ✅ CAMBIO: absolute → fixed
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(12px);
+  padding: 12px 24px;
+  border-radius: 16px;
+  z-index: 50;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-ultra {
   display: flex;
   flex-direction: column;
-  background: #000;
-  overflow: hidden;
-}
-
-// Header ultra minimalista
-.training-header-ultra {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  position: relative;
-  z-index: 20;
-  
-  .exercise-name-ultra {
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 600;
+  gap: 4px;
+
+  .stat-number-ultra {
+    color: #fff;
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .stat-label-ultra {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    text-transform: uppercase;
     letter-spacing: 0.5px;
   }
-  
-  .timer-ultra {
-    color: #ff6b35;
-    font-size: 16px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    text-shadow: 0 0 8px rgba(255, 107, 53, 0.3);
-  }
-  
-  .stop-btn-ultra {
-    --color: #ffffff;
-    --background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    --border-radius: 6px;
-    --padding-start: 8px;
-    --padding-end: 8px;
-    --box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
-    min-width: 32px;
-    height: 28px;
-    transition: all 0.2s ease;
-    
-    &:hover {
-      --box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-      transform: translateY(-1px);
-    }
-    
-    ion-icon {
-      font-size: 14px;
-    }
-  }
 }
-
-// Zona de cámara PROTAGONISTA
-.camera-zone-ultra {
-  flex: 1;
-  position: relative;
-  background: #000;
-  overflow: hidden;
-  
-  app-pose-camera {
-    width: 100%;
-    height: 100%;
-    display: block;
-    
-    // OCULTAR TODOS LOS DUPLICADOS DEL POSE-CAMERA COMPONENT
-    ::ng-deep {
-      // OCULTAR TODAS LAS TARJETAS QUE APARECEN EN LA IMAGEN
-      .exercise-info,
-      .exercise-name,
-      .exercise-title,
-      .training-info,
-      .session-info,
-      .exercise-card,
-      .info-cards,
-      .side-panel,
-      .info-panel,
-      .stats-panel,
-      .metrics-panel,
-      .exercise-stats,
-      .session-stats,
-      .training-stats,
-      .repetition-counter,
-      .rep-counter-overlay,
-      .ai-quality-indicator,
-      .live-alerts,
-      .quality-indicator,
-      .status-cards,
-      .info-overlay,
-      .exercise-overlay,
-      .training-overlay {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-      }
-      
-      // OCULTAR ESPECÍFICAMENTE LAS TARJETAS DE LA DERECHA
-      .stats-cards,
-      .metric-cards,
-      .info-box,
-      .exercise-box,
-      .status-box,
-      .rep-box,
-      .fps-box,
-      .error-box {
-        display: none !important;
-      }
-      
-      // Panel de controles ULTRA discreto
-      .controls-panel {
-        position: absolute !important;
-        bottom: 8px !important;
-        right: 8px !important;
-        left: auto !important;
-        transform: none !important;
-        padding: 4px !important;
-        gap: 4px !important;
-        background: rgba(0, 0, 0, 0.4) !important;
-        backdrop-filter: blur(6px) !important;
-        border-radius: 6px !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2) !important;
-        
-        ion-button {
-          width: 24px !important;
-          height: 24px !important;
-          min-width: 24px !important;
-          --border-radius: 4px !important;
-          --padding-start: 0 !important;
-          --padding-end: 0 !important;
-          --padding-top: 0 !important;
-          --padding-bottom: 0 !important;
-          border: none !important;
-          margin: 0 !important;
-          
-          ion-icon {
-            font-size: 12px !important;
-          }
-          
-          // Estados de color ultra sutiles
-          &[color="primary"] {
-            --background: rgba(59, 130, 246, 0.15) !important;
-            --color: rgba(147, 197, 253, 0.8) !important;
-          }
-          
-          &[color="medium"] {
-            --background: rgba(107, 114, 128, 0.15) !important;
-            --color: rgba(209, 213, 219, 0.8) !important;
-          }
-          
-          &[color="success"] {
-            --background: rgba(34, 197, 94, 0.15) !important;
-            --color: rgba(134, 239, 172, 0.8) !important;
-          }
-          
-          &[color="warning"] {
-            --background: rgba(245, 158, 11, 0.15) !important;
-            --color: rgba(253, 224, 71, 0.8) !important;
-          }
-          
-          &[color="danger"] {
-            --background: rgba(239, 68, 68, 0.15) !important;
-            --color: rgba(252, 165, 165, 0.8) !important;
-          }
-          
-          &:hover {
-            transform: scale(1.02) !important;
-            --box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
-          }
-        }
-      }
-      
-      // Panel de estado MUY discreto
-      .readiness-panel {
-        top: 8px !important;
-        left: 8px !important;
-        right: auto !important;
-        transform: none !important;
-        background: rgba(0, 0, 0, 0.5) !important;
-        backdrop-filter: blur(6px) !important;
-        border-radius: 6px !important;
-        padding: 4px 8px !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        max-width: 150px !important;
-        font-size: 10px !important;
-        
-        .readiness-icon {
-          font-size: 12px !important;
-          margin-right: 4px !important;
-        }
-        
-        .readiness-message {
-          font-size: 10px !important;
-          font-weight: 400 !important;
-        }
-      }
-      
-      // OCULTAR CUALQUIER ELEMENTO QUE CONTENGA TEXTO "Sentadillas"
-      *:contains("Sentadillas"),
-      *:contains("Repeticiones"), 
-      *:contains("FPS"),
-      *:contains("0 FPS"),
-      *[class*="exercise"],
-      *[class*="rep"],
-      *[class*="fps"],
-      *[class*="stats"] {
-        display: none !important;
-      }
-    }
-  }
-}
-
-// Stats bottom ÚNICOS
-.stats-bottom-ultra {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 12px 16px;
-  background: rgba(0, 0, 0, 0.98);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  position: relative;
-  z-index: 20;
-  
-  .stat-ultra {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    
-    .stat-number-ultra {
-      color: #ffffff;
-      font-size: 18px;
-      font-weight: 700;
-      line-height: 1;
-      margin-bottom: 2px;
-      font-variant-numeric: tabular-nums;
-    }
-    
-    .stat-label-ultra {
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 9px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    // Colores específicos por stat
-    &:nth-child(1) .stat-number-ultra {
-      color: #22d3ee; // Repeticiones - cyan
-    }
-    
-    &:nth-child(2) .stat-number-ultra {
-      color: #a78bfa; // Tiempo - purple
-    }
-    
-    &:nth-child(3) .stat-number-ultra {
-      color: #fb7185; // Errores - rose
-    }
-  }
-}
-
 // === ANIMACIONES ===
 
 @keyframes fadeInUp {

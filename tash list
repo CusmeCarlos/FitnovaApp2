@@ -1,0 +1,94 @@
+[33mc206192[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{0}: checkout: moving from 4bfbd5dcb833369599fb58bb262dfde501738829 to c206192
+[33m4bfbd5d[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{1}: checkout: moving from c206192205396a8d39d612f5947fac0d25d77379 to 4bfbd5d
+[33mc206192[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{2}: checkout: moving from 4bfbd5dcb833369599fb58bb262dfde501738829 to c206192
+[33m4bfbd5d[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{3}: checkout: moving from c206192205396a8d39d612f5947fac0d25d77379 to 4bfbd5d
+[33mc206192[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{4}: checkout: moving from 4bfbd5dcb833369599fb58bb262dfde501738829 to c206192
+[33m4bfbd5d[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{5}: checkout: moving from c206192205396a8d39d612f5947fac0d25d77379 to 4bfbd5d
+[33mc206192[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{6}: checkout: moving from main to c206192
+[33m98b62e3[m[33m ([m[1;32mmain[m[33m)[m HEAD@{7}: commit: WIP: cambios antes de revisar commit anterior
+[33m4bfbd5d[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{8}: reset: moving to HEAD
+[33m4bfbd5d[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{9}: reset: moving to HEAD
+[33m4bfbd5d[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{10}: commit: Fix: Proporción 16:9, UI ergonómica, botones visibles, contador repeticiones y MediaPipe Pose corregido
+[33mc206192[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{11}: reset: moving to HEAD
+[33mc206192[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{12}: reset: moving to HEAD
+[33mc206192[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{13}: reset: moving to HEAD
+[33mc206192[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{14}: reset: moving to HEAD
+[33mc206192[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{15}: commit: Captura de errores críticos completamente funcional
+[33m69ea4c4[m HEAD@{16}: reset: moving to HEAD
+[33m69ea4c4[m HEAD@{17}: commit: fix: corregir errores de compilación en sistema de captura automática
+[33m481ccb1[m HEAD@{18}: reset: moving to HEAD
+[33m481ccb1[m HEAD@{19}: reset: moving to HEAD
+[33m481ccb1[m HEAD@{20}: reset: moving to HEAD
+[33m481ccb1[m HEAD@{21}: commit: fix: corregir formularios de perfil - eliminar IonicModule duplicado y optimizar validaciones
+[33m0dc044c[m HEAD@{22}: commit: Fase 18b: Sistema de Guards de Membresía implementado
+[33mb755d8e[m HEAD@{23}: commit: feat: Implementar captura automática de errores críticos
+[33mb400e49[m HEAD@{24}: commit: feat: actualización tiempo real lastActiveAt en login/logout
+[33me873874[m HEAD@{25}: reset: moving to HEAD
+[33me873874[m HEAD@{26}: reset: moving to HEAD
+[33me873874[m HEAD@{27}: reset: moving to HEAD
+[33me873874[m HEAD@{28}: commit: feat: Implementar diseño profesional y sincronización tiempo real en RoutineView
+[33m3a08e4d[m HEAD@{29}: commit: FASE 8 COMPLETADA: Historial real funcionando y rutinas IA operativas
+[33m4d28221[m HEAD@{30}: reset: moving to HEAD
+[33m4d28221[m HEAD@{31}: commit: feat: FitNova v1.0 - App móvil con IA y GPT-4 integrado
+[33m57256d0[m HEAD@{32}: commit: feat: Implementar UI completa rutinas IA con GPT-4
+[33m4784876[m HEAD@{33}: commit: feat: Integración OpenAI GPT-4 completada
+[33m1a6fbc1[m HEAD@{34}: reset: moving to HEAD
+[33m1a6fbc1[m HEAD@{35}: commit: FASE 8 PARCIAL: Tab3 perfil IA expandido + glassmorphism design
+[33m8fd2a70[m HEAD@{36}: commit: feat: FASE 7 completada - Tab2 rediseño UI profesional + Tab3 cleanup
+[33m7864635[m HEAD@{37}: reset: moving to HEAD
+[33m7864635[m HEAD@{38}: reset: moving to HEAD
+[33m7864635[m HEAD@{39}: commit: feat(tab3): implementar subida de fotos funcional
+[33m1085403[m HEAD@{40}: commit: feat: Dashboard funcional con datos reales
+[33m9701311[m HEAD@{41}: reset: moving to HEAD
+[33m9701311[m HEAD@{42}: reset: moving to HEAD
+[33m9701311[m HEAD@{43}: commit: feat: Dashboard Tab1 avanzado con métricas reales y Tab2 estadísticas mejoradas
+[33m0d1fae2[m HEAD@{44}: reset: moving to 0d1fae2
+[33m239efd5[m HEAD@{45}: commit: Error aun
+[33m0d1fae2[m HEAD@{46}: reset: moving to HEAD
+[33m0d1fae2[m HEAD@{47}: commit: FASE 5 COMPLETA: Historial médico completo funcionando
+[33m114bd75[m HEAD@{48}: commit: FASE CLOUD FUNCTIONS COMPLETADA
+[33mc77fd30[m HEAD@{49}: commit: siguiente
+[33m2497eef[m HEAD@{50}: commit: FitNova v1.0 - Sistema completo funcionando
+[33m5b7fed7[m HEAD@{51}: reset: moving to HEAD
+[33m5b7fed7[m HEAD@{52}: reset: moving to HEAD
+[33m5b7fed7[m HEAD@{53}: reset: moving to HEAD
+[33m5b7fed7[m HEAD@{54}: reset: moving to HEAD
+[33m5b7fed7[m HEAD@{55}: commit: Sistema MUCHO MAS MEJORADO :)
+[33m13a37e9[m HEAD@{56}: reset: moving to HEAD
+[33m13a37e9[m HEAD@{57}: commit: Sistema mejorado pero aun falta
+[33mc0f12e9[m HEAD@{58}: reset: moving to HEAD
+[33mc0f12e9[m HEAD@{59}: reset: moving to HEAD
+[33mc0f12e9[m HEAD@{60}: reset: moving to HEAD
+[33mc0f12e9[m HEAD@{61}: reset: moving to HEAD
+[33mc0f12e9[m HEAD@{62}: reset: moving to HEAD
+[33mc0f12e9[m HEAD@{63}: reset: moving to HEAD
+[33mc0f12e9[m HEAD@{64}: reset: moving to HEAD
+[33mc0f12e9[m HEAD@{65}: commit: Sistema Funcional pero aun no errores 2
+[33me752015[m HEAD@{66}: commit: Sistema Funcional pero aun no errores
+[33mbf37cd1[m HEAD@{67}: commit: Sistema FitNova completo para examen
+[33m804afcc[m HEAD@{68}: reset: moving to HEAD
+[33m804afcc[m HEAD@{69}: reset: moving to HEAD
+[33m804afcc[m HEAD@{70}: reset: moving to HEAD
+[33m804afcc[m HEAD@{71}: reset: moving to HEAD
+[33m804afcc[m HEAD@{72}: reset: moving to HEAD
+[33m804afcc[m HEAD@{73}: reset: moving to HEAD
+[33m804afcc[m HEAD@{74}: reset: moving to HEAD
+[33m804afcc[m HEAD@{75}: reset: moving to HEAD
+[33m804afcc[m HEAD@{76}: reset: moving to HEAD
+[33m804afcc[m HEAD@{77}: commit: Descripción corta del cambio
+[33m40e4272[m HEAD@{78}: commit: Descripción corta del cambio
+[33m21abf20[m HEAD@{79}: commit: Descripción corta del cambio
+[33mf7383d3[m HEAD@{80}: commit: Descripción corta del cambio
+[33m6e2ac41[m HEAD@{81}: commit: Descripción corta del cambio
+[33m5994542[m HEAD@{82}: commit: feat: Interfaz profesional de cámara con controles compactos
+[33m6d82fca[m HEAD@{83}: commit: feat: cambios recientes en FitnovaApp2
+[33m340cd44[m HEAD@{84}: reset: moving to HEAD
+[33m340cd44[m HEAD@{85}: reset: moving to HEAD
+[33m340cd44[m HEAD@{86}: commit: Actualización de funcionalidades de la app Fitnova
+[33m221a20a[m HEAD@{87}: Branch: renamed refs/heads/main to refs/heads/main
+[33m221a20a[m HEAD@{89}: Branch: renamed refs/heads/main to refs/heads/main
+[33m221a20a[m HEAD@{91}: commit: Initial commit: FitNova mobile app - complete project
+[33m3d61894[m HEAD@{92}: reset: moving to HEAD
+[33m3d61894[m HEAD@{93}: commit: Incremento 1: Login, registro, perfil y recuperación funcionando
+[33m75c9a8f[m HEAD@{94}: Branch: renamed refs/heads/master to refs/heads/main
+[33m75c9a8f[m HEAD@{96}: commit (initial): Inicialización del proyecto móvil FitNova

@@ -1,90 +1,324 @@
-// src/app/features/training/components/pose-camera/pose-camera.component.scss
-// ✅ VERSIÓN SIMPLIFICADA - UN SOLO SISTEMA DE ALERTAS
-
-// ========================================
-// 📹 CONTENEDOR PRINCIPAL
-// ========================================
+// ============================================
+// 🎨 POSE CAMERA - LAYOUT ERGONÓMICO SEGURO
+// ============================================
 
 .camera-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+  position: fixed; // ✅ CAMBIO: relative → fixed
+  top: 0;
+  left: 0;
+  width: 100vw; // ✅ USAR VIEWPORT COMPLETO
+  height: 100vh;
   background: #000;
+  overflow: hidden;
+  display: block; // ✅ CAMBIO: flex → block
 }
 
-// ========================================
-// 📹 VIDEO Y CANVAS
-// ========================================
-
 .camera-content {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  background: #000;
 
   &.hidden {
     display: none;
   }
 }
 
+// ============================================
+// 📹 VIDEO Y CANVAS - MANTENER PROPORCIÓN
+// ============================================
+
 .camera-video {
+  position: absolute;
+  top: 50%; // ✅ CENTRAR VERTICALMENTE
+  left: 50%; // ✅ CENTRAR HORIZONTALMENTE
+  transform: translate(-50%, -50%) scaleX(-1); // ✅ CENTRADO + ESPEJO
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1); // ✅ INVERTIR VIDEO HORIZONTALMENTE (EFECTO ESPEJO)
+  object-fit: cover; // ✅ CUBRIR SIN DISTORSIÓN
+  object-position: center; // ✅ MANTENER CENTRADO
+}
+
+.skeleton-canvas,
+.readiness-notification-canvas,
+.error-alert-canvas {
+  position: absolute;
+  top: 50%; // ✅ MISMO CENTRADO QUE VIDEO
+  left: 50%;
+  transform: translate(-50%, -50%); // ✅ CENTRADO EXACTO
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .skeleton-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
   z-index: 10;
+  &.hidden { display: none; }
+}
 
+.readiness-notification-canvas {
+  z-index: 35;
+}
+
+.error-alert-canvas {
+  z-index: 40;
+}
+// ============================================
+// 💪 PANEL DE INFO - SUPERIOR IZQUIERDO
+// ============================================
+
+.info-panel {
+  position: absolute;
+  top: 20px; // ✅ SUPERIOR
+  left: 15px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(12px);
+  padding: 14px;
+  border-radius: 16px;
+  z-index: 20;
+  max-width: 160px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  
   &.hidden {
-    display: none;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-20px); // ✅ OCULTAR HACIA ARRIBA
   }
 }
 
-// ========================================
-// ✅ CANVAS UNIFICADO DE ALERTAS (NUEVO)
-// ========================================
+.exercise-info {
+  margin-bottom: 14px;
+  text-align: center;
 
-// ✅ Canvas para estados de preparación (lateral)
-.readiness-notification-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 35; // ✅ Debajo de alertas (40) pero sobre todo lo demás
-  pointer-events: none; // ✅ No bloquea interacción
+  .exercise-name {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .exercise-phase {
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+
+    &.phase-idle { background: rgba(128, 128, 128, 0.5); }
+    &.phase-top { background: rgba(76, 175, 80, 0.5); }
+    &.phase-bottom { background: rgba(33, 150, 243, 0.5); }
+    &.phase-descending { background: rgba(255, 152, 0, 0.5); }
+    &.phase-ascending { background: rgba(103, 58, 183, 0.5); }
+    &.phase-hold { background: rgba(244, 67, 54, 0.5); }
+  }
 }
 
-// ✅ Canvas para alertas de error (superior centro)
-.error-alert-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 40; // ✅ Sobre las notificaciones de estado
-  pointer-events: none;
+.repetition-counter {
+  text-align: center;
+  margin-bottom: 14px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+
+  .counter-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 10px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+  }
+
+  .counter-value {
+    color: #fff;
+    font-size: 36px; // ✅ MÁS GRANDE
+    font-weight: 700;
+    line-height: 1;
+  }
 }
-// ========================================
-// ❌ CLASES ELIMINADAS (NO USAR)
-// ========================================
 
-// ❌ ELIMINADO: .readiness-panel
-// ❌ ELIMINADO: .current-errors
-// ❌ ELIMINADO: .error-overlay-canvas
-// ❌ ELIMINADO: .error-item
+.quality-score {
+  text-align: center;
+  margin-bottom: 12px;
 
-// ========================================
-// 🔄 OVERLAY DE CARGA
-// ========================================
+  .score-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 10px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .score-value {
+    font-size: 22px;
+    font-weight: 700;
+
+    &.quality-excellent { color: #4caf50; }
+    &.quality-good { color: #8bc34a; }
+    &.quality-fair { color: #ffc107; }
+    &.quality-poor { color: #ff5722; }
+  }
+}
+
+.fps-indicator {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+
+  ion-icon {
+    font-size: 12px;
+  }
+}
+
+// ============================================
+// 🎮 CONTROLES - CENTRO INFERIOR
+// ============================================
+
+.controls-panel {
+  position: absolute;
+  bottom: 90px; // ✅ FIJO EN LA PARTE INFERIOR
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px 22px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(14px);
+  border-radius: 50px;
+  z-index: 30;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+
+  &.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(30px); // ✅ OCULTAR HACIA ABAJO
+  }
+}
+
+.controls-panel ion-button {
+  --background: rgba(255, 255, 255, 0.08) !important;
+  --background-activated: rgba(255, 255, 255, 0.18) !important;
+  --background-hover: rgba(255, 255, 255, 0.14) !important;
+  --color: rgba(255, 255, 255, 0.95) !important;
+  --border-radius: 16px !important;
+  --padding-start: 0 !important;
+  --padding-end: 0 !important;
+  --padding-top: 0 !important;
+  --padding-bottom: 0 !important;
+  
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  min-height: 56px !important;
+  margin: 0 !important;
+  
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4) !important;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+
+  &:active {
+    transform: scale(0.94);
+  }
+
+  // ✅ ESTADO ACTIVO con borde brillante
+  &.active {
+    --background: rgba(76, 175, 80, 0.25) !important;
+    border: 2px solid #4caf50 !important;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.5), 
+                0 3px 10px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  ion-icon {
+    font-size: 26px !important;
+    width: 26px !important;
+    height: 26px !important;
+  }
+}
+
+// ============================================
+// 👁️ BOTÓN TOGGLE UI - ESQUINA INFERIOR DERECHA
+// ============================================
+
+.toggle-ui-btn {
+  position: absolute;
+  bottom: 140px; // ✅ MISMA ALTURA QUE CONTROLES
+  right: 20px;
+  z-index: 50;
+  
+  --color: rgba(255, 255, 255, 0.95) !important;
+  --background: rgba(0, 0, 0, 0.85) !important;
+  --background-activated: rgba(0, 0, 0, 0.95) !important;
+  --background-hover: rgba(0, 0, 0, 0.9) !important;
+  --border-radius: 50% !important;
+  --padding-start: 0 !important;
+  --padding-end: 0 !important;
+  --padding-top: 0 !important;
+  --padding-bottom: 0 !important;
+  
+  width: 54px !important;
+  height: 54px !important;
+  min-width: 54px !important;
+  min-height: 54px !important;
+  
+  backdrop-filter: blur(12px);
+  border: 2px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  ion-icon {
+    font-size: 26px !important;
+    width: 26px !important;
+    height: 26px !important;
+  }
+  
+  // ✅ EFECTO DE PULSO cuando UI está oculta
+  &.ui-hidden {
+    --background: rgba(255, 152, 0, 0.3) !important;
+    border-color: rgba(255, 152, 0, 0.6) !important;
+    animation: pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 152, 0, 0);
+  }
+}
+
+// ============================================
+// 🔄 ESTADOS DE CARGA Y ERROR
+// ============================================
 
 .loading-overlay {
   position: absolute;
@@ -92,7 +326,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.95);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -111,19 +345,15 @@
 
 .loading-text {
   color: white;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   text-align: center;
 }
 
 .loading-subtitle {
   color: rgba(255, 255, 255, 0.7);
-  font-size: 14px;
+  font-size: 13px;
 }
-
-// ========================================
-// ❌ OVERLAY DE ERROR
-// ========================================
 
 .error-overlay {
   position: absolute;
@@ -145,22 +375,22 @@
 }
 
 .error-icon {
-  font-size: 80px;
+  font-size: 70px;
   color: var(--ion-color-danger);
   margin-bottom: 20px;
 }
 
 .error-title {
   color: white;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: bold;
   margin-bottom: 10px;
 }
 
 .error-message {
   color: rgba(255, 255, 255, 0.8);
-  font-size: 16px;
-  margin-bottom: 30px;
+  font-size: 15px;
+  margin-bottom: 25px;
   line-height: 1.5;
 }
 
@@ -168,192 +398,54 @@
   --background: var(--ion-color-primary);
   --border-radius: 12px;
   font-weight: 600;
-  height: 50px;
+  height: 48px;
 }
 
-// ========================================
-// 📊 PANEL DE ESTADÍSTICAS
-// ========================================
-
-.stats-panel {
-  position: absolute;
-  top: 15px;
-  left: 15px;
-  right: 15px;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  z-index: 20; // ✅ DEBAJO de alertas (40)
-  pointer-events: none;
-}
-
-.stat-item {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  padding: 8px 12px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  font-size: 12px;
-  color: white;
-  font-weight: 500;
-  min-width: 60px;
-
-  ion-icon {
-    font-size: 14px;
-    opacity: 0.9;
-  }
-}
-
-// ========================================
-// 🎤 INDICADOR DE AUDIO
-// ========================================
-
-.audio-indicator {
-  position: absolute;
-  top: 70px;
-  left: 15px;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
-  padding: 8px 12px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  z-index: 25; // ✅ DEBAJO de alertas (40)
-  color: #4ade80;
-  font-size: 12px;
-  font-weight: 600;
-
-  ion-icon {
-    font-size: 16px;
-    
-    &.pulse {
-      animation: audioPulse 1s ease-in-out infinite;
-    }
-  }
-}
-
-@keyframes audioPulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.1);
-  }
-}
-
-// ========================================
-// 🎮 PANEL DE CONTROLES
-// ========================================
-
-.controls-panel {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 10px;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(12px);
-  padding: 8px;
-  border-radius: 12px;
-  z-index: 30; // ✅ DEBAJO de alertas (40)
-
-  ion-button {
-    --color: rgba(255, 255, 255, 0.7);
-    --background: transparent;
-    --background-hover: rgba(255, 255, 255, 0.1);
-    margin: 0;
-    min-width: 44px;
-    height: 44px;
-
-    &.active {
-      --color: var(--ion-color-primary);
-      --background: rgba(var(--ion-color-primary-rgb), 0.2);
-    }
-
-    ion-icon {
-      font-size: 24px;
-    }
-  }
-}
-
-// ========================================
+// ============================================
 // 📱 RESPONSIVE
-// ========================================
+// ============================================
 
 @media (max-width: 768px) {
-  .stats-panel {
-    top: 10px;
+  .info-panel {
+    top: 15px;
     left: 10px;
-    right: 10px;
-    gap: 6px;
+    padding: 12px;
+    max-width: 140px;
   }
 
-  .stat-item {
-    padding: 6px 10px;
-    font-size: 11px;
-    min-width: 50px;
-
-    ion-icon {
-      font-size: 12px;
-    }
+  .repetition-counter .counter-value {
+    font-size: 32px;
   }
 
-  .audio-indicator {
-    top: 60px;
-    left: 10px;
-    padding: 6px 10px;
-    font-size: 11px;
-
-    ion-icon {
-      font-size: 14px;
-    }
+  .quality-score .score-value {
+    font-size: 20px;
   }
 
   .controls-panel {
-    bottom: 15px;
-    gap: 8px;
-    padding: 6px;
+    bottom: 80px;
+    gap: 12px;
+    padding: 10px 18px;
 
     ion-button {
-      min-width: 40px;
-      height: 40px;
+      width: 52px !important;
+      height: 52px !important;
+      min-width: 52px !important;
+      min-height: 52px !important;
 
       ion-icon {
-        font-size: 22px;
+        font-size: 24px !important;
       }
     }
   }
 
-  .loading-text {
-    font-size: 16px;
-  }
+  .toggle-ui-btn {
+    width: 50px !important;
+    height: 50px !important;
+    bottom: 130px; // ✅ CAMBIO: 80px → 130px (50px más arriba)
+    right: 15px;
 
-  .error-title {
-    font-size: 20px;
-  }
-
-  .error-message {
-    font-size: 14px;
-  }
-}
-
-@media (max-width: 400px) {
-  .stats-panel {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .stat-item {
-    padding: 4px 8px;
-    font-size: 10px;
-    min-width: auto;
+    ion-icon {
+      font-size: 24px !important;
+    }
   }
 }
