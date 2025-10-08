@@ -33,8 +33,8 @@ export class BiomechanicsAnalyzer {
   private readinessState: ReadinessState = ReadinessState.NOT_READY;
   private readyFramesCount = 0;
   private badFramesBuffer = 0; // ✅ NUEVO: Tolerancia a frames malos
-  private readonly FRAMES_TO_CONFIRM_READY = 15;
-  private readonly MAX_BAD_FRAMES = 10; // ✅ NUEVO: Tolerar 10 frames malos
+  private readonly FRAMES_TO_CONFIRM_READY = 8; // Más accesible
+  private readonly MAX_BAD_FRAMES = 20; // Más tolerante
   private movementDetected = false;
   private lastAngleSnapshot: BiomechanicalAngles | null = null;
   
@@ -275,7 +275,7 @@ export class BiomechanicsAnalyzer {
     const feetDistance = Math.abs(leftAnkle.x - rightAnkle.x);
     
     // ✅ RANGO VÁLIDO: ni muy juntos (< 0.15) ni muy separados (> 0.40)
-    const isGoodSpacing = feetDistance >= 0.15 && feetDistance <= 0.40;
+    const isGoodSpacing = feetDistance >= 0.12 && feetDistance <= 0.50; // Más flexibilidad
     
     if (!isGoodSpacing) {
       if (feetDistance < 0.15) {
@@ -296,7 +296,7 @@ export class BiomechanicsAnalyzer {
     const lastDetection = this.lastErrorTimestamps.get(errorType) || 0;
     
     // ✅ COOLDOWNS MÁS LARGOS
-    let cooldownTime = 3000; // 1000 → 3000ms (3 segundos)
+    let cooldownTime = 1500; // 1500
     
     // Errores críticos: cooldown largo
     if (errorType === PostureErrorType.KNEE_VALGUS || 
@@ -423,8 +423,8 @@ export class BiomechanicsAnalyzer {
 
     // ✅ ESPALDA CURVADA DURANTE EJERCICIO
       const spineAngle = angles.spine_angle || 85;
-      if (spineAngle < 85 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) { // ✅ 80 → 85 (más sensible)
-        const severity = spineAngle < 75 ? 9 : 6; // ✅ 70 → 75 (detecta crítico antes)
+      if (spineAngle < 70 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) { // 85 → 70
+        const severity = spineAngle < 60 ? 9 : 6; // 75 → 60
       errors.push({
         type: PostureErrorType.ROUNDED_BACK,
         severity: severity,
@@ -438,7 +438,7 @@ export class BiomechanicsAnalyzer {
     }
 
     // ✅ SENTADILLA POCO PROFUNDA - DETECTAR EN MÁS FASES
-    if (kneeAngle > 110 && 
+    if (kneeAngle > 95 && 
         (this.currentPhase === RepetitionPhase.BOTTOM || 
          this.currentPhase === RepetitionPhase.DESCENDING) &&
         this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {

@@ -248,7 +248,9 @@
         [enableErrorDetection]="detectionEnabled" 
         [showSkeleton]="skeletonVisible"
         (errorDetected)="onErrorDetected($event)"
-        (repetitionCounted)="onRepetitionCounted($event)">
+        (repetitionCounted)="onRepetitionCounted($event)"
+        (trainingStopped)="onTrainingStopped()">
+        <!-- ✅ NUEVO EVENTO trainingStopped -->
       </app-pose-camera>
     </div>
 

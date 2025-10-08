@@ -1,38 +1,44 @@
 <!-- src/app/features/training/components/pose-camera/pose-camera.component.html -->
-<!-- ✅ LAYOUT ERGONÓMICO Y LIMPIO -->
+<!-- ✅ VERSIÓN CON BOTÓN STOP PROMINENTE -->
 
 <div class="camera-container">
-  
-  <!-- 🔄 ESTADO DE CARGA -->
-  <div class="loading-overlay" *ngIf="isLoading">
-    <div class="loading-spinner">
-      <ion-spinner name="crescent" color="primary"></ion-spinner>
-    </div>
-    <div class="loading-text">{{ getStatusMessage() }}</div>
-    <div class="loading-subtitle" *ngIf="initializationAttempts > 0">
-      Intento {{ initializationAttempts }} de {{ maxInitializationAttempts }}
-    </div>
-  </div>
 
-  <!-- ❌ ESTADO DE ERROR -->
-  <div class="error-overlay" *ngIf="error && !isLoading">
-    <div class="error-content">
-      <ion-icon name="camera-outline" class="error-icon"></ion-icon>
-      <div class="error-title">Error de Inicialización</div>
-      <div class="error-message">{{ error }}</div>
-      <ion-button 
-        class="retry-button" 
-        fill="solid" 
-        color="primary"
-        (click)="restartCamera()">
-        <ion-icon name="refresh-outline" slot="start"></ion-icon>
-        REINTENTAR
-      </ion-button>
-    </div>
+  <!-- ============================================ -->
+  <!-- 🔴 BOTÓN STOP - SUPERIOR DERECHO (SIEMPRE VISIBLE) -->
+  <!-- ============================================ -->
+  <ion-button 
+    class="stop-button"
+    fill="solid"
+    color="danger"
+    (click)="stopTraining()"
+    *ngIf="isInitialized && !isLoading && !error">
+    <ion-icon name="stop-circle" slot="start"></ion-icon>
+    <span>DETENER</span>
+  </ion-button>
+
+  <!-- ============================================ -->
+  <!-- ⏳ PANTALLA DE CARGA -->
+  <!-- ============================================ -->
+  <div class="loading-overlay" *ngIf="isLoading && !error">
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <p class="loading-text">{{ getStatusMessage() }}</p>
+    <p class="loading-subtext">Intento {{ initializationAttempts }} de {{ maxInitializationAttempts }}</p>
   </div>
 
   <!-- ============================================ -->
-  <!-- ✅ ELEMENTOS DE CÁMARA Y CANVAS -->
+  <!-- ❌ PANTALLA DE ERROR -->
+  <!-- ============================================ -->
+  <div class="error-overlay" *ngIf="error && !isLoading">
+    <ion-icon name="alert-circle" color="danger"></ion-icon>
+    <p class="error-text">{{ error }}</p>
+    <ion-button fill="outline" (click)="restartCamera()">
+      <ion-icon name="refresh" slot="start"></ion-icon>
+      Reintentar
+    </ion-button>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- 📹 CONTENIDO DE CÁMARA -->
   <!-- ============================================ -->
   <div class="camera-content" [class.hidden]="isLoading || !!error">
     

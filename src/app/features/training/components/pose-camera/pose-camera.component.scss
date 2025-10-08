@@ -448,4 +448,119 @@
       font-size: 24px !important;
     }
   }
+
+  // ============================================
+// 🛑 BOTÓN STOP - SUPERIOR DERECHO
+// ============================================
+
+.stop-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 100; // ✅ MUY ALTO PARA ESTAR SIEMPRE VISIBLE
+  
+  --background: rgba(244, 67, 54, 0.95) !important;
+  --background-activated: rgba(211, 47, 47, 1) !important;
+  --background-hover: rgba(229, 57, 53, 1) !important;
+  --color: white !important;
+  --border-radius: 50px !important;
+  --padding-start: 20px !important;
+  --padding-end: 20px !important;
+  --padding-top: 12px !important;
+  --padding-bottom: 12px !important;
+  
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  
+  box-shadow: 0 4px 20px rgba(244, 67, 54, 0.4),
+              0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  // ✅ ANIMACIÓN DE PULSO PARA LLAMAR LA ATENCIÓN
+  animation: stopButtonPulse 2s ease-in-out infinite;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(244, 67, 54, 0.5),
+                0 3px 10px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  ion-icon {
+    font-size: 24px !important;
+    margin-right: 8px;
+  }
+
+  span {
+    font-size: 16px;
+    font-weight: 700;
+  }
+}
+
+// ✅ ANIMACIÓN DE PULSO DEL BOTÓN STOP
+@keyframes stopButtonPulse {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(244, 67, 54, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.3),
+                0 0 0 0 rgba(244, 67, 54, 0.7);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(244, 67, 54, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.3),
+                0 0 0 10px rgba(244, 67, 54, 0);
+  }
+}
+
+// ============================================
+// 📱 RESPONSIVE - MÁS GRANDE EN MÓVILES
+// ============================================
+
+@media (max-width: 768px) {
+  .stop-button {
+    top: 15px;
+    right: 15px;
+    
+    --padding-start: 18px !important;
+    --padding-end: 18px !important;
+    --padding-top: 14px !important;
+    --padding-bottom: 14px !important;
+    
+    ion-icon {
+      font-size: 26px !important;
+    }
+    
+    span {
+      font-size: 15px;
+    }
+  }
+}
+
+// ============================================
+// 🎯 ESTADO CUANDO ESTÁ DETENIENDO
+// ============================================
+
+.stop-button.stopping {
+  --background: rgba(255, 152, 0, 0.95) !important;
+  pointer-events: none;
+  
+  animation: none; // Detener animación de pulso
+  
+  ion-icon {
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 }

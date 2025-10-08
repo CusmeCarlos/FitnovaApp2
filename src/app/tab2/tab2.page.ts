@@ -505,6 +505,96 @@ export class Tab2Page implements OnInit, OnDestroy {
     const targetDuration = 15 * 60; 
     return Math.min((this.sessionDuration / targetDuration) * 100, 100);
   }
+
+ // ============================================
+// 🛑 AGREGAR ESTE MÉTODO CORREGIDO A tab2.page.ts
+// ============================================
+
+/**
+ * 🛑 MANEJAR DETENCIÓN DE ENTRENAMIENTO DESDE EL BOTÓN STOP
+ * Se ejecuta cuando el usuario hace click en DETENER
+ */
+async onTrainingStopped(): Promise<void> {
+  console.log('🛑 Entrenamiento detenido desde botón STOP');
+
+  try {
+    // 1️⃣ DETENER TIMER SI ESTÁ CORRIENDO
+    if (this.sessionTimer) {
+      clearInterval(this.sessionTimer);
+      this.sessionTimer = null;
+    }
+
+    // 2️⃣ GUARDAR ESTADÍSTICAS FINALES
+    if (this.isTrainingActive) {
+      await this.finalizeTrainingSession();
+    }
+
+    // 3️⃣ OCULTAR CÁMARA Y VOLVER A SELECCIÓN
+    this.showCamera = false;
+    this.isTrainingActive = false;
+
+    // 4️⃣ RESETEAR DATOS DE SESIÓN - CORREGIDO ✅
+    this.sessionData = {
+      repetitions: 0,
+      suggestionsGiven: 0,
+      errors: [],
+      currentPhase: RepetitionPhase.IDLE,
+      sessionId: this.generateSessionId(),
+      startTime: Date.now() // ✅ USAR Date.now() en lugar de null
+    };
+
+    // 5️⃣ MOSTRAR MENSAJE DE FINALIZACIÓN
+    await this.showSuccessToast('✅ Entrenamiento finalizado');
+
+    // 6️⃣ RECARGAR ESTADÍSTICAS
+    await this.loadTodayStats();
+
+    console.log('✅ Sesión finalizada correctamente');
+
+  } catch (error) {
+    console.error('❌ Error finalizando entrenamiento:', error);
+    await this.showErrorToast('Error al finalizar entrenamiento');
+  }
+}
+
+private async finalizeTrainingSession(): Promise<void> {
+  try {
+    const userId = await this.auth.getCurrentUserId();
+    if (!userId || !this.sessionStartTime) { // ✅ Usar sessionStartTime en lugar de sessionData.startTime
+      console.log('⚠️ No hay sesión activa para finalizar');
+      return;
+    }
+
+    // Calcular duración final
+    const endTime = Date.now();
+    const duration = Math.floor((endTime - this.sessionStartTime) / 1000);
+
+    // Preparar datos finales - CORREGIDO ✅
+    const sessionSummary = {
+      userId,
+      exerciseType: this.currentExercise, // ✅ USAR this.currentExercise
+      startTime: new Date(this.sessionStartTime), // ✅ USAR this.sessionStartTime
+      endTime: new Date(endTime),
+      duration,
+      repetitions: this.sessionData.repetitions,
+      totalErrors: this.sessionStats.errorsDetected,
+      correctionsGiven: this.sessionStats.correctionsGiven,
+      suggestionsGiven: this.sessionData.suggestionsGiven,
+      completedSuccessfully: true
+    };
+
+    console.log('💾 Guardando resumen de sesión:', sessionSummary);
+
+    // Guardar en Firestore
+    const db = firebase.firestore();
+    await db.collection('trainingSessions').add(sessionSummary);
+
+    console.log('✅ Sesión guardada exitosamente');
+
+  } catch (error) {
+    console.error('❌ Error guardando sesión:', error);
+  }
+}
 // Método para testing rápido (opcional)
 async startQuickTest(): Promise<void> {
   console.log('Iniciando test rápido...');

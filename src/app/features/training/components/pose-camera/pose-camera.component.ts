@@ -67,6 +67,8 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   @Output() poseDetected = new EventEmitter<PoseKeypoints>();
   @Output() errorDetected = new EventEmitter<PostureError[]>();
   @Output() repetitionCounted = new EventEmitter<number>();
+  @Output() trainingStopped = new EventEmitter<void>(); // ✅ NUEVO OUTPUT
+
 
   // ✅ ESTADO DEL COMPONENTE
   isLoading = true;
@@ -94,6 +96,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   private currentSessionId: string | null = null;
   private hasSessionStarted = false;
   private criticalErrorsSent = new Set<string>(); // Para evitar spam de notificaciones
+  private isStopping = false; // ✅ Para prevenir múltiples clicks
 
   private currentAlert: UnifiedAlert | null = null;
   private alertQueue: UnifiedAlert[] = [];
@@ -1564,5 +1567,58 @@ private drawSkeleton(pose: PoseKeypoints): void {
     this.showUI = !this.showUI;
     console.log(`👁️ UI ${this.showUI ? 'visible' : 'oculta'}`);
     this.cdr.detectChanges();
+  }
+  async stopTraining(): Promise<void> {
+    if (this.isStopping) {
+      console.log('⏸️ Ya se está deteniendo...');
+      return;
+    }
+  
+    this.isStopping = true;
+    console.log('🛑 INICIANDO DETENCIÓN DEL ENTRENAMIENTO...');
+  
+    try {
+      // 1️⃣ NOTIFICAR AL USUARIO
+      if (this.enableAudio) {
+        this.audioService.speak('Finalizando entrenamiento');
+      }
+  
+      // 2️⃣ PARAR DETECCIÓN Y CÁMARA
+      await this.stopCamera();
+  
+      // 3️⃣ LIMPIAR ALERTAS ACTIVAS
+      this.clearCurrentAlert();
+      this.alertQueue = [];
+      this.currentErrors = [];
+  
+      // 4️⃣ RESETEAR CONTADORES
+      this.repetitionCount = 0;
+      this.currentQualityScore = 0;
+      this.currentPhase = RepetitionPhase.IDLE;
+  
+      // 5️⃣ RESETEAR ESTADOS
+      this.currentReadinessState = ReadinessState.NOT_READY;
+      this.readinessMessage = '';
+  
+      // 6️⃣ EMITIR EVENTO AL PADRE
+      this.trainingStopped.emit();
+  
+      console.log('✅ ENTRENAMIENTO DETENIDO EXITOSAMENTE');
+  
+      // 7️⃣ MENSAJE FINAL
+      if (this.enableAudio) {
+        this.audioService.speak('Entrenamiento finalizado');
+      }
+  
+    } catch (error) {
+      console.error('❌ Error deteniendo entrenamiento:', error);
+      this.error = 'Error al detener el entrenamiento';
+    } finally {
+      this.isStopping = false;
+      this.cdr.detectChanges();
+    }
+  }
+  get isStoppingTraining(): boolean {
+    return this.isStopping;
   }
 }
