@@ -660,4 +660,5 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
       console.error('❌ Error mostrando toast de error:', error);
     }
   }
+  
 }

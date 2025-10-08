@@ -1,114 +1,98 @@
-<!-- src/app/pages/auth/login/login.page.html -->
-<!-- ✅ MANTIENE ESENCIA VISUAL - ELIMINA SOLO FUNCIONALIDADES NO DOCUMENTADAS -->
-
-<ion-header [translucent]="true">
-
-</ion-header>
-
 <ion-content [fullscreen]="true" class="login-content">
-  <!-- Background overlay -->
-  <div class="background-overlay"></div>
-  
-  <div class="login-container">
-    <!-- Logo Section -->
-    <div class="logo-section">
-      <div class="gymshark-logo">
-        <img src="assets/gymshark-logo.png" alt="Gymshark Logo" class="gymshark-img">
+  <div class="login-wrapper">
+    
+    <!-- HEADER PREMIUM -->
+    <div class="header-section">
+      <div class="logo-container">
+        <div class="logo-circle">
+          <ion-icon name="fitness-outline"></ion-icon>
+        </div>
       </div>
-      <h1 class="brand-title">FitNova</h1>
-      <p class="brand-subtitle">POWERED BY GYMSHARK</p>
+      <h1 class="brand-name">FitNova</h1>
+      <p class="brand-tagline">Entrenamiento Inteligente</p>
     </div>
 
-    <!-- Login Form -->
-    <div class="form-container">
-      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-        <!-- Email Input -->
-        <div class="input-group">
-          <ion-item class="custom-input" lines="none">
-            <ion-label position="floating" class="input-label">Email</ion-label>
-            <ion-input 
-              type="email" 
-              formControlName="email" 
-              autocomplete="email"
-              class="custom-input-field">
+    <!-- CARD FORMULARIO PROFESIONAL -->
+    <div class="form-card">
+      <div class="form-header">
+        <h2 class="form-title">Bienvenido</h2>
+        <p class="form-description">Accede a tu panel de entrenamiento</p>
+      </div>
+      
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+        
+        <!-- EMAIL FIELD -->
+        <div class="form-field">
+          <label class="field-label">
+            <ion-icon name="mail-outline"></ion-icon>
+            <span>Correo Electrónico</span>
+          </label>
+          <ion-item lines="none" class="field-input">
+            <ion-input
+              type="email"
+              formControlName="email"
+              placeholder="tu@email.com"
+              autocomplete="email">
             </ion-input>
           </ion-item>
-          <div *ngIf="email?.invalid && (email?.dirty || email?.touched)" class="error-text">
-            <div *ngIf="email?.errors?.['required']">Email is required</div>
-            <div *ngIf="email?.errors?.['email']">Please enter a valid email</div>
+          <div *ngIf="email?.invalid && (email?.dirty || email?.touched)" class="field-error">
+            <ion-icon name="alert-circle"></ion-icon>
+            <span *ngIf="email?.errors?.['required']">El correo es requerido</span>
+            <span *ngIf="email?.errors?.['email']">Formato de correo inválido</span>
           </div>
         </div>
 
-        <!-- Password Input -->
-        <div class="input-group">
-          <ion-item class="custom-input" lines="none">
-            <ion-label position="floating" class="input-label">Password</ion-label>
-            <ion-input 
-              [type]="showPassword ? 'text' : 'password'" 
-              formControlName="password" 
-              autocomplete="current-password"
-              class="custom-input-field">
+        <!-- PASSWORD FIELD -->
+        <div class="form-field">
+          <label class="field-label">
+            <ion-icon name="lock-closed-outline"></ion-icon>
+            <span>Contraseña</span>
+          </label>
+          <ion-item lines="none" class="field-input">
+            <ion-input
+              [type]="showPassword ? 'text' : 'password'"
+              formControlName="password"
+              placeholder="Ingresa tu contraseña"
+              autocomplete="current-password">
             </ion-input>
             <ion-button 
-              slot="end" 
               fill="clear" 
-              (click)="togglePasswordVisibility()" 
-              type="button"
-              class="password-toggle">
+              slot="end" 
+              (click)="togglePasswordVisibility()"
+              class="toggle-visibility">
               <ion-icon [name]="showPassword ? 'eye-off' : 'eye'"></ion-icon>
             </ion-button>
           </ion-item>
-          <div *ngIf="password?.invalid && (password?.dirty || password?.touched)" class="error-text">
-            <div *ngIf="password?.errors?.['required']">Password is required</div>
-            <div *ngIf="password?.errors?.['minlength']">Password must be at least 6 characters</div>
+          <div *ngIf="password?.invalid && (password?.dirty || password?.touched)" class="field-error">
+            <ion-icon name="alert-circle"></ion-icon>
+            <span *ngIf="password?.errors?.['required']">La contraseña es requerida</span>
+            <span *ngIf="password?.errors?.['minlength']">Debe tener al menos 6 caracteres</span>
           </div>
         </div>
 
-        <!-- Login Button -->
+        <!-- SUBMIT BUTTON -->
         <ion-button 
           type="submit" 
           expand="block" 
           [disabled]="loginForm.invalid || loading"
-          class="login-btn">
-          <ion-spinner *ngIf="loading" name="crescent" class="login-spinner"></ion-spinner>
-          <span *ngIf="!loading" class="btn-text">SIGN IN</span>
+          class="submit-button">
+          <div class="button-content">
+            <ion-spinner *ngIf="loading" name="crescent"></ion-spinner>
+            <ion-icon *ngIf="!loading" name="log-in-outline"></ion-icon>
+            <span *ngIf="!loading">Iniciar Sesión</span>
+          </div>
         </ion-button>
       </form>
-
-      <!-- 🗑️ ELIMINADO: Divider "OR" -->
-      <!-- 🗑️ ELIMINADO: Google Login Button -->
-      <!-- 🗑️ ELIMINADO: Forgot Password Link -->
-      <!-- 🗑️ ELIMINADO: Sign Up Link -->
-
-      <!-- ✅ NUEVO: Info Footer sobre credenciales (MEJORADO) -->
-      <div class="info-section">
-        <div class="info-card">
-          <ion-icon name="business-outline" class="info-icon"></ion-icon>
-          <div class="info-content">
-            <h3 class="info-title">Acceso Exclusivo para Usuarios</h3>
-            <p class="info-text">
-              Este es un sistema privado de entrenamiento personalizado. 
-              Las credenciales de acceso son proporcionadas exclusivamente por tu entrenador certificado.
-            </p>
-          </div>
-        </div>
-        
-        <div class="contact-info">
-          <div class="contact-item">
-            <ion-icon name="person-circle-outline" class="contact-icon"></ion-icon>
-            <span class="contact-text">
-              ¿Necesitas acceso? Solicítalo a tu entrenador personal
-            </span>
-          </div>
-          
-          <div class="contact-item">
-            <ion-icon name="shield-checkmark-outline" class="contact-icon"></ion-icon>
-            <span class="contact-text">
-              Sistema seguro y supervisado profesionalmente
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
+
+    <!-- FOOTER PROFESIONAL -->
+    <div class="footer-section">
+      <div class="security-badge">
+        <ion-icon name="shield-checkmark"></ion-icon>
+        <span>Sistema Seguro</span>
+      </div>
+      <p class="credentials-info">Credenciales proporcionadas por tu entrenador certificado</p>
+    </div>
+
   </div>
 </ion-content>

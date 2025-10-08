@@ -423,8 +423,8 @@ export class BiomechanicsAnalyzer {
 
     // ✅ ESPALDA CURVADA DURANTE EJERCICIO
       const spineAngle = angles.spine_angle || 85;
-      if (spineAngle < 70 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) { // 85 → 70
-        const severity = spineAngle < 60 ? 9 : 6; // 75 → 60
+      if (spineAngle < 60 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
+      const severity = spineAngle < 50 ? 9 : 6;
       errors.push({
         type: PostureErrorType.ROUNDED_BACK,
         severity: severity,
@@ -523,9 +523,9 @@ export class BiomechanicsAnalyzer {
     const errors: PostureError[] = [];
     const timestamp = Date.now();
     
-    const spineAngle = angles.spine_angle || 85;
-      if (spineAngle < 80 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) { // ✅ 75 → 80
-        const severity = spineAngle < 70 ? 8 : 5; // ✅ 65 → 70
+      const spineAngle = angles.spine_angle || 85;
+      if (spineAngle < 55 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
+      const severity = spineAngle < 45 ? 8 : 5;
       errors.push({
         type: PostureErrorType.ROUNDED_BACK,
         severity: severity,
@@ -708,7 +708,7 @@ export class BiomechanicsAnalyzer {
     // 1. Está en TOP
     // 2. Viene de ASCENDING
     // 3. Ya pasó por BOTTOM
-    if (currentPhase === RepetitionPhase.TOP && 
+      if (currentPhase === RepetitionPhase.TOP && 
         this.phaseTransitions.lastPhase === RepetitionPhase.ASCENDING) {
       
       // ✅ VERIFICAR que haya pasado por BOTTOM

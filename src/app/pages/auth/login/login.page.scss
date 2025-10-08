@@ -1,437 +1,561 @@
-/* SCSS Styles */
+// 🎨 LOGIN MÓVIL ULTRA PROFESIONAL
+
+// ================================================================================
+// 🌟 CONTENIDO BASE
+// ================================================================================
 .login-content {
-  --background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #000000 100%);
-  position: relative;
-  overflow: hidden;
+  --background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%);
   
-  .background-overlay {
+  &::before {
+    content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background: 
-      radial-gradient(circle at 20% 50%, rgba(255, 193, 7, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(255, 87, 34, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 40% 80%, rgba(33, 150, 243, 0.05) 0%, transparent 50%);
-    z-index: 1;
+      radial-gradient(circle at 30% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 70% 80%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
   }
 }
 
-.custom-toolbar {
-  --background: rgba(0, 0, 0, 0.95);
-  --border-color: transparent;
-  backdrop-filter: blur(20px);
-  
-  .custom-title {
-    font-weight: 800;
-    font-size: 1.2rem;
-    letter-spacing: 0.5px;
-    color: #ffffff;
-  }
-}
-
-.login-container {
+.login-wrapper {
   position: relative;
-  z-index: 2;
+  z-index: 1;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  padding: 2rem 1.5rem;
-  max-width: 400px;
-  margin: 0 auto;
+  justify-content: space-between;
+  padding: 2rem 1.5rem 1.5rem;
+  
+  @media (max-height: 700px) {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
+  
+  @media (max-height: 650px) {
+    padding: 1rem 1rem 0.75rem;
+  }
 }
 
-.logo-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 3rem;
-  margin-top: 2rem;
+// ================================================================================
+// 🎯 HEADER PREMIUM
+// ================================================================================
+.header-section {
+  text-align: center;
+  flex-shrink: 0;
+  animation: fadeInDown 0.8s ease-out;
+}
+
+.logo-container {
+  margin-bottom: 1rem;
   
-  .gymshark-logo {
+  @media (max-height: 700px) {
+    margin-bottom: 0.75rem;
+  }
+  
+  .logo-circle {
+    width: 75px;
+    height: 75px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
+    backdrop-filter: blur(20px);
+    border: 2px solid rgba(59, 130, 246, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    box-shadow: 
+      0 8px 32px rgba(59, 130, 246, 0.15),
+      inset 0 0 20px rgba(59, 130, 246, 0.05);
     position: relative;
-    margin-bottom: 1.5rem;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.1);  // Cambia por esto
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    
+    @media (max-height: 700px) {
+      width: 65px;
+      height: 65px;
+    }
+    
+    @media (max-height: 650px) {
+      width: 55px;
+      height: 55px;
+    }
     
     &::before {
       content: '';
       position: absolute;
       inset: -2px;
-      background: linear-gradient(45deg, #ff5722, #ffc107, #2196f3, #ff5722);
-      border-radius: 18px;
-      filter: blur(8px);
-      opacity: 0.2;
-      z-index: -1;
+      border-radius: 50%;
+      padding: 2px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.1));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.5;
     }
-  }
-  
-  .gymshark-img {
-    height: 200px;
-    width: auto;
-    max-width: 200px;
-    filter: contrast(1.1) brightness(0.9);
-  }
-  
-  .brand-title {
-    font-size: 2.5rem;
-    font-weight: 900;
-    color: #ffffff;
-    margin: 0;
-    letter-spacing: -1px;
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-  }
-  
-  .brand-subtitle {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #ff5722;
-    margin: 0.5rem 0 0;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-  }
-}
-
-.form-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.input-group {
-  margin-bottom: 1.2rem;
-  
-  .custom-input {
-    --background: rgba(255, 255, 255, 0.05);
-    --border-radius: 10px;
-    --padding-start: 10px;
-    --padding-end: 10px;
-    --padding-top: 8px;
-    --padding-bottom: 8px;
-    --min-height: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    backdrop-filter: blur(20px);
-    transition: all 0.3s ease;
-    
-    &:hover {
-      --background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 87, 34, 0.3);
-    }
-    
-    &.item-has-focus {
-      --background: rgba(255, 255, 255, 0.08);
-      border-color: #ff5722;
-      box-shadow: 0 0 0 2px rgba(255, 87, 34, 0.2);
-    }
-  }
-  
-  .input-label {
-    --color: rgba(255, 255, 255, 0.7);
-    font-weight: 500;
-    font-size: 0.85rem;
-  }
-  
-  .custom-input-field {
-    --color: #ffffff;
-    font-weight: 500;
-    font-size: 0.9rem;
-  }
-  
-  .password-toggle {
-    --color: rgba(255, 255, 255, 0.6);
-    --padding-start: 6px;
-    --padding-end: 6px;
     
     ion-icon {
-      font-size: 18px;
-    }
-    
-    &:hover {
-      --color: #ff5722;
+      font-size: 2.5rem;
+      color: #3b82f6;
+      filter: drop-shadow(0 4px 8px rgba(59, 130, 246, 0.3));
+      
+      @media (max-height: 700px) {
+        font-size: 2.25rem;
+      }
+      
+      @media (max-height: 650px) {
+        font-size: 2rem;
+      }
     }
   }
 }
 
-.error-text {
-  color: #ff5252;
-  font-size: 0.8rem;
-  font-weight: 500;
-  margin-top: 0.5rem;
-  margin-left: 1rem;
+.brand-name {
+  font-size: 2.25rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 0.25rem;
+  letter-spacing: -0.03em;
+  
+  @media (max-height: 700px) {
+    font-size: 2rem;
+  }
+  
+  @media (max-height: 650px) {
+    font-size: 1.75rem;
+  }
 }
 
-.login-btn {
-  --background: linear-gradient(135deg, #ff5722 0%, #ff8a50 100%);
-  --border-radius: 12px;
-  --padding-top: 16px;
-  --padding-bottom: 16px;
-  font-weight: 700;
-  letter-spacing: 1px;
+.brand-tagline {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.5px;
+  
+  @media (max-height: 650px) {
+    font-size: 0.8rem;
+  }
+}
+
+// ================================================================================
+// 📝 CARD FORMULARIO PROFESIONAL
+// ================================================================================
+.form-card {
+  background: #1e293b;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 2rem 1.75rem;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  flex-shrink: 0;
+  animation: slideUp 0.8s ease-out 0.2s backwards;
+  
+  @media (max-height: 700px) {
+    padding: 1.5rem 1.5rem;
+    border-radius: 16px;
+  }
+  
+  @media (max-height: 650px) {
+    padding: 1.25rem 1.25rem;
+  }
+}
+
+.form-header {
+  text-align: center;
+  margin-bottom: 1.75rem;
+  
+  @media (max-height: 700px) {
+    margin-bottom: 1.5rem;
+  }
+  
+  @media (max-height: 650px) {
+    margin-bottom: 1.25rem;
+  }
+  
+  .form-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.02em;
+    
+    @media (max-height: 700px) {
+      font-size: 1.35rem;
+      margin-bottom: 0.4rem;
+    }
+    
+    @media (max-height: 650px) {
+      font-size: 1.25rem;
+      margin-bottom: 0.35rem;
+    }
+  }
+  
+  .form-description {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+    font-weight: 500;
+    
+    @media (max-height: 650px) {
+      font-size: 0.8rem;
+    }
+  }
+}
+
+// ================================================================================
+// 📋 FORM FIELDS PROFESIONALES
+// ================================================================================
+.form-field {
+  margin-bottom: 1.5rem;
+  
+  @media (max-height: 700px) {
+    margin-bottom: 1.25rem;
+  }
+  
+  @media (max-height: 650px) {
+    margin-bottom: 1rem;
+  }
+  
+  &:last-of-type {
+    margin-bottom: 2rem;
+    
+    @media (max-height: 700px) {
+      margin-bottom: 1.5rem;
+    }
+    
+    @media (max-height: 650px) {
+      margin-bottom: 1.25rem;
+    }
+  }
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  font-weight: 600;
   text-transform: uppercase;
-  box-shadow: 0 8px 24px rgba(255, 87, 34, 0.3);
-  margin: 1rem 0 2rem;
+  letter-spacing: 0.75px;
+  margin-bottom: 0.5rem;
+  
+  @media (max-height: 650px) {
+    font-size: 0.75rem;
+    margin-bottom: 0.4rem;
+  }
+  
+  ion-icon {
+    font-size: 1rem;
+    color: #3b82f6;
+  }
+}
+
+.field-input {
+  --background: rgba(15, 23, 42, 0.7);
+  --border-radius: 12px;
+  --padding-start: 1rem;
+  --padding-end: 1rem;
+  --min-height: 50px;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   
+  @media (max-height: 700px) {
+    --min-height: 46px;
+  }
+  
+  @media (max-height: 650px) {
+    --min-height: 42px;
+    --padding-start: 0.875rem;
+    --padding-end: 0.875rem;
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  &:hover {
+    --background: rgba(15, 23, 42, 0.9);
+    border-color: rgba(59, 130, 246, 0.3);
+    
+    &::before {
+      opacity: 1;
+    }
+  }
+  
+  &.item-has-focus,
+  &.ion-focused {
+    --background: rgba(15, 23, 42, 0.95);
+    border-color: #3b82f6;
+    box-shadow: 
+      0 0 0 3px rgba(59, 130, 246, 0.12),
+      0 4px 12px rgba(59, 130, 246, 0.15);
+    
+    &::before {
+      opacity: 1;
+    }
+  }
+  
+  ion-input {
+    --color: #f8fafc;
+    --placeholder-color: #475569;
+    --placeholder-opacity: 1;
+    font-size: 0.95rem;
+    font-weight: 500;
+    
+    @media (max-height: 650px) {
+      font-size: 0.875rem;
+    }
+  }
+  
+  .toggle-visibility {
+    --color: #64748b;
+    --background-hover: transparent;
+    --ripple-color: rgba(59, 130, 246, 0.2);
+    margin: 0;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      --color: #3b82f6;
+    }
+    
+    ion-icon {
+      font-size: 1.25rem;
+    }
+  }
+}
+
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #ef4444;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  padding-left: 0.5rem;
+  animation: shake 0.4s ease;
+  
+  @media (max-height: 650px) {
+    font-size: 0.7rem;
+    margin-top: 0.4rem;
+  }
+  
+  ion-icon {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+}
+
+// ================================================================================
+// 🚀 SUBMIT BUTTON PROFESIONAL
+// ================================================================================
+.submit-button {
+  --background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
+  --border-radius: 12px;
+  --padding-top: 15px;
+  --padding-bottom: 15px;
+  --box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+  margin-top: 0.5rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+  
+  @media (max-height: 700px) {
+    --padding-top: 13px;
+    --padding-bottom: 13px;
+    font-size: 0.9rem;
+  }
+  
+  @media (max-height: 650px) {
+    --padding-top: 11px;
+    --padding-bottom: 11px;
+    font-size: 0.85rem;
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+    transition: left 0.6s ease;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    padding: 2px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
   &:not([disabled]):hover {
-    --background: linear-gradient(135deg, #e64a19 0%, #ff7043 100%);
-    box-shadow: 0 12px 32px rgba(255, 87, 34, 0.4);
+    --box-shadow: 0 12px 32px rgba(59, 130, 246, 0.35);
     transform: translateY(-2px);
+    
+    &::before {
+      left: 100%;
+    }
+    
+    &::after {
+      opacity: 1;
+    }
   }
   
   &:not([disabled]):active {
     transform: translateY(0);
-    box-shadow: 0 4px 16px rgba(255, 87, 34, 0.3);
+    --box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
   }
   
   &[disabled] {
-    --background: rgba(255, 255, 255, 0.1);
-    --color: rgba(255, 255, 255, 0.5);
-    box-shadow: none;
+    --background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%);
+    --box-shadow: none;
+    opacity: 0.5;
   }
   
-  .btn-text {
-    font-size: 1rem;
-    font-weight: 700;
-  }
-  
-  .login-spinner {
-    --color: #ffffff;
-  }
-}
-
-.divider-section {
-  display: flex;
-  align-items: center;
-  margin: 1.5rem 0;
-  
-  .divider-line {
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  }
-  
-  .divider-text {
-    margin: 0 1rem;
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 1px;
-  }
-}
-
-.google-btn {
-  --border-color: rgba(255, 255, 255, 0.2);
-  --border-radius: 12px;
-  --color: #ffffff;
-  --padding-top: 16px;
-  --padding-bottom: 16px;
-  font-weight: 600;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  margin-bottom: 2rem;
-  
-  &:hover {
-    --background: rgba(255, 255, 255, 0.05);
-    --border-color: rgba(255, 255, 255, 0.3);
-  }
-  
-  .google-icon {
-    margin-right: 0.5rem;
-  }
-  
-  .btn-text {
-    font-size: 0.95rem;
-  }
-}
-
-.links-section {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  
-  .link-btn {
-    --color: rgba(255, 255, 255, 0.7);
-    font-weight: 500;
-    font-size: 0.9rem;
-    text-transform: none;
-    
-    &:hover {
-      --color: #ff5722;
-    }
-  }
-  
-  .forgot-password {
-    margin-bottom: 0.5rem;
-  }
-  
-  .signup-section {
+  .button-content {
     display: flex;
     align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    
+    ion-icon {
+      font-size: 1.25rem;
+    }
+    
+    ion-spinner {
+      --color: white;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+// ================================================================================
+// 🔻 FOOTER PROFESIONAL
+// ================================================================================
+.footer-section {
+  text-align: center;
+  flex-shrink: 0;
+  padding-top: 1rem;
+  animation: fadeIn 0.8s ease-out 0.5s backwards;
+  
+  @media (max-height: 700px) {
+    padding-top: 0.75rem;
+  }
+  
+  @media (max-height: 650px) {
+    padding-top: 0.5rem;
+  }
+  
+  .security-badge {
+    display: inline-flex;
+    align-items: center;
     gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 20px;
+    margin-bottom: 0.75rem;
     
-    .signup-text {
-      color: rgba(255, 255, 255, 0.6);
-      font-size: 0.9rem;
+    @media (max-height: 650px) {
+      padding: 0.4rem 0.875rem;
+      margin-bottom: 0.5rem;
     }
     
-    .signup-btn {
-      --color: #ff5722;
+    ion-icon {
+      font-size: 1rem;
+      color: #3b82f6;
+    }
+    
+    span {
+      font-size: 0.8rem;
+      color: #94a3b8;
       font-weight: 600;
-      text-decoration: underline;
+      
+      @media (max-height: 650px) {
+        font-size: 0.75rem;
+      }
+    }
+  }
+  
+  .credentials-info {
+    font-size: 0.75rem;
+    color: #475569;
+    margin: 0;
+    line-height: 1.5;
+    padding: 0 1rem;
+    
+    @media (max-height: 650px) {
+      font-size: 0.7rem;
+      padding: 0 0.5rem;
     }
   }
 }
 
-// ✅ NUEVOS ESTILOS PARA INFO SECTION - TEXTO VISIBLE
-.info-section {
-  margin-top: 2rem;
-  padding: 0 0.5rem;
-  
-  .info-card {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    transition: all 0.3s ease;
-    
-    &:hover {
-      background: rgba(255, 255, 255, 0.12);
-      border-color: rgba(255, 255, 255, 0.2);
-      transform: translateY(-1px);
-    }
-    
-    .info-icon {
-      color: #ff5722;
-      font-size: 1.5rem;
-      margin-top: 0.25rem;
-      flex-shrink: 0;
-    }
-    
-    .info-content {
-      flex: 1;
-      
-      .info-title {
-        color: #ffffff; // ✅ TEXTO BLANCO VISIBLE
-        font-size: 1rem;
-        font-weight: 600;
-        margin: 0 0 0.5rem 0;
-        letter-spacing: 0.5px;
-      }
-      
-      .info-text {
-        color: rgba(255, 255, 255, 0.85); // ✅ TEXTO BLANCO SEMI-TRANSPARENTE
-        font-size: 0.875rem;
-        line-height: 1.5;
-        margin: 0;
-      }
-    }
+// ================================================================================
+// 🎬 ANIMACIONES PROFESIONALES
+// ================================================================================
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
   }
-  
-  .contact-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    
-    .contact-item {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.75rem 1rem;
-      background: rgba(255, 255, 255, 0.04);
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      transition: all 0.3s ease;
-      
-      &:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.15);
-        transform: translateX(2px);
-      }
-      
-      .contact-icon {
-        color: #ff5722;
-        font-size: 1.25rem;
-        flex-shrink: 0;
-      }
-      
-      .contact-text {
-        color: rgba(255, 255, 255, 0.9); // ✅ TEXTO BLANCO VISIBLE
-        font-size: 0.875rem;
-        font-weight: 500;
-        line-height: 1.4;
-      }
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-// Responsive adjustments
-@media (max-height: 700px) {
-  .login-container {
-    padding: 1rem 1.5rem;
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
   }
-  
-  .logo-section {
-    margin-bottom: 2rem;
-    margin-top: 1rem;
-    
-    .app-logo {
-      width: 80px;
-      height: 80px;
-    }
-    
-    .brand-title {
-      font-size: 2rem;
-    }
-  }
-  
-  // ✅ RESPONSIVE PARA INFO SECTION
-  .info-section {
-    margin-top: 1.5rem;
-    
-    .info-card {
-      padding: 1.25rem;
-      flex-direction: column;
-      text-align: center;
-      gap: 0.75rem;
-      
-      .info-icon {
-        align-self: center;
-        margin-top: 0;
-      }
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (max-width: 360px) {
-  .login-container {
-    padding: 1rem;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
-  
-  // ✅ RESPONSIVE MÓVIL PARA INFO SECTION
-  .info-section {
-    padding: 0 0.25rem;
-    
-    .contact-item {
-      flex-direction: column;
-      text-align: center;
-      gap: 0.5rem;
-      padding: 1rem;
-      
-      .contact-text {
-        font-size: 0.8rem;
-      }
-    }
+  to {
+    opacity: 1;
   }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
