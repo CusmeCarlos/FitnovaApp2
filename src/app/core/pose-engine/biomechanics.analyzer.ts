@@ -406,9 +406,9 @@ export class BiomechanicsAnalyzer {
       cooldownTime = 3000; // 3 segundos
     }
     
-    // Errores de profundidad: cooldown corto (pero más largo que antes)
+    // Errores de profundidad: cooldown MUY largo para no molestar
     if (errorType === PostureErrorType.INSUFFICIENT_DEPTH) {
-      cooldownTime = 2500; // 2.5 segundos
+      cooldownTime = 8000; // 8 segundos (antes 2.5)
     }
     
     if (timestamp - lastDetection >= cooldownTime) {
@@ -516,33 +516,36 @@ export class BiomechanicsAnalyzer {
     const kneeAngle = leftVisible > rightVisible ? 
       (angles.left_knee_angle || 0) : (angles.right_knee_angle || 0);
 
-    // ✅ ESPALDA CURVADA DURANTE EJERCICIO
-      const spineAngle = angles.spine_angle || 85;
-      if (spineAngle < 60 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
-      const severity = spineAngle < 50 ? 9 : 6;
+    // ✅ ESPALDA CURVADA DURANTE EJERCICIO - MUY PERMISIVO PARA PRINCIPIANTES
+    const spineAngle = angles.spine_angle || 85;
+
+    // 🔥 SOLO ALERTAR SI ES REALMENTE PELIGROSO (< 40°)
+    if (spineAngle < 40 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
+      const severity = spineAngle < 30 ? 9 : 7;
       errors.push({
         type: PostureErrorType.ROUNDED_BACK,
         severity: severity,
-        description: severity > 8 ? 'Espalda muy curvada (PELIGROSO)' : 'Espalda redondeada',
-        recommendation: severity > 8 ? 'PELIGRO: Endereza la espalda YA' : 'Endereza la espalda, saca el pecho',
+        description: severity > 8 ? 'Espalda MUY curvada - cuidado' : 'Espalda algo curvada',
+        recommendation: severity > 8 ? 'Intenta enderezar un poco la espalda' : 'Mantén la espalda más recta si puedes',
         affectedJoints: ['spine'],
-        confidence: 0.95,
+        confidence: 0.85,
         timestamp
       });
-      console.log(`🔴 EJERCICIO PERFIL: Espalda curvada ${spineAngle.toFixed(1)}° (CRÍTICO)`);
+      console.log(`🟠 EJERCICIO PERFIL: Espalda curvada ${spineAngle.toFixed(1)}°`);
     }
 
-    // ✅ SENTADILLA POCO PROFUNDA - SOLO SI ES MUY EVIDENTE
-    if (kneeAngle > 120 &&
+    // ✅ SENTADILLA POCO PROFUNDA - SOLO SI ES MUY EVIDENTE Y MUY RARA VEZ
+    if (kneeAngle > 130 &&  // Más permisivo: 130° en lugar de 120°
         this.currentPhase === RepetitionPhase.BOTTOM &&
+        this.repetitionCounter >= 3 && // Solo mostrar después de 3 repeticiones
         this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {
       errors.push({
         type: PostureErrorType.INSUFFICIENT_DEPTH,
-        severity: 4, // AMARILLO más suave
+        severity: 3, // Severidad muy baja
         description: 'Intenta bajar un poco más',
         recommendation: 'Baja más si puedes, flexiona más las rodillas',
         affectedJoints: ['left_knee', 'right_knee'],
-        confidence: 0.7,
+        confidence: 0.6,
         timestamp
       });
       console.log('🟡 EJERCICIO PERFIL: Sentadilla poco profunda');
@@ -616,17 +619,18 @@ export class BiomechanicsAnalyzer {
   private detectProfileReadinessErrors(pose: PoseKeypoints, angles: BiomechanicalAngles): PostureError[] {
     const errors: PostureError[] = [];
     const timestamp = Date.now();
-    
-      const spineAngle = angles.spine_angle || 85;
-      if (spineAngle < 55 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
-      const severity = spineAngle < 45 ? 8 : 5;
+
+    // 🔥 MUY PERMISIVO EN PREPARACIÓN - Solo alertar si es extremo (< 35°)
+    const spineAngle = angles.spine_angle || 85;
+    if (spineAngle < 35 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
+      const severity = spineAngle < 25 ? 8 : 5;
       errors.push({
         type: PostureErrorType.ROUNDED_BACK,
         severity: severity,
-        description: severity > 7 ? 'Espalda muy curvada' : 'Espalda un poco curvada',
-        recommendation: severity > 7 ? 'CRÍTICO: Endereza la espalda, saca el pecho' : 'Mantén la espalda más recta',
+        description: severity > 7 ? 'Espalda muy encorvada' : 'Intenta enderezar la espalda',
+        recommendation: 'Párate más derecho para empezar',
         affectedJoints: ['spine'],
-        confidence: 0.9,
+        confidence: 0.8,
         timestamp
       });
     }

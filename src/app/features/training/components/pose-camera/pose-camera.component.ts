@@ -1107,8 +1107,16 @@ private handleReadinessStateChange(prevState: ReadinessState, newState: Readines
   // 🚨 OBTENER ERROR MÁS SEVERO
   private getMostSevereError(errors: PostureError[]): PostureError | null {
     if (errors.length === 0) return null;
-    
-    return errors.reduce((prev, current) => 
+
+    // 🔥 FILTRAR errores de severidad muy baja (< 5)
+    const significantErrors = errors.filter(e => e.severity >= 5);
+
+    if (significantErrors.length === 0) {
+      console.log('⏭️ Todos los errores son de severidad muy baja, ignorando...');
+      return null;
+    }
+
+    return significantErrors.reduce((prev, current) =>
       (current.severity > prev.severity) ? current : prev
     );
   }
