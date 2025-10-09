@@ -270,7 +270,8 @@ export class Tab2Page implements OnInit, OnDestroy {
         errorCount: this.sessionStats.errorsDetected,
         sessionId: this.sessionData.sessionId,
         totalCorrections: Math.max(this.totalRepetitions, this.sessionStats.correctionsGiven, 1),
-        sessionDurationSeconds: this.sessionDuration // ← AGREGAR ESTA LÍNEA
+        sessionDurationSeconds: this.sessionDuration,
+        repetitions: this.totalRepetitions // ← AGREGAR REPETICIONES REALES
       };
 
       console.log('📊 Datos de sesión con duración real:', sessionData);

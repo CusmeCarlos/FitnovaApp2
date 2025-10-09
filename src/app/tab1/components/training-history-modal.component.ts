@@ -137,108 +137,513 @@ import {
     </ion-content>
   `,
   styles: [`
-    .history-content {
-      --background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    // ================================================================================
+    // 🎨 HISTORIAL PREMIUM - DISEÑO OSCURO AVANZADO
+    // ================================================================================
+
+    :host {
+      --primary-dark: #0a0e1a;
+      --secondary-dark: #1a1f2e;
+      --card-dark: #1e293b;
+      --accent-blue: #3b82f6;
+      --accent-orange: #ff5722;
+      --accent-green: #10b981;
+      --text-white: #f8fafc;
+      --text-gray: #94a3b8;
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
     }
 
+    // ================================================================================
+    // 🎭 HEADER PREMIUM
+    // ================================================================================
+    ion-header {
+      ion-toolbar {
+        --background: rgba(26, 31, 46, 0.98) !important;
+        --border-color: transparent;
+        backdrop-filter: blur(20px) saturate(180%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 0.5rem 0;
+
+        ion-title {
+          font-weight: 800;
+          font-size: 1.3rem;
+          letter-spacing: 0.3px;
+          background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        ion-button {
+          --color: #94a3b8;
+          transition: all 0.3s ease;
+
+          &:hover {
+            --color: #ff5722;
+            transform: scale(1.1) rotate(90deg);
+          }
+        }
+      }
+    }
+
+    // ================================================================================
+    // 📜 CONTENT BACKGROUND
+    // ================================================================================
+    .history-content {
+      --background: #0a0e1a !important;
+      background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%) !important;
+      position: relative;
+
+      &::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background:
+          radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+          radial-gradient(circle at 80% 70%, rgba(255, 87, 34, 0.06) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 0;
+      }
+    }
+
+    // ================================================================================
+    // 📊 METRICS SUMMARY - RESUMEN PREMIUM
+    // ================================================================================
     .metrics-summary {
-      margin: 1rem;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin: 1.5rem 1rem 1rem;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.05)) !important;
+      backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      animation: slideDown 0.6s ease-out;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
+        background-size: 200% 100%;
+        animation: shimmer 3s infinite;
+      }
+
+      ion-card-header {
+        padding: 1.25rem 1.5rem 0.75rem;
+
+        ion-card-title {
+          font-size: 1.1rem;
+          font-weight: 800;
+          color: #f8fafc;
+          letter-spacing: 0.5px;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+
+          &::before {
+            content: '📊';
+            font-size: 1.25rem;
+          }
+        }
+      }
+
+      ion-card-content {
+        padding: 1rem 1.5rem 1.5rem;
+      }
     }
 
     .metrics-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-      text-align: center;
+      gap: 1.25rem;
     }
 
     .metric-item {
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(59, 130, 246, 0.3);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2);
+      }
+
+      &:nth-child(1) .metric-value { color: #3b82f6; }
+      &:nth-child(2) .metric-value { color: #10b981; }
+      &:nth-child(3) .metric-value { color: #8b5cf6; }
+      &:nth-child(4) .metric-value { color: #ff5722; }
     }
 
     .metric-value {
-      font-size: 1.5rem;
-      font-weight: bold;
-      color: var(--ion-color-primary);
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1;
     }
 
     .metric-label {
-      font-size: 0.8rem;
-      color: var(--ion-color-medium);
+      font-size: 0.75rem;
+      color: #94a3b8;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
+      text-align: center;
     }
 
+    // ================================================================================
+    // 📋 HISTORY LIST - LISTA PREMIUM
+    // ================================================================================
     .history-list {
-      margin: 0 1rem 1rem;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
+      margin: 0 1rem 1.5rem;
+      background: #1e293b !important;
+      backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      position: relative;
+      z-index: 1;
+      animation: slideUp 0.6s ease-out 0.2s both;
+
+      ion-card-header {
+        padding: 1.25rem 1.5rem 0.75rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+        ion-card-title {
+          font-size: 1.1rem;
+          font-weight: 800;
+          color: #f8fafc;
+          letter-spacing: 0.5px;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+
+          &::before {
+            content: '🏋️';
+            font-size: 1.25rem;
+          }
+        }
+      }
+
+      ion-card-content {
+        padding: 0;
+      }
+
+      ion-list {
+        background: transparent;
+        padding: 0.5rem;
+      }
     }
 
     .session-item {
-      --background: transparent;
+      --background: rgba(255, 255, 255, 0.03);
       --border-color: rgba(255, 255, 255, 0.1);
-      margin-bottom: 0.5rem;
+      --padding-start: 1rem;
+      --padding-end: 1rem;
+      --padding-top: 1rem;
+      --padding-bottom: 1rem;
+      margin-bottom: 0.75rem;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
+      }
+
+      &:hover {
+        --background: rgba(255, 255, 255, 0.06);
+        --border-color: rgba(59, 130, 246, 0.3);
+        transform: translateX(8px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+
+        &::before {
+          transform: scaleY(1);
+        }
+
+        .session-icon {
+          transform: scale(1.1) rotate(5deg);
+        }
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
     }
 
     .session-icon {
-      width: 40px;
-      height: 40px;
+      width: 52px;
+      height: 52px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255, 255, 255, 0.1);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.1));
+      border: 2px solid rgba(59, 130, 246, 0.3);
       border-radius: 50%;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+      ion-icon {
+        font-size: 1.75rem;
+      }
+    }
+
+    ion-label {
+      h3 {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #f8fafc;
+        margin-bottom: 0.35rem;
+        letter-spacing: 0.2px;
+      }
+
+      p {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        margin-bottom: 0.35rem;
+        font-weight: 500;
+      }
+
+      ion-note {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+      }
     }
 
     .session-stats {
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 0.25rem;
+      gap: 0.5rem;
     }
 
     .accuracy-chip {
-      font-size: 0.75rem;
-      height: 24px;
+      font-size: 0.8rem;
+      height: 28px;
+      font-weight: 800;
+      border-radius: 10px;
+      padding: 0 0.875rem;
+      letter-spacing: 0.3px;
     }
 
+    // ================================================================================
+    // 🎭 EMPTY STATE PREMIUM
+    // ================================================================================
     .empty-state {
-      margin: 2rem 1rem;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin: 3rem 1rem;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.05)) !important;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      position: relative;
+      z-index: 1;
+      overflow: hidden;
+      animation: slideUp 0.8s ease-out;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ff5722);
+        background-size: 200% 100%;
+        animation: shimmer 3s infinite;
+      }
+
+      ion-card-content {
+        padding: 2.5rem 1.5rem;
+      }
     }
 
     .empty-content {
       text-align: center;
-      padding: 2rem 1rem;
+
+      ion-icon {
+        font-size: 5rem;
+        margin-bottom: 1.5rem;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.4));
+        animation: float 3s ease-in-out infinite;
+      }
+
+      h3 {
+        font-size: 1.75rem;
+        font-weight: 900;
+        margin: 0 0 1rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -0.02em;
+      }
+
+      p {
+        font-size: 1rem;
+        color: #94a3b8;
+        margin: 0 0 2.5rem;
+        line-height: 1.6;
+        font-weight: 500;
+      }
+
+      ion-button {
+        --background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        --border-radius: 14px;
+        --padding-top: 16px;
+        --padding-bottom: 16px;
+        --box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+        font-weight: 800;
+        font-size: 1rem;
+        letter-spacing: 0.5px;
+        position: relative;
+        overflow: hidden;
+
+        &::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+          transition: left 0.6s ease;
+        }
+
+        &:hover {
+          --box-shadow: 0 12px 32px rgba(59, 130, 246, 0.5);
+          transform: translateY(-2px);
+
+          &::before {
+            left: 100%;
+          }
+        }
+
+        ion-icon {
+          font-size: 1.35rem;
+          margin-right: 0.5rem;
+        }
+      }
     }
 
-    .empty-content ion-icon {
-      margin-bottom: 1rem;
-      opacity: 0.5;
+    // ================================================================================
+    // 🎬 ANIMACIONES PREMIUM
+    // ================================================================================
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
-    .empty-content h3 {
-      margin: 1rem 0 0.5rem;
-      color: var(--ion-color-light);
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
-    .empty-content p {
-      color: var(--ion-color-medium);
-      margin-bottom: 2rem;
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
     }
 
-    @media (max-width: 768px) {
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    // ================================================================================
+    // 📱 RESPONSIVE PREMIUM
+    // ================================================================================
+    @media (max-width: 480px) {
       .metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
+      .metric-item {
+        padding: 0.875rem;
+      }
+
+      .metric-value {
+        font-size: 1.75rem;
+      }
+
+      .metric-label {
+        font-size: 0.7rem;
+      }
+
+      .session-item {
+        --padding-start: 0.875rem;
+        --padding-end: 0.875rem;
+        --padding-top: 0.875rem;
+        --padding-bottom: 0.875rem;
+      }
+
+      .session-icon {
+        width: 44px;
+        height: 44px;
+
+        ion-icon {
+          font-size: 1.5rem;
+        }
+      }
+
+      ion-label h3 {
+        font-size: 0.95rem;
+      }
+
+      .empty-content {
+        ion-icon {
+          font-size: 4rem;
+        }
+
+        h3 {
+          font-size: 1.5rem;
+        }
+
+        p {
+          font-size: 0.9rem;
+        }
       }
     }
   `]

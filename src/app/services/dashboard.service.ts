@@ -25,6 +25,7 @@ export interface UserStats {
   improvementRate?: number;
   lastSessionDurationSeconds?: number;
   totalSeconds?: number;
+  lastSessionRepetitions?: number; // ← AGREGAR REPETICIONES
 }
 
 export interface CriticalAlert {
@@ -415,12 +416,56 @@ export class DashboardService {
     };
   }
 
+  // ← NUEVO MÉTODO: Guardar sesión completa en Firestore
+  async saveWorkoutSession(sessionData: {
+    exerciseName: string;
+    errorCount: number;
+    sessionId: string;
+    totalCorrections: number;
+    sessionDurationSeconds?: number;
+    repetitions?: number;
+  }): Promise<void> {
+    try {
+      const user = await this.auth.user$.pipe(take(1)).toPromise();
+      if (!user) {
+        console.error('❌ No hay usuario autenticado');
+        return;
+      }
+
+      const accuracy = sessionData.totalCorrections > 0 ?
+        ((sessionData.totalCorrections - sessionData.errorCount) / sessionData.totalCorrections) * 100 : 100;
+
+      // Guardar sesión completa en una nueva colección
+      const workoutSession = {
+        uid: user.uid,
+        sessionId: sessionData.sessionId,
+        exercise: sessionData.exerciseName,
+        date: firebase.firestore.Timestamp.now(),
+        durationSeconds: sessionData.sessionDurationSeconds || 0,
+        repetitions: sessionData.repetitions || 0, // ← REPETICIONES REALES
+        errorsCount: sessionData.errorCount,
+        accuracy: Math.round(accuracy),
+        totalCorrections: sessionData.totalCorrections,
+        createdAt: firebase.firestore.Timestamp.now()
+      };
+
+      // Guardar en la colección workoutSessions
+      await this.db.collection('workoutSessions').add(workoutSession);
+
+      console.log('✅ Sesión de entrenamiento guardada:', workoutSession);
+
+    } catch (error) {
+      console.error('❌ Error guardando sesión de entrenamiento:', error);
+    }
+  }
+
   async updateUserStats(sessionData: {
     exerciseName: string;
     errorCount: number;
     sessionId: string;
     totalCorrections: number;
     sessionDurationSeconds?: number;
+    repetitions?: number; // ← AGREGAR REPETICIONES REALES
   }): Promise<void> {
     try {
       const user = await this.auth.user$.pipe(take(1)).toPromise();
@@ -428,8 +473,11 @@ export class DashboardService {
         console.error('❌ No hay usuario autenticado para actualizar stats');
         return;
       }
-  
+
       console.log('🆕 Actualizando UserStats con datos reales:', sessionData);
+
+      // ← GUARDAR SESIÓN COMPLETA PRIMERO
+      await this.saveWorkoutSession(sessionData);
   
       const accuracy = sessionData.totalCorrections > 0 ? 
         ((sessionData.totalCorrections - sessionData.errorCount) / sessionData.totalCorrections) * 100 : 100;
@@ -472,7 +520,9 @@ export class DashboardService {
         updatedAt: firebase.firestore.Timestamp.now(),
         // Campos para debugging
         lastSessionDurationSeconds: sessionSeconds,
-        totalSeconds: newTotalSeconds
+        totalSeconds: newTotalSeconds,
+        // ← AGREGAR REPETICIONES REALES
+        lastSessionRepetitions: sessionData.repetitions || 0
       };
   
       console.log('🔍 Nuevos stats que se van a guardar:', newStats);
@@ -504,122 +554,107 @@ export class DashboardService {
       if (!user) {
         throw new Error('Usuario no autenticado');
       }
-  
-      console.log('📊 Cargando historial de entrenamiento para:', user.uid);
-  
-      // OBTENER SESIONES DE ENTRENAMIENTO DESDE criticalAlerts
+
+      console.log('📊 Cargando historial REAL de entrenamiento para:', user.uid);
+
+      // ← PRIMERO: Intentar obtener sesiones desde workoutSessions (DATOS REALES)
+      const workoutSessionsSnapshot = await this.db
+        .collection('workoutSessions')
+        .where('uid', '==', user.uid)
+        .orderBy('date', 'desc')
+        .limit(20)
+        .get();
+
+      const sessions: any[] = [];
+
+      // PROCESAR SESIONES REALES
+      workoutSessionsSnapshot.docs.forEach((doc: any) => {
+        const data = doc.data();
+        sessions.push({
+          date: data.date?.toDate?.()?.toISOString() || new Date().toISOString(),
+          exercise: data.exercise || 'Entrenamiento',
+          duration: Math.round(data.durationSeconds / 60) || 0, // Convertir a minutos
+          repetitions: data.repetitions || 0, // ← REPETICIONES REALES GUARDADAS
+          errorsCount: data.errorsCount || 0,
+          accuracy: data.accuracy || 0,
+          sessionId: data.sessionId || doc.id,
+          confidence: 0.95
+        });
+      });
+
+      console.log('📊 Sesiones REALES cargadas desde workoutSessions:', sessions.length);
+
+      // Si hay sesiones reales, retornarlas directamente
+      if (sessions.length > 0) {
+        console.log('✅ Historial REAL encontrado:', sessions.length, 'sesiones');
+        return sessions.slice(0, 10);
+      }
+
+      // ← FALLBACK: Si no hay sesiones en workoutSessions, intentar con criticalAlerts (legacy)
+      console.log('⚠️ No hay sesiones en workoutSessions, buscando en criticalAlerts...');
+
       const alertsSnapshot = await this.db
         .collection('criticalAlerts')
         .where('uid', '==', user.uid)
         .orderBy('processedAt', 'desc')
         .limit(20)
         .get();
-  
-      // OBTENER TAMBIÉN userStats PARA MÁS DATOS
-      const userStatsDoc = await this.db
-        .collection('userStats')
-        .doc(user.uid)
-        .get();
-  
-      const userStats = userStatsDoc.exists ? userStatsDoc.data() as UserStats : null;
-  
-      if (alertsSnapshot.empty && !userStats) {
-        console.log('📊 No hay historial disponible, generando datos de ejemplo');
-        return this.generateSampleHistory();
+
+      if (!alertsSnapshot.empty) {
+        const sessionGroups = new Map<string, any[]>();
+
+        alertsSnapshot.docs.forEach((doc: any) => {
+          const data = doc.data();
+          const sessionKey = data.lastSessionId ||
+                            data.processedAt?.toDate?.()?.toDateString() ||
+                            'unknown';
+
+          if (!sessionGroups.has(sessionKey)) {
+            sessionGroups.set(sessionKey, []);
+          }
+          sessionGroups.get(sessionKey)!.push({
+            id: doc.id,
+            ...data,
+            processedAt: data.processedAt?.toDate?.() || new Date()
+          });
+        });
+
+        sessionGroups.forEach((alerts, sessionKey) => {
+          const sessionDate = alerts[0].processedAt;
+          const exercise = alerts[0].exercise || 'Entrenamiento General';
+          const errorsCount = alerts.length;
+          const avgConfidence = alerts.reduce((sum, alert) => sum + (alert.confidence || 0), 0) / alerts.length;
+          const accuracy = Math.max(0, 100 - (errorsCount * 10));
+
+          sessions.push({
+            date: sessionDate.toISOString(),
+            exercise: exercise,
+            duration: Math.floor(Math.random() * 20) + 15,
+            repetitions: Math.max(10, 30 - errorsCount), // Estimación
+            errorsCount: errorsCount,
+            accuracy: Math.round(accuracy),
+            sessionId: sessionKey,
+            confidence: Math.round(avgConfidence * 100) / 100
+          });
+        });
+
+        console.log('📊 Sesiones legacy cargadas desde criticalAlerts:', sessions.length);
       }
-  
-      // PROCESAR ALERTAS PARA CREAR HISTORIAL DE SESIONES
-      const sessions: any[] = [];
-      const sessionGroups = new Map<string, any[]>();
-  
-      // Agrupar alertas por sessionId o fecha
-      alertsSnapshot.docs.forEach((doc: any) => {
-        const data = doc.data();
-        const sessionKey = data.lastSessionId || 
-                          data.processedAt?.toDate?.()?.toDateString() || 
-                          'unknown';
-        
-        if (!sessionGroups.has(sessionKey)) {
-          sessionGroups.set(sessionKey, []);
-        }
-        sessionGroups.get(sessionKey)!.push({
-          id: doc.id,
-          ...data,
-          processedAt: data.processedAt?.toDate?.() || new Date()
-        });
-      });
-  
-      // CONVERTIR GRUPOS EN SESIONES
-      sessionGroups.forEach((alerts, sessionKey) => {
-        const sessionDate = alerts[0].processedAt;
-        const exercise = alerts[0].exercise || 'Entrenamiento General';
-        const errorsCount = alerts.length;
-        const avgConfidence = alerts.reduce((sum, alert) => sum + (alert.confidence || 0), 0) / alerts.length;
-        const accuracy = Math.max(0, 100 - (errorsCount * 10)); // Calcular precisión
-  
-        sessions.push({
-          date: sessionDate.toISOString(),
-          exercise: exercise,
-          duration: Math.floor(Math.random() * 20) + 15, // Duración estimada 15-35 min
-          repetitions: Math.max(10, 30 - errorsCount), // Repeticiones estimadas
-          errorsCount: errorsCount,
-          accuracy: Math.round(accuracy),
-          sessionId: sessionKey,
-          confidence: Math.round(avgConfidence * 100) / 100
-        });
-      });
-  
-      // AGREGAR SESIÓN ACTUAL SI HAY userStats
-      if (userStats && (userStats.totalWorkouts || 0) > sessions.length) {
-        sessions.unshift({
-          date: new Date().toISOString(),
-          exercise: userStats.lastExercise || 'Entrenamiento Reciente',
-          duration: Math.round((userStats.lastSessionDurationSeconds || 1200) / 60), // Convertir a minutos
-          repetitions: 15,
-          errorsCount: 0,
-          accuracy: Math.round(userStats.averageAccuracy || 85),
-          sessionId: userStats.lastSessionId || 'current',
-          confidence: 0.95
-        });
+
+      // Si aún no hay sesiones, mostrar vacío (sin datos de ejemplo)
+      if (sessions.length === 0) {
+        console.log('📊 No hay historial disponible - Usuario sin entrenamientos');
+        return [];
       }
-      // ORDENAR POR FECHA MÁS RECIENTE
+
       sessions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  
       console.log('📊 Historial procesado:', sessions.length, 'sesiones encontradas');
-      return sessions.slice(0, 10); // Retornar máximo 10 sesiones
-  
+      return sessions.slice(0, 10);
+
     } catch (error) {
       console.error('❌ Error cargando historial:', error);
-      
-      // RETORNAR DATOS DE EJEMPLO SI HAY ERROR
-      console.log('📊 Generando historial de ejemplo por error');
-      return this.generateSampleHistory();
+      return [];
     }
-  }
-  
-  private generateSampleHistory(): any[] {
-    const exercises = ['Sentadillas', 'Flexiones', 'Plancha', 'Estocadas', 'Peso Muerto'];
-    const sessions = [];
-  
-    for (let i = 0; i < 8; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      date.setHours(Math.floor(Math.random() * 4) + 17); // Entre 17-21h
-  
-      sessions.push({
-        date: date.toISOString(),
-        exercise: exercises[Math.floor(Math.random() * exercises.length)],
-        duration: Math.floor(Math.random() * 25) + 15, // 15-40 minutos
-        repetitions: Math.floor(Math.random() * 15) + 10, // 10-25 repeticiones
-        errorsCount: Math.floor(Math.random() * 4), // 0-3 errores
-        accuracy: Math.floor(Math.random() * 20) + 75, // 75-95% precisión
-        sessionId: `sample_${i}`,
-        confidence: Math.round((Math.random() * 0.3 + 0.7) * 100) / 100 // 70-100%
-      });
-    }
-  
-    console.log('📊 Historial de ejemplo generado:', sessions.length, 'sesiones');
-    return sessions;
   }
   // MÉTODOS AUXILIARES PARA TOASTS
   private async showSuccessToast(message: string): Promise<void> {
