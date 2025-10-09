@@ -1,264 +1,549 @@
-/* src/app/pages/routine-view/routine-view.page.scss */
-/* CSS SIMPLE Y LIMPIO - GARANTIZA VISIBILIDAD */
+// src/app/pages/routine-view/routine-view.page.scss
+// 🏋️ ROUTINE VIEW ULTRA PREMIUM - ESTILO FINZENAPP
 
-// Variables simples
+// ================================================================================
+// 🌟 VARIABLES PREMIUM
+// ================================================================================
 :root {
-  --background-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  --primary-dark: #0a0e1a;
+  --secondary-dark: #1a1f2e;
+  --card-dark: #1e293b;
+  --accent-blue: #3b82f6;
+  --accent-orange: #ff5722;
+  --accent-purple: #8b5cf6;
+  --accent-green: #10b981;
+  --accent-yellow: #fbbf24;
+  --text-white: #f8fafc;
+  --text-gray: #94a3b8;
+  --text-muted: #64748b;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --shadow-premium: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
+// ================================================================================
+// 🔥 TOOLBAR PREMIUM
+// ================================================================================
+ion-header {
+  ion-toolbar {
+    --background: rgba(26, 31, 46, 0.95) !important;
+    --border-color: transparent;
+    background: rgba(26, 31, 46, 0.95) !important;
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+    
+    ion-title {
+      font-weight: 800;
+      font-size: 1.3rem;
+      letter-spacing: 0.5px;
+      color: white !important;
+    }
+    
+    ion-button {
+      color: rgba(255, 255, 255, 0.8) !important;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        color: var(--accent-orange) !important;
+        transform: scale(1.1);
+      }
+    }
+  }
+}
+
+// ================================================================================
+// 🌌 CONTENIDO PRINCIPAL CON FONDO OSCURO
+// ================================================================================
 ion-content {
-  --background: var(--background-gradient);
+  --background: #0a0e1a !important;
+  background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 100%) !important;
+  
+  &::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 30%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(255, 87, 34, 0.06) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
 }
 
-// Container principal
+// ================================================================================
+// 📱 CONTAINER PRINCIPAL
+// ================================================================================
 .routine-container {
-  padding: 16px;
-  max-width: 600px;
+  position: relative;
+  z-index: 1;
+  padding: 1.5rem 1rem;
+  max-width: 1000px;
   margin: 0 auto;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  @media (max-width: 768px) {
+    padding: 1rem 0.75rem;
+  }
 }
 
-// Loading section
+// ================================================================================
+// ⚠️ WARNING DE CONEXIÓN PREMIUM
+// ================================================================================
+ion-item[color="warning"] {
+  --background: rgba(251, 191, 36, 0.15) !important;
+  --border-color: rgba(251, 191, 36, 0.3);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
+  
+  ion-icon {
+    color: var(--accent-yellow) !important;
+  }
+  
+  ion-label {
+    color: white !important;
+    
+    h3 {
+      color: white !important;
+      font-weight: 700;
+    }
+    
+    p {
+      color: rgba(255, 255, 255, 0.7) !important;
+    }
+  }
+}
+
+// ================================================================================
+// ⏳ LOADING SECTION PREMIUM
+// ================================================================================
 .loading-section {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 4rem 2rem;
   color: white;
   text-align: center;
+  animation: fadeIn 0.6s ease;
   
   ion-spinner {
-    margin-bottom: 16px;
+    --color: var(--accent-orange);
+    margin-bottom: 1.5rem;
+    transform: scale(1.5);
   }
   
   h3 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 500;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: white !important;
   }
 }
 
-// Status Cards
+// ================================================================================
+// 🎴 STATUS CARDS PREMIUM
+// ================================================================================
 .status-card {
-  margin-bottom: 20px;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  background: rgba(30, 30, 46, 0.6);
+  backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  margin-bottom: 2rem;
+  overflow: hidden;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s ease;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(59, 130, 246, 0.3);
+    border-color: var(--accent-blue);
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-orange), var(--accent-purple));
+  }
 
+  ion-card-header {
+    background: linear-gradient(135deg, 
+      rgba(255, 255, 255, 0.08) 0%, 
+      rgba(255, 255, 255, 0.02) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+  }
+
+  ion-card-content {
+    padding: 2rem 1.5rem;
+  }
+  
   .status-icon {
     text-align: center;
-    margin-bottom: 16px;
-
+    margin-bottom: 1.5rem;
+    
     ion-icon {
-      font-size: 64px;
+      font-size: 4rem;
+      color: var(--accent-orange) !important;
+      filter: drop-shadow(0 4px 12px rgba(255, 87, 34, 0.4));
+      animation: pulse 2s ease-in-out infinite;
     }
   }
-
+  
   .status-title {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 1.8rem;
+    font-weight: 800;
     text-align: center;
-    color: var(--ion-text-color);
+    color: white !important;
+    margin-bottom: 0.5rem;
   }
-
+  
   ion-card-subtitle {
     text-align: center;
-    margin-top: 8px;
-    color: var(--ion-color-medium);
+    margin-top: 0.5rem;
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 1rem;
+    line-height: 1.6;
   }
 }
 
-// Routine Details
+// ================================================================================
+// 🏋️ ROUTINE DETAILS CARD PREMIUM
+// ================================================================================
 .routine-details {
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  background: rgba(30, 30, 46, 0.6);
+  backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  margin-bottom: 2rem;
+  overflow: hidden;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+  }
+  
+  ion-card-header {
+    background: linear-gradient(135deg, 
+      rgba(59, 130, 246, 0.1) 0%, 
+      rgba(16, 185, 129, 0.05) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2rem 1.5rem;
+  }
 
+  ion-card-content {
+    padding: 2rem 1.5rem;
+  }
+  
   .routine-name {
-    font-size: 28px;
-    font-weight: 800;
-    color: var(--ion-color-primary);
+    font-size: 2rem;
+    font-weight: 900;
+    color: white !important;
     text-align: center;
+    margin-bottom: 0;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, white, var(--accent-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }
 
-// Stats Container
+// ================================================================================
+// 📊 STATS CONTAINER PREMIUM
+// ================================================================================
 .stats-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin: 24px 0;
-
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin: 2rem 0;
+  
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+  
   .stat-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
-    background: var(--ion-color-light);
-    border-radius: 12px;
-    border: 1px solid var(--ion-color-primary-tint);
-
-    ion-icon {
-      font-size: 24px;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: #1e293b !important;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--accent-orange), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.6s ease;
     }
-
+    
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      border-color: rgba(255, 255, 255, 0.2);
+      
+      &::before {
+        transform: translateX(100%);
+      }
+      
+      ion-icon {
+        transform: scale(1.1);
+      }
+    }
+    
+    ion-icon {
+      font-size: 2rem;
+      color: var(--accent-orange) !important;
+      filter: drop-shadow(0 4px 8px rgba(255, 87, 34, 0.3));
+      transition: transform 0.3s ease;
+    }
+    
     .stat-text {
       display: flex;
       flex-direction: column;
-
+      
       strong {
-        font-size: 18px;
-        font-weight: 700;
-        color: var(--ion-text-color);
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: white !important;
+        letter-spacing: -0.02em;
       }
-
+      
       span {
-        font-size: 12px;
-        color: var(--ion-color-medium);
-        font-weight: 500;
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.6) !important;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
     }
   }
 }
 
-// Muscle Groups Section
+// ================================================================================
+// 💪 MUSCLE SECTION PREMIUM
+// ================================================================================
 .muscle-section {
-  margin: 24px 0;
-
+  margin: 2rem 0;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
+  
   h3 {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--ion-text-color);
-
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white !important;
+    
     ion-icon {
-      font-size: 20px;
+      font-size: 1.5rem;
+      color: var(--accent-purple) !important;
+      filter: drop-shadow(0 4px 8px rgba(139, 92, 246, 0.3));
     }
   }
-
+  
   .muscle-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 0.75rem;
+    
+    ion-chip {
+      --background: rgba(139, 92, 246, 0.15);
+      --color: var(--accent-purple);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 50px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        --background: rgba(139, 92, 246, 0.25);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+      }
+      
+      ion-icon {
+        color: var(--accent-purple) !important;
+      }
+    }
   }
 }
 
-// Button Section
+// ================================================================================
+// 🎯 BUTTON SECTION PREMIUM
+// ================================================================================
 .button-section {
-  margin-top: 32px;
+  margin-top: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-
+  gap: 1rem;
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+  
   ion-button {
     height: 56px;
-    font-weight: 600;
-    --border-radius: 12px;
+    font-weight: 700;
+    font-size: 1rem;
+    --border-radius: 16px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.6s ease;
+    }
+    
+    &:hover::before {
+      left: 100%;
+    }
+    
+    &[color="primary"] {
+      --background: linear-gradient(135deg, var(--accent-orange), #ff8a50);
+      --background-activated: linear-gradient(135deg, #ff8a50, var(--accent-orange));
+      box-shadow: 0 8px 24px rgba(255, 87, 34, 0.4);
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 32px rgba(255, 87, 34, 0.6);
+      }
+    }
+    
+    &[fill="outline"] {
+      --border-width: 2px;
+      --border-color: rgba(255, 255, 255, 0.2);
+      --color: white;
+      backdrop-filter: blur(20px);
+      
+      &:hover {
+        --border-color: var(--accent-blue);
+        --background: rgba(59, 130, 246, 0.1);
+        transform: translateY(-2px);
+      }
+    }
   }
 }
 
-// Preview Section
+// ================================================================================
+// ⚠️ PREVIEW SECTION
+// ================================================================================
 .preview-section {
-  margin: 20px 0;
-  padding: 16px;
-  background: var(--ion-color-light);
-  border-radius: 8px;
-  border-left: 4px solid var(--ion-color-warning);
-
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  background: rgba(251, 191, 36, 0.15);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  border-left: 4px solid var(--accent-yellow);
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+  
   h4 {
-    margin: 0 0 12px 0;
-    color: var(--ion-color-warning-shade);
-    font-weight: 600;
+    margin: 0 0 1rem 0;
+    color: var(--accent-yellow) !important;
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
-
+  
   ion-item {
     --background: transparent;
     --padding-start: 0;
+    --color: rgba(255, 255, 255, 0.8);
   }
 }
 
-// Error Message
+// ================================================================================
+// ❌ ERROR MESSAGE
+// ================================================================================
 .error-message {
-  margin: 16px 0;
-  padding: 16px;
-  background: var(--ion-color-danger-tint);
-  border-radius: 8px;
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  background: rgba(239, 68, 68, 0.15);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
   border-left: 4px solid var(--ion-color-danger);
-
+  animation: shake 0.5s ease;
+  
   h4 {
-    margin: 0 0 8px 0;
-    color: var(--ion-color-danger-shade);
-    font-weight: 600;
+    margin: 0 0 0.75rem 0;
+    color: var(--ion-color-danger) !important;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
-
+  
   p {
     margin: 0;
-    color: var(--ion-color-danger-shade);
+    color: rgba(255, 255, 255, 0.8) !important;
+    line-height: 1.6;
   }
 }
 
-// Connection Status Float
+// ================================================================================
+// 🔗 CONNECTION STATUS FLOAT
+// ================================================================================
 .connection-status {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: 24px;
+  right: 24px;
   z-index: 1000;
-
+  
   ion-chip {
-    --background: rgba(255, 255, 255, 0.9);
-    --color: var(--ion-text-color);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --background: rgba(30, 30, 46, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    --color: white;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+    
+    ion-icon {
+      color: var(--accent-green) !important;
+    }
   }
 }
 
-// Responsive Design
-@media (max-width: 768px) {
-  .routine-container {
-    padding: 12px;
-  }
-
-  .stats-container {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .status-card .status-title {
-    font-size: 20px;
-  }
-
-  .routine-details .routine-name {
-    font-size: 24px;
-  }
-
-  .connection-status {
-    bottom: 16px;
-    right: 16px;
-  }
-}
-
-// Dark Mode Support
-@media (prefers-color-scheme: dark) {
-  .stats-container .stat-item {
-    background: var(--ion-color-dark-shade);
-    border-color: var(--ion-color-primary-shade);
-  }
-
-  .preview-section {
-    background: var(--ion-color-dark-shade);
-  }
-
-  .error-message {
-    background: rgba(var(--ion-color-danger-rgb), 0.2);
-  }
-}
-
-// Animations
-.routine-container {
-  animation: slideInUp 0.4s ease-out;
-}
-
-@keyframes slideInUp {
+// ================================================================================
+// 🎬 ANIMACIONES
+// ================================================================================
+@keyframes fadeInUp {
   from {
     opacity: 0;
     transform: translateY(30px);
@@ -269,30 +554,94 @@ ion-content {
   }
 }
 
-// Ensure all text is visible
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+// ================================================================================
+// 🌙 DARK MODE ENHANCED
+// ================================================================================
+@media (prefers-color-scheme: dark) {
+  .status-card,
+  .routine-details {
+    box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
+  }
+}
+
+// ================================================================================
+// 📱 RESPONSIVE DESIGN
+// ================================================================================
+@media (max-width: 768px) {
+  .routine-container {
+    padding: 1rem 0.75rem;
+  }
+  
+  .stats-container {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .status-card .status-title {
+    font-size: 1.5rem;
+  }
+  
+  .routine-details .routine-name {
+    font-size: 1.5rem;
+  }
+  
+  .connection-status {
+    bottom: 16px;
+    right: 16px;
+  }
+}
+
+// ================================================================================
+// ✅ FORZAR TEXTOS BLANCOS
+// ================================================================================
 ion-card-title,
 ion-card-subtitle,
 ion-label,
 h1, h2, h3, h4, h5, h6,
 p, span, strong {
-  color: var(--ion-text-color) !important;
+  color: white !important;
 }
 
-// Button text visibility
 ion-button:not([fill="outline"]) {
   --color: white !important;
 }
 
 ion-button[fill="outline"] {
-  --color: var(--ion-color-primary) !important;
+  --color: white !important;
 }
 
-// Ensure chip text is visible
-ion-chip[color="primary"] ion-label {
-  color: white !important;
-}
-
-ion-chip[color="success"] ion-label,
-ion-chip[color="warning"] ion-label {
-  color: white !important;
+ion-chip ion-label {
+  color: inherit !important;
 }

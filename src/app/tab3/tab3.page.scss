@@ -5,6 +5,8 @@
 // ================================================================================
 // 🌟 VARIABLES PREMIUM
 // ================================================================================
+// 🚫 OCULTAR EL HEADER BLANCO "MI PERFIL"
+
 :root {
   --primary-dark: #0a0e1a;
   --secondary-dark: #1a1f2e;
@@ -345,29 +347,45 @@ ion-content.profile-content {
     }
   }
   
+  // 🔥 BARRA DE PROGRESO MEJORADA - MÁS ALTA Y MÁS VISIBLE
   .progress-bar {
     width: 100%;
-    height: 12px;
-    background: rgba(255, 255, 255, 0.1);
+    height: 20px; // 🔥 Aumentado de 12px a 20px para mejor visibilidad
+    background: rgba(30, 41, 59, 0.8); // 🔥 Fondo más oscuro y sólido
+    border: 1px solid rgba(255, 255, 255, 0.15); // 🔥 Borde para mejor definición
     border-radius: 50px;
     overflow: hidden;
     position: relative;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    box-shadow: 
+      inset 0 2px 4px rgba(0, 0, 0, 0.3),
+      0 2px 8px rgba(0, 0, 0, 0.2); // 🔥 Sombras mejoradas
     margin-bottom: 0.75rem;
     
     &.ai-bar {
-      border: 1px solid rgba(255, 193, 7, 0.3);
-      box-shadow: 0 0 12px rgba(255, 193, 7, 0.1);
+      border: 1px solid rgba(255, 193, 7, 0.4); // 🔥 Borde más visible
+      box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.3),
+        0 0 16px rgba(255, 193, 7, 0.15); // 🔥 Glow amarillo
     }
     
+    // 🔥 FILL MEJORADO - MÁS BRILLANTE Y VISIBLE
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+      background: linear-gradient(90deg, 
+        var(--accent-blue), 
+        var(--accent-purple),
+        var(--accent-blue)
+      ); // 🔥 Gradiente más vibrante
+      background-size: 200% 100%;
+      animation: gradientShift 3s ease infinite; // 🔥 Animación sutil del gradiente
       border-radius: 50px;
       transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+      box-shadow: 
+        0 0 16px rgba(59, 130, 246, 0.6), // 🔥 Glow azul más fuerte
+        inset 0 1px 2px rgba(255, 255, 255, 0.3); // 🔥 Highlight interno
       position: relative;
       
+      // 🔥 Efecto shimmer más visible
       &::after {
         content: '';
         position: absolute;
@@ -375,28 +393,56 @@ ion-content.profile-content {
         left: 0;
         right: 0;
         bottom: 0;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        background: linear-gradient(
+          90deg, 
+          transparent, 
+          rgba(255, 255, 255, 0.4), // 🔥 Más opaco para mayor visibilidad
+          transparent
+        );
         animation: shimmer 2s infinite;
       }
       
+      // 🔥 Estilos específicos para barra de IA
       &.ai-fill {
-        background: linear-gradient(90deg, var(--profile-warning), var(--profile-secondary));
+        background: linear-gradient(
+          90deg, 
+          var(--profile-warning), 
+          var(--profile-secondary),
+          var(--profile-warning)
+        );
+        background-size: 200% 100%;
+        box-shadow: 
+          0 0 16px rgba(255, 152, 0, 0.6),
+          inset 0 1px 2px rgba(255, 255, 255, 0.3);
         
         &.ready {
-          background: linear-gradient(90deg, var(--profile-success), var(--profile-secondary));
+          background: linear-gradient(
+            90deg, 
+            var(--profile-success), 
+            var(--profile-secondary),
+            var(--profile-success)
+          );
+          background-size: 200% 100%;
+          box-shadow: 
+            0 0 16px rgba(76, 175, 80, 0.6),
+            inset 0 1px 2px rgba(255, 255, 255, 0.3);
         }
       }
     }
   }
   
+  // 🔥 Descripción del progreso mejorada
   .progress-description {
     margin: 0;
     font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.7) !important;
-    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     
     &.ai-description {
       color: rgba(255, 193, 7, 0.9) !important;
+      font-weight: 600;
       
       &.ready {
         color: rgba(76, 175, 80, 0.9) !important;
@@ -404,7 +450,6 @@ ion-content.profile-content {
     }
   }
 }
-
 // ================================================================================
 // 🤖 AI ACTION SECTIONS
 // ================================================================================
@@ -1400,4 +1445,36 @@ ion-item {
   &:hover {
     transform: translateY(-1px);
   }
+  // Animación para el gradiente de la barra
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+// Animación shimmer mejorada
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+// Animación pulse para ícono de IA
+@keyframes pulse-ai {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.2);
+  }
+}
+
 }
