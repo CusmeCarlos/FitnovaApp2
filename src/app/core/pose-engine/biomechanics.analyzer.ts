@@ -74,8 +74,11 @@ export class BiomechanicsAnalyzer {
   // ============================================================================
 
   analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): MovementAnalysis {
+    // ✅ NUEVO: Guardar pose actual para detección de vista
+    this.currentPose = pose;
+
     const isUserCompletelyVisible = this.checkUserCompleteness(pose);
-    
+
     if (!isUserCompletelyVisible) {
       this.resetToNotReady();
       return this.createBasicAnalysis([], RepetitionPhase.IDLE, 0, 0);
@@ -415,15 +418,22 @@ export class BiomechanicsAnalyzer {
 
   private detectProfileSquatErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
     const errors: PostureError[] = [];
-    
+
     const leftVisible = pose.left_knee?.visibility || 0;
     const rightVisible = pose.right_knee?.visibility || 0;
-    const kneeAngle = leftVisible > rightVisible ? 
+    const kneeAngle = leftVisible > rightVisible ?
       (angles.left_knee_angle || 0) : (angles.right_knee_angle || 0);
 
-    // ✅ ESPALDA CURVADA DURANTE EJERCICIO
-      const spineAngle = angles.spine_angle || 85;
-      if (spineAngle < 60 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
+    const hipAngle = leftVisible > rightVisible ?
+      (angles.left_hip_angle || 0) : (angles.right_hip_angle || 0);
+
+    // ✅ MEJORADO: Usar también ángulo de cadera para profundidad
+    const isAtBottom = this.currentPhase === RepetitionPhase.BOTTOM ||
+                       this.currentPhase === RepetitionPhase.DESCENDING;
+
+    // ✅ 1. ESPALDA CURVADA DURANTE EJERCICIO
+    const spineAngle = angles.spine_angle || 85;
+    if (spineAngle < 60 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
       const severity = spineAngle < 50 ? 9 : 6;
       errors.push({
         type: PostureErrorType.ROUNDED_BACK,
@@ -434,24 +444,62 @@ export class BiomechanicsAnalyzer {
         confidence: 0.95,
         timestamp
       });
-      console.log(`🔴 EJERCICIO PERFIL: Espalda curvada ${spineAngle.toFixed(1)}° (CRÍTICO)`);
+      console.log(`🔴 EJERCICIO PERFIL: Espalda curvada ${spineAngle.toFixed(1)}° (severity: ${severity})`);
     }
 
-    // ✅ SENTADILLA POCO PROFUNDA - DETECTAR EN MÁS FASES
-    if (kneeAngle > 95 && 
-        (this.currentPhase === RepetitionPhase.BOTTOM || 
-         this.currentPhase === RepetitionPhase.DESCENDING) &&
+    // ✅ 2. SENTADILLA POCO PROFUNDA - CRITERIO MEJORADO
+    // Usar umbral más estricto: rodilla > 110° en BOTTOM = poco profundo
+    if (kneeAngle > 110 && isAtBottom &&
         this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {
       errors.push({
         type: PostureErrorType.INSUFFICIENT_DEPTH,
-        severity: 5, // AMARILLO
+        severity: 5,
         description: 'No bajas lo suficiente',
-        recommendation: 'Baja más, flexiona más las rodillas',
-        affectedJoints: ['left_knee', 'right_knee'],
-        confidence: 0.8,
+        recommendation: 'Baja más, lleva las caderas hacia atrás',
+        affectedJoints: ['left_knee', 'right_knee', 'left_hip', 'right_hip'],
+        confidence: 0.85,
         timestamp
       });
-      console.log('🟠 EJERCICIO PERFIL: Sentadilla poco profunda');
+      console.log(`🟠 EJERCICIO PERFIL: Sentadilla poco profunda (rodilla: ${kneeAngle.toFixed(1)}°)`);
+    }
+
+    // ✅ 3. NUEVO: INCLINACIÓN HACIA ADELANTE (FORWARD LEAN)
+    // Si la espalda se inclina demasiado hacia adelante (ángulo muy bajo)
+    if (spineAngle < 70 && spineAngle >= 60 && isAtBottom &&
+        this.checkErrorCooldown(PostureErrorType.FORWARD_LEAN, timestamp)) {
+      errors.push({
+        type: PostureErrorType.FORWARD_LEAN,
+        severity: 7,
+        description: 'Te inclinas mucho hacia adelante',
+        recommendation: 'Mantén el pecho más erguido, lleva las caderas atrás',
+        affectedJoints: ['spine', 'left_hip', 'right_hip'],
+        confidence: 0.9,
+        timestamp
+      });
+      console.log(`🟡 EJERCICIO PERFIL: Inclinación hacia adelante (spine: ${spineAngle.toFixed(1)}°)`);
+    }
+
+    // ✅ 4. NUEVO: TALONES LEVANTADOS (si los tobillos están visibles)
+    const leftAnkle = pose.left_ankle;
+    const rightAnkle = pose.right_ankle;
+    const leftHeel = pose.left_heel;
+    const rightHeel = pose.right_heel;
+
+    if (leftAnkle && leftHeel && leftAnkle.visibility > 0.6 && leftHeel.visibility > 0.6) {
+      const heelLift = leftAnkle.y - leftHeel.y;
+      if (heelLift > 0.03 && isAtBottom &&
+          this.checkErrorCooldown(PostureErrorType.HEEL_RISE, timestamp)) {
+        errors.push({
+          type: PostureErrorType.HEEL_RISE,
+          severity: 8,
+          description: 'Levantas los talones del suelo',
+          recommendation: 'CRÍTICO: Mantén los talones pegados al suelo',
+          affectedJoints: ['left_ankle', 'left_heel'],
+          confidence: 0.85,
+          timestamp
+        });
+        console.log(`🔴 EJERCICIO PERFIL: Talones levantados (lift: ${heelLift.toFixed(3)})`);
+      }
     }
 
     return errors;
@@ -596,18 +644,29 @@ export class BiomechanicsAnalyzer {
     const rightShoulder = pose.right_shoulder;
     const leftHip = pose.left_hip;
     const rightHip = pose.right_hip;
-    
+
     if (!leftShoulder || !rightShoulder || !leftHip || !rightHip) {
       return false;
     }
-    
+
+    // ✅ MEJORADO: Detección de perfil más flexible
     const shoulderDistance = Math.abs(leftShoulder.x - rightShoulder.x);
     const hipDistance = Math.abs(leftHip.x - rightHip.x);
     const avgDistance = (shoulderDistance + hipDistance) / 2;
-    const isProfile = avgDistance < 0.10;
-    
+
+    // ✅ Umbral más permisivo: 0.15 en lugar de 0.10
+    const isProfile = avgDistance < 0.15;
+
+    // ✅ DEBUG: Mostrar cuando cambia de vista
+    if (isProfile !== this.wasInProfileView) {
+      console.log(`🔄 CAMBIO DE VISTA: ${isProfile ? 'PERFIL' : 'FRONTAL'} (dist: ${avgDistance.toFixed(3)})`);
+      this.wasInProfileView = isProfile;
+    }
+
     return isProfile;
   }
+
+  private wasInProfileView = false;
 
   private checkStartingPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
     switch (this.currentExercise) {
@@ -621,15 +680,50 @@ export class BiomechanicsAnalyzer {
   private checkSquatStartPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
     const leftKnee = angles.left_knee_angle || 0;
     const rightKnee = angles.right_knee_angle || 0;
-    const avgKneeAngle = (leftKnee + rightKnee) / 2;
 
-    if (avgKneeAngle < 140) return false;
+    // ✅ MEJORADO: Adaptarse a vista de perfil
+    const isProfile = this.detectProfileView(pose);
+    let kneeAngle: number;
 
-    const bothFeetOnGround = this.checkBothFeetOnGround(pose);
-    if (!bothFeetOnGround) return false;
+    if (isProfile) {
+      // ✅ En perfil, usar la rodilla más visible
+      const leftVis = pose.left_knee?.visibility || 0;
+      const rightVis = pose.right_knee?.visibility || 0;
+      kneeAngle = leftVis > rightVis ? leftKnee : rightKnee;
+    } else {
+      // ✅ En frontal, usar promedio
+      kneeAngle = (leftKnee + rightKnee) / 2;
+    }
 
-    const goodFeetSpacing = this.checkFeetSpacing(pose);
-    if (!goodFeetSpacing) return false;
+    // ✅ Verificar que esté de pie (rodillas extendidas)
+    if (kneeAngle < 140) {
+      console.log(`⚠️ Rodillas no extendidas: ${kneeAngle.toFixed(1)}° (necesita > 140°)`);
+      return false;
+    }
+
+    // ✅ En vista frontal, verificar pies
+    if (!isProfile) {
+      const bothFeetOnGround = this.checkBothFeetOnGround(pose);
+      if (!bothFeetOnGround) {
+        console.log(`⚠️ Ambos pies NO en el suelo`);
+        return false;
+      }
+
+      const goodFeetSpacing = this.checkFeetSpacing(pose);
+      if (!goodFeetSpacing) {
+        console.log(`⚠️ Separación de pies incorrecta`);
+        return false;
+      }
+    } else {
+      // ✅ En vista de perfil, solo verificar que el usuario esté de pie
+      const spineAngle = angles.spine_angle || 85;
+
+      // Espalda debe estar razonablemente recta
+      if (spineAngle < 65) {
+        console.log(`⚠️ PERFIL: Espalda muy inclinada: ${spineAngle.toFixed(1)}°`);
+        return false;
+      }
+    }
 
     return true;
   }
@@ -661,25 +755,52 @@ export class BiomechanicsAnalyzer {
   private detectSquatPhase(angles: BiomechanicalAngles): RepetitionPhase {
     const leftKnee = angles.left_knee_angle || 180;
     const rightKnee = angles.right_knee_angle || 180;
-    const avgKneeAngle = (leftKnee + rightKnee) / 2;
 
-    if (avgKneeAngle > 140) {
+    // ✅ MEJORADO: Usar la rodilla más visible en vista de perfil
+    const leftKneeVis = this.currentPose?.left_knee?.visibility || 0;
+    const rightKneeVis = this.currentPose?.right_knee?.visibility || 0;
+
+    let kneeAngle: number;
+
+    if (this.wasInProfileView) {
+      // ✅ En vista de perfil, usar solo la rodilla más visible
+      kneeAngle = leftKneeVis > rightKneeVis ? leftKnee : rightKnee;
+
+      console.log(`📐 PERFIL - Ángulo rodilla: ${kneeAngle.toFixed(1)}° (usando ${leftKneeVis > rightKneeVis ? 'izquierda' : 'derecha'})`);
+    } else {
+      // ✅ En vista frontal, usar promedio
+      kneeAngle = (leftKnee + rightKnee) / 2;
+    }
+
+    // ✅ UMBRALES AJUSTADOS PARA MEJOR DETECCIÓN
+    if (kneeAngle > 145) {
       return RepetitionPhase.TOP;
-    } else if (avgKneeAngle < 110) {
+    } else if (kneeAngle < 100) {
       return RepetitionPhase.BOTTOM;
     } else {
+      // ✅ Detectar dirección del movimiento
       if (this.angleHistory.length >= 2) {
-        const prevLeftKnee = this.angleHistory[this.angleHistory.length - 2].left_knee_angle || 180;
-        const prevRightKnee = this.angleHistory[this.angleHistory.length - 2].right_knee_angle || 180;
-        const prevAvgKnee = (prevLeftKnee + prevRightKnee) / 2;
-        
-        return avgKneeAngle < prevAvgKnee 
-          ? RepetitionPhase.DESCENDING 
-          : RepetitionPhase.ASCENDING;
+        const prevAngles = this.angleHistory[this.angleHistory.length - 2];
+        const prevLeftKnee = prevAngles.left_knee_angle || 180;
+        const prevRightKnee = prevAngles.right_knee_angle || 180;
+
+        let prevKneeAngle: number;
+
+        if (this.wasInProfileView) {
+          prevKneeAngle = leftKneeVis > rightKneeVis ? prevLeftKnee : prevRightKnee;
+        } else {
+          prevKneeAngle = (prevLeftKnee + prevRightKnee) / 2;
+        }
+
+        const isDescending = kneeAngle < prevKneeAngle;
+
+        return isDescending ? RepetitionPhase.DESCENDING : RepetitionPhase.ASCENDING;
       }
       return RepetitionPhase.DESCENDING;
     }
   }
+
+  private currentPose: PoseKeypoints | null = null;
 
   private getMostCommonPhase(): RepetitionPhase {
     if (this.phaseHistory.length === 0) return RepetitionPhase.IDLE;
