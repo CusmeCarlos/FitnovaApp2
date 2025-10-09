@@ -37,6 +37,7 @@ export class BiomechanicsAnalyzer {
   private readonly MAX_BAD_FRAMES = 20; // Más tolerante
   private movementDetected = false;
   private lastAngleSnapshot: BiomechanicalAngles | null = null;
+  private hasStartedExercising = false; // ✅ CRÍTICO: Indica que ya empezó el ejercicio
   
   // ✅ Control de errores reales
   private exerciseFramesCount = 0;
@@ -76,8 +77,9 @@ export class BiomechanicsAnalyzer {
 
   analyzeMovement(pose: PoseKeypoints, angles: BiomechanicalAngles): MovementAnalysis {
     const isUserCompletelyVisible = this.checkUserCompleteness(pose);
-    
-    if (!isUserCompletelyVisible) {
+
+    // 🔥 CRÍTICO: SI YA ESTÁ EJERCITANDO, NO RESETEAR POR VISIBILIDAD TEMPORAL
+    if (!isUserCompletelyVisible && this.readinessState !== ReadinessState.EXERCISING) {
       this.resetToNotReady();
       return this.createBasicAnalysis([], RepetitionPhase.IDLE, 0, 0);
     }
@@ -96,11 +98,9 @@ export class BiomechanicsAnalyzer {
   // ============================================================================
 
   private updateReadinessState(pose: PoseKeypoints, angles: BiomechanicalAngles): void {
-    const isInCorrectStartPosition = this.checkStartingPosition(pose, angles);
-    const hasMovement = this.detectMovement(angles);
-
     switch (this.readinessState) {
-      case ReadinessState.NOT_READY:
+      case ReadinessState.NOT_READY: {
+        const isInCorrectStartPosition = this.checkStartingPosition(pose, angles);
         if (isInCorrectStartPosition) {
           this.readinessState = ReadinessState.GETTING_READY;
           this.readyFramesCount = 1;
@@ -108,20 +108,21 @@ export class BiomechanicsAnalyzer {
           console.log('🔄 Usuario se está preparando...');
         }
         break;
+      }
 
-      case ReadinessState.GETTING_READY:
+      case ReadinessState.GETTING_READY: {
+        const isInCorrectStartPosition = this.checkStartingPosition(pose, angles);
         if (isInCorrectStartPosition) {
           this.readyFramesCount++;
-          this.badFramesBuffer = 0; // ✅ Resetear buffer de frames malos
-          
+          this.badFramesBuffer = 0;
+
           if (this.readyFramesCount >= this.FRAMES_TO_CONFIRM_READY) {
             this.readinessState = ReadinessState.READY_TO_START;
             console.log('✅ Usuario LISTO para empezar ejercicio');
           }
         } else {
-          // ✅ NUEVO: Tolerar frames malos antes de resetear
           this.badFramesBuffer++;
-          
+
           if (this.badFramesBuffer > this.MAX_BAD_FRAMES) {
             console.log(`⚠️ Demasiados frames malos (${this.badFramesBuffer}), reseteando`);
             this.readinessState = ReadinessState.NOT_READY;
@@ -130,47 +131,54 @@ export class BiomechanicsAnalyzer {
           }
         }
         break;
+      }
 
-      case ReadinessState.READY_TO_START:
+      case ReadinessState.READY_TO_START: {
+        const hasMovement = this.detectMovement(angles);
         if (hasMovement) {
           this.readinessState = ReadinessState.EXERCISING;
           this.exerciseFramesCount = 0;
           this.movementDetected = true;
-          console.log('🏃 Usuario comenzó a ejercitarse');
-        } else if (!isInCorrectStartPosition) {
-          this.badFramesBuffer++;
-          if (this.badFramesBuffer > this.MAX_BAD_FRAMES) {
-            this.readinessState = ReadinessState.NOT_READY;
-            this.readyFramesCount = 0;
-            this.badFramesBuffer = 0;
+          this.hasStartedExercising = true;
+          console.log('🏃 Usuario comenzó a ejercitarse - BLOQUEADO EN EXERCISING');
+        } else {
+          const isInCorrectStartPosition = this.checkStartingPosition(pose, angles);
+          if (!isInCorrectStartPosition) {
+            this.badFramesBuffer++;
+            if (this.badFramesBuffer > this.MAX_BAD_FRAMES) {
+              this.readinessState = ReadinessState.NOT_READY;
+              this.readyFramesCount = 0;
+              this.badFramesBuffer = 0;
+            }
           }
         }
         break;
+      }
 
-      case ReadinessState.EXERCISING:
-        // ✅ NUEVO: Verificar si está en rango de ejercicio (no necesariamente en posición inicial perfecta)
+      case ReadinessState.EXERCISING: {
+        // 🔥 CRÍTICO: Durante EXERCISING, SOLO verificar rango de ejercicio
         const isInExerciseRange = this.checkIfInExerciseRange(pose, angles);
 
-        if (isInCorrectStartPosition || hasMovement || isInExerciseRange) {
-          // Usuario sigue haciendo ejercicio
+        if (isInExerciseRange) {
+          // ✅ Usuario está en rango válido de ejercicio
           this.outOfPositionFrames = 0;
           this.exerciseFramesCount++;
         } else {
-          // Usuario puede estar fuera de rango
+          // ❌ Usuario fuera del rango de ejercicio
           this.outOfPositionFrames++;
 
           if (this.outOfPositionFrames >= this.MAX_OUT_OF_POSITION_FRAMES) {
-            console.log(`⚠️ Usuario fuera de posición por mucho tiempo (${this.outOfPositionFrames} frames)`);
+            console.log(`⚠️ FINALIZANDO EJERCICIO - ${this.outOfPositionFrames} frames fuera de rango`);
             this.readinessState = ReadinessState.NOT_READY;
             this.exerciseFramesCount = 0;
             this.outOfPositionFrames = 0;
             this.badFramesBuffer = 0;
-            this.repetitionCounter = 0; // Resetear repeticiones
-          } else if (this.outOfPositionFrames % 30 === 0) {
-            console.log(`⏸️ Frames fuera de posición: ${this.outOfPositionFrames}/${this.MAX_OUT_OF_POSITION_FRAMES}`);
+            this.repetitionCounter = 0;
+            this.hasStartedExercising = false;
           }
         }
         break;
+      }
     }
   }
 
@@ -186,24 +194,26 @@ export class BiomechanicsAnalyzer {
       'left_ankle', 'right_ankle'
     ];
 
+    // 🔥 CRÍTICO: Si ya está ejercitando, ser MÁS PERMISIVO
+    const isExercising = this.readinessState === ReadinessState.EXERCISING;
+    const visibilityThreshold = isExercising ? 0.5 : 0.7; // Más permisivo durante ejercicio
+    const completenessThreshold = isExercising ? 0.6 : 0.8; // Más permisivo durante ejercicio
+
     const visibleJoints = requiredJoints.filter(joint => {
       const point = pose[joint as keyof PoseKeypoints];
-      return point && point.visibility > 0.7;
+      return point && point.visibility > visibilityThreshold;
     });
 
     const completenessRatio = visibleJoints.length / requiredJoints.length;
-    return completenessRatio >= 0.8;
+    return completenessRatio >= completenessThreshold;
   }
 
   // ✅ NUEVO: Verificar si está dentro del rango válido de ejercicio
   private checkIfInExerciseRange(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
     const isProfileView = this.detectProfileView(pose);
-
-    if (isProfileView) {
-      return this.checkProfileExerciseRange(pose, angles);
-    } else {
-      return this.checkFrontalExerciseRange(pose, angles);
-    }
+    return isProfileView ?
+      this.checkProfileExerciseRange(pose, angles) :
+      this.checkFrontalExerciseRange(pose, angles);
   }
 
   // ✅ Rango válido para ejercicio en PERFIL
@@ -213,37 +223,59 @@ export class BiomechanicsAnalyzer {
     const leftVisible = pose.left_knee?.visibility || 0;
     const rightVisible = pose.right_knee?.visibility || 0;
 
-    const kneeAngle = leftVisible > rightVisible ? leftKnee : rightKnee;
+    // 🔥 SI NO HAY RODILLAS VISIBLES, PERO HAY CADERAS Y TOBILLOS, ASUMIR QUE ESTÁ EN RANGO
+    if (leftKnee === 0 && rightKnee === 0) {
+      const hasHips = (pose.left_hip?.visibility || 0) > 0.5 || (pose.right_hip?.visibility || 0) > 0.5;
+      const hasAnkles = (pose.left_ankle?.visibility || 0) > 0.5 || (pose.right_ankle?.visibility || 0) > 0.5;
 
-    // ✅ Rango válido: desde 60° (sentadilla profunda) hasta 170° (casi de pie)
-    const isInRange = kneeAngle >= 60 && kneeAngle <= 170;
-
-    // ✅ Verificar visibilidad mínima
-    const hasVisibility = leftVisible > 0.5 || rightVisible > 0.5;
-
-    const result = isInRange && hasVisibility;
-
-    // Debug cada 30 frames
-    if (this.exerciseFramesCount % 30 === 0) {
-      console.log(`💪 PERFIL Rango Ejercicio: rodilla=${kneeAngle.toFixed(1)}°, visible=${hasVisibility}, inRange=${isInRange}`);
+      if (hasHips && hasAnkles) {
+        console.log(`⚠️ PERFIL: Ángulos=0 pero caderas/tobillos visibles → ASUMIENDO EN RANGO`);
+        return true; // Está en sentadilla profunda, MediaPipe no calcula bien el ángulo
+      }
     }
 
-    return result;
+    const kneeAngle = leftVisible > rightVisible ? leftKnee : rightKnee;
+
+    // 🔥 SI EL ÁNGULO ES 0 O INVÁLIDO PERO HAY VISIBILIDAD, ASUMIR EN RANGO
+    if (kneeAngle === 0 && (leftVisible > 0.3 || rightVisible > 0.3)) {
+      console.log(`⚠️ PERFIL: Ángulo=0 pero rodilla visible → ASUMIENDO EN RANGO`);
+      return true;
+    }
+
+    // ✅ Rango válido MÁS AMPLIO
+    const isInRange = kneeAngle >= 20 && kneeAngle <= 180; // Aún más amplio
+
+    // ✅ Verificar visibilidad mínima (más permisivo)
+    const hasVisibility = leftVisible > 0.3 || rightVisible > 0.3;
+
+    return isInRange && hasVisibility;
   }
 
   // ✅ Rango válido para ejercicio en FRONTAL
   private checkFrontalExerciseRange(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
     const leftKnee = angles.left_knee_angle || 0;
     const rightKnee = angles.right_knee_angle || 0;
+
+    // 🔥 SI AMBOS ÁNGULOS SON 0, VERIFICAR CADERAS/TOBILLOS
+    if (leftKnee === 0 && rightKnee === 0) {
+      const hasHips = (pose.left_hip?.visibility || 0) > 0.5 && (pose.right_hip?.visibility || 0) > 0.5;
+      const hasAnkles = (pose.left_ankle?.visibility || 0) > 0.5 && (pose.right_ankle?.visibility || 0) > 0.5;
+
+      if (hasHips && hasAnkles) {
+        console.log(`⚠️ FRONTAL: Ángulos=0 pero caderas/tobillos visibles → ASUMIENDO EN RANGO`);
+        return true;
+      }
+    }
+
     const avgKneeAngle = (leftKnee + rightKnee) / 2;
 
-    // ✅ Rango válido: desde 60° (sentadilla profunda) hasta 170° (casi de pie)
-    const isInRange = avgKneeAngle >= 60 && avgKneeAngle <= 170;
+    // ✅ Rango válido MÁS AMPLIO
+    const isInRange = avgKneeAngle >= 20 && avgKneeAngle <= 180;
 
-    // ✅ Verificar visibilidad de ambas rodillas
+    // ✅ Verificar visibilidad (más permisivo)
     const leftVisible = pose.left_knee?.visibility || 0;
     const rightVisible = pose.right_knee?.visibility || 0;
-    const hasVisibility = leftVisible > 0.5 && rightVisible > 0.5;
+    const hasVisibility = leftVisible > 0.3 || rightVisible > 0.3;
 
     return isInRange && hasVisibility;
   }
@@ -500,21 +532,20 @@ export class BiomechanicsAnalyzer {
       console.log(`🔴 EJERCICIO PERFIL: Espalda curvada ${spineAngle.toFixed(1)}° (CRÍTICO)`);
     }
 
-    // ✅ SENTADILLA POCO PROFUNDA - DETECTAR EN MÁS FASES
-    if (kneeAngle > 95 && 
-        (this.currentPhase === RepetitionPhase.BOTTOM || 
-         this.currentPhase === RepetitionPhase.DESCENDING) &&
+    // ✅ SENTADILLA POCO PROFUNDA - SOLO SI ES MUY EVIDENTE
+    if (kneeAngle > 120 &&
+        this.currentPhase === RepetitionPhase.BOTTOM &&
         this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {
       errors.push({
         type: PostureErrorType.INSUFFICIENT_DEPTH,
-        severity: 5, // AMARILLO
-        description: 'No bajas lo suficiente',
-        recommendation: 'Baja más, flexiona más las rodillas',
+        severity: 4, // AMARILLO más suave
+        description: 'Intenta bajar un poco más',
+        recommendation: 'Baja más si puedes, flexiona más las rodillas',
         affectedJoints: ['left_knee', 'right_knee'],
-        confidence: 0.8,
+        confidence: 0.7,
         timestamp
       });
-      console.log('🟠 EJERCICIO PERFIL: Sentadilla poco profunda');
+      console.log('🟡 EJERCICIO PERFIL: Sentadilla poco profunda');
     }
 
     return errors;
@@ -863,10 +894,11 @@ export class BiomechanicsAnalyzer {
     const avgKneeAngle = leftVisible >= rightVisible ?
       leftKnee : rightKnee;
 
-    // ✅ UMBRALES AJUSTADOS PARA MEJOR DETECCIÓN
-    if (avgKneeAngle > 150) {
+    // ✅ UMBRALES MEJORADOS: TOP más alto, BOTTOM más bajo para sentadillas profundas
+    if (avgKneeAngle > 145) {
       return RepetitionPhase.TOP;
-    } else if (avgKneeAngle < 100) {
+    } else if (avgKneeAngle < 110) {
+      // ✅ 110° permite sentadillas profundas (hasta 30°)
       return RepetitionPhase.BOTTOM;
     } else {
       if (this.angleHistory.length >= 2) {
@@ -978,6 +1010,8 @@ export class BiomechanicsAnalyzer {
       this.outOfPositionFrames = 0;
       this.readyFramesCount = 0;
       this.badFramesBuffer = 0;
+      this.hasStartedExercising = false; // ✅ RESETEAR FLAG
+      this.repetitionCounter = 0; // ✅ RESETEAR REPETICIONES
     }
   }
 
@@ -1034,6 +1068,7 @@ export class BiomechanicsAnalyzer {
     this.exerciseFramesCount = 0;
     this.outOfPositionFrames = 0;
     this.wasReady = false;
+    this.hasStartedExercising = false; // ✅ RESETEAR FLAG
     console.log('🔄 Análisis reseteado');
   }
 
