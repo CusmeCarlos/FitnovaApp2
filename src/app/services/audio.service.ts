@@ -1,7 +1,9 @@
 // src/app/services/audio.service.ts
-// ✅ VERSIÓN CORREGIDA - MANEJO DE ERRORES Y TIMEOUT
+// ✅ VERSIÓN NATIVA - COMPATIBLE CON ANDROID Y NAVEGADOR
 
 import { Injectable } from '@angular/core';
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
+import { Capacitor } from '@capacitor/core';
 
 export interface AudioMessage {
   text: string;
@@ -18,13 +20,14 @@ export class AudioService {
   private messageQueue: AudioMessage[] = [];
   private lastAudioTime = 0;
   private lastReadinessTime = 0;
+  private isNativePlatform = false;
   private currentUtterance: SpeechSynthesisUtterance | null = null;
-  private currentTimeoutId: any = null; // ✅ NUEVO: Para limpiar timeout
-  
+  private currentTimeoutId: any = null;
+
   // ⏰ COOLDOWNS
   private readonly AUDIO_COOLDOWN = 2500;
   private readonly READINESS_COOLDOWN = 4000;
-  private readonly AUDIO_TIMEOUT = 5000; // ✅ NUEVO: 5 segundos máximo
+  private readonly AUDIO_TIMEOUT = 5000;
 
   // 🎚️ CONFIGURACIONES
   private audioConfig = {
@@ -35,25 +38,34 @@ export class AudioService {
   };
 
   constructor() {
-    console.log('🎤 AudioService inicializado - VERSIÓN CORREGIDA');
+    this.isNativePlatform = Capacitor.isNativePlatform();
+    console.log('🎤 AudioService inicializado - MODO:', this.isNativePlatform ? 'NATIVO' : 'WEB');
     this.initializeAudio();
   }
 
-  private initializeAudio(): void {
+  private async initializeAudio(): Promise<void> {
     try {
-      if (!window.speechSynthesis) {
-        console.warn('⚠️ SpeechSynthesis no disponible');
-        this.isEnabled = false;
-        return;
-      }
+      if (this.isNativePlatform) {
+        // Verificar disponibilidad del plugin nativo
+        const available = await TextToSpeech.isLanguageSupported({ lang: this.audioConfig.language });
+        console.log('✅ Text-to-Speech nativo disponible:', available.supported);
+        this.isEnabled = available.supported;
+      } else {
+        // Modo navegador (desarrollo)
+        if (!window.speechSynthesis) {
+          console.warn('⚠️ SpeechSynthesis no disponible');
+          this.isEnabled = false;
+          return;
+        }
 
-      if (window.speechSynthesis.getVoices().length === 0) {
-        window.speechSynthesis.onvoiceschanged = () => {
-          console.log('✅ Voces cargadas:', window.speechSynthesis.getVoices().length);
-        };
-      }
+        if (window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = () => {
+            console.log('✅ Voces cargadas:', window.speechSynthesis.getVoices().length);
+          };
+        }
 
-      console.log('✅ AudioService configurado correctamente');
+        console.log('✅ AudioService configurado correctamente (modo web)');
+      }
     } catch (error) {
       console.error('❌ Error inicializando audio:', error);
       this.isEnabled = false;
@@ -96,16 +108,57 @@ export class AudioService {
     this.updateLastAudioTime(category);
   }
 
-  // ✅ NUEVO: Método con manejo completo de errores y timeout
+  // ✅ MÉTODO PRINCIPAL: Usa plugin nativo o Web API según plataforma
   private async speakMessage(message: AudioMessage): Promise<void> {
-    if (!this.isEnabled || !window.speechSynthesis) {
+    if (!this.isEnabled) {
+      this.resetSpeakingState();
+      return;
+    }
+
+    this.isSpeaking = true;
+
+    if (this.isNativePlatform) {
+      // ========== MODO NATIVO (Android/iOS) ==========
+      await this.speakNative(message);
+    } else {
+      // ========== MODO WEB (Navegador) ==========
+      await this.speakWeb(message);
+    }
+  }
+
+  // 📱 MODO NATIVO: Usa plugin de Capacitor
+  private async speakNative(message: AudioMessage): Promise<void> {
+    try {
+      console.log('🎤 Audio nativo iniciado:', message.text.substring(0, 30));
+
+      await TextToSpeech.speak({
+        text: message.text,
+        lang: this.audioConfig.language,
+        rate: this.audioConfig.rate,
+        pitch: this.audioConfig.pitch,
+        volume: this.audioConfig.volume,
+        category: 'ambient'
+      });
+
+      console.log('✅ Audio nativo completado');
+      this.resetSpeakingState();
+      this.processQueue();
+
+    } catch (error) {
+      console.error('❌ Error en audio nativo:', error);
+      this.resetSpeakingState();
+      this.processQueue();
+    }
+  }
+
+  // 🌐 MODO WEB: Usa Web Speech API
+  private async speakWeb(message: AudioMessage): Promise<void> {
+    if (!window.speechSynthesis) {
       this.resetSpeakingState();
       return;
     }
 
     return new Promise((resolve) => {
-      this.isSpeaking = true;
-      
       const utterance = new SpeechSynthesisUtterance(message.text);
       utterance.rate = this.audioConfig.rate;
       utterance.pitch = this.audioConfig.pitch;
@@ -122,7 +175,7 @@ export class AudioService {
 
       // ✅ EVENTO: Audio terminó correctamente
       utterance.onend = () => {
-        console.log('✅ Audio completado:', message.text.substring(0, 30));
+        console.log('✅ Audio web completado:', message.text.substring(0, 30));
         this.clearCurrentTimeout();
         this.resetSpeakingState();
         this.processQueue();
@@ -131,7 +184,7 @@ export class AudioService {
 
       // ✅ EVENTO: Error en audio
       utterance.onerror = (event) => {
-        console.error('❌ Error en audio:', event.error, message.text.substring(0, 30));
+        console.error('❌ Error en audio web:', event.error, message.text.substring(0, 30));
         this.clearCurrentTimeout();
         this.resetSpeakingState();
         this.processQueue();
@@ -140,21 +193,11 @@ export class AudioService {
 
       // ✅ EVENTO: Audio iniciado
       utterance.onstart = () => {
-        console.log('🎤 Audio iniciado:', message.text.substring(0, 30));
-      };
-
-      // ✅ EVENTO: Audio pausado
-      utterance.onpause = () => {
-        console.log('⏸️ Audio pausado');
-      };
-
-      // ✅ EVENTO: Audio resumido
-      utterance.onresume = () => {
-        console.log('▶️ Audio resumido');
+        console.log('🎤 Audio web iniciado:', message.text.substring(0, 30));
       };
 
       this.currentUtterance = utterance;
-      
+
       try {
         window.speechSynthesis.speak(utterance);
       } catch (error) {
@@ -181,14 +224,18 @@ export class AudioService {
   }
 
   // ⏸️ DETENER AUDIO ACTUAL
-  stopCurrentAudio(): void {
+  async stopCurrentAudio(): Promise<void> {
     try {
       this.clearCurrentTimeout();
-      
-      if (window.speechSynthesis) {
+
+      if (this.isNativePlatform) {
+        // Detener audio nativo
+        await TextToSpeech.stop();
+      } else if (window.speechSynthesis) {
+        // Detener audio web
         window.speechSynthesis.cancel();
       }
-      
+
       this.resetSpeakingState();
       console.log('🛑 Audio detenido');
     } catch (error) {
@@ -230,10 +277,10 @@ export class AudioService {
   }
 
   // 🎚️ MÉTODOS DE CONFIGURACIÓN Y ESTADO
-  setEnabled(enabled: boolean): void {
+  async setEnabled(enabled: boolean): Promise<void> {
     this.isEnabled = enabled;
     if (!enabled) {
-      this.stopCurrentAudio();
+      await this.stopCurrentAudio();
       this.messageQueue = [];
     }
     console.log('🎤 Audio', enabled ? 'ACTIVADO' : 'DESACTIVADO');
@@ -273,9 +320,9 @@ export class AudioService {
   }
 
   // 🧹 LIMPIEZA
-  cleanup(): void {
+  async cleanup(): Promise<void> {
     this.clearCurrentTimeout();
-    this.stopCurrentAudio();
+    await this.stopCurrentAudio();
     this.messageQueue = [];
     this.resetSpeakingState();
     console.log('🧹 AudioService limpiado');
