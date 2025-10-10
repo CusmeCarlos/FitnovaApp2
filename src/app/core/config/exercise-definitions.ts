@@ -6,7 +6,7 @@ import {
   ExerciseType,
   PostureErrorType,
   PostureErrorRule,
-  AdvancedAngleThreshold
+  AdvanceAngleThreshold,
 } from '../../shared/models/pose.models';
 
 // 🔬 UMBRALES BIOMECÁNICOS CIENTÍFICOS

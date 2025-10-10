@@ -865,19 +865,26 @@ export class BiomechanicsAnalyzer {
     const errors: PostureError[] = [];
     const spineAngle = angles.spine_angle || 85;
 
-    // ✅ ERROR CRÍTICO: ESPALDA BAJA REDONDEADA (severity 9)
-    if (spineAngle < 82 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
-      const severity = spineAngle < 70 ? 9 : 8;
-      errors.push({
-        type: PostureErrorType.ROUNDED_BACK,
-        severity: severity,
-        description: 'Espalda baja redondeada',
-        recommendation: 'Mantén espalda recta, reduce peso si es necesario',
-        affectedJoints: ['spine'],
-        confidence: 0.9,
-        timestamp
-      });
-      console.log(`🔴 REMO PERFIL: Espalda redondeada ${spineAngle.toFixed(1)}°`);
+    // Log para depuración del ángulo de espalda
+    console.log(`ℹ️ REMO PERFIL: spine_angle = ${spineAngle.toFixed(1)}°`);
+    // Solo mostrar error si la cadera está flexionada (120°-175°) y la espalda realmente curvada
+    const leftHip = angles.left_hip_angle || 180;
+    const rightHip = angles.right_hip_angle || 180;
+    const avgHipAngle = (leftHip + rightHip) / 2;
+    if (avgHipAngle > 120 && avgHipAngle <= 175) {
+      // Solo mostrar el error si la espalda está MUY curvada (menos de 20°)
+      if (spineAngle < 20 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
+        errors.push({
+          type: PostureErrorType.ROUNDED_BACK,
+          severity: 9,
+          description: 'Espalda baja redondeada',
+          recommendation: 'Mantén espalda recta, reduce peso si es necesario',
+          affectedJoints: ['spine'],
+          confidence: 0.9,
+          timestamp
+        });
+        console.log(`🔴 REMO PERFIL: Espalda redondeada ${spineAngle.toFixed(1)}°`);
+      }
     }
 
     // ✅ ERROR: DEMASIADO BALANCEO DEL TORSO (severity 7)
@@ -934,7 +941,12 @@ export class BiomechanicsAnalyzer {
 
   private detectFrontalBarbellRowErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
     const errors: PostureError[] = [];
-
+    // Alerta si el torso no está suficientemente inclinado (cadera muy extendida)
+    const leftHip = angles.left_hip_angle || 180;
+    const rightHip = angles.right_hip_angle || 180;
+    const avgHipAngle = (leftHip + rightHip) / 2;
+    // ...existing code...
+  
     // ✅ ERROR: CODOS MUY ABIERTOS DEL CUERPO (severity 6)
     const leftShoulder = pose.left_shoulder;
     const rightShoulder = pose.right_shoulder;
@@ -1292,7 +1304,8 @@ export class BiomechanicsAnalyzer {
     const rightHip = angles.right_hip_angle || 0;
     const avgHipAngle = (leftHip + rightHip) / 2;
 
-    const hipThreshold = isExercising ? 140 : 160;
+    // Más permisivo en perfil
+    const hipThreshold = isProfileView ? (isExercising ? 120 : 135) : (isExercising ? 140 : 160);
 
     if (avgHipAngle < hipThreshold) {
       if (!isExercising) {
@@ -1303,7 +1316,8 @@ export class BiomechanicsAnalyzer {
 
     // Verificar espalda razonablemente recta
     const spineAngle = angles.spine_angle || 85;
-    const spineThreshold = isExercising ? 50 : 60;
+    // Más permisivo en perfil
+    const spineThreshold = isProfileView ? (isExercising ? 35 : 45) : (isExercising ? 50 : 60);
 
     if (spineAngle < spineThreshold) {
       if (!isExercising) {
@@ -1354,6 +1368,7 @@ export class BiomechanicsAnalyzer {
   // 🚣 VERIFICACIÓN POSICIÓN INICIAL - REMO CON BARRA
   // ============================================================================
   private checkBarbellRowStartPosition(pose: PoseKeypoints, angles: BiomechanicalAngles): boolean {
+    const isProfileView = this.detectProfileView(pose);
     const isExercising = this.readinessState === ReadinessState.EXERCISING;
 
     // En remo, posición inicial es inclinado hacia adelante con brazos extendidos
@@ -1361,44 +1376,51 @@ export class BiomechanicsAnalyzer {
     const rightElbow = angles.right_elbow_angle || 0;
     const avgElbowAngle = (leftElbow + rightElbow) / 2;
 
-    // Brazos deben estar extendidos (ángulo alto)
-    const elbowThreshold = isExercising ? 120 : 140;
-
-    if (avgElbowAngle < elbowThreshold) {
-      if (!isExercising) {
-        console.log(`🔴 REMO: Codos no extendidos (${avgElbowAngle.toFixed(1)}°)`);
-      }
-      return false;
-    }
-
-    // Verificar que el torso esté inclinado (cadera flexionada)
     const leftHip = angles.left_hip_angle || 180;
     const rightHip = angles.right_hip_angle || 180;
     const avgHipAngle = (leftHip + rightHip) / 2;
-
-    // Cadera debe estar flexionada (ángulo menor que 140°)
-    if (avgHipAngle > 160) {
-      if (!isExercising) {
-        console.log(`🔴 REMO: Torso no inclinado (${avgHipAngle.toFixed(1)}°)`);
-      }
-      return false;
-    }
-
-    // Verificar espalda recta
     const spineAngle = angles.spine_angle || 85;
-    const spineThreshold = isExercising ? 50 : 60;
 
-    if (spineAngle < spineThreshold) {
-      if (!isExercising) {
-        console.log(`🔴 REMO: Espalda muy curvada (${spineAngle.toFixed(1)}°)`);
+    if (this.detectProfileView(pose)) {
+      // PERFIL: permitir torso inclinado y codos extendidos
+      if (avgHipAngle > 100 && avgHipAngle < 160 && avgElbowAngle > 120) {
+        if (!isExercising) {
+          console.log(`✅ REMO PERFIL: Posición inicial correcta (cadera: ${avgHipAngle.toFixed(1)}°, codos: ${avgElbowAngle.toFixed(1)}°)`);
+        }
+        return true;
+      } else {
+        if (!isExercising) {
+          console.log(`🔴 REMO PERFIL: Cadera no flexionada o codos no extendidos (cadera: ${avgHipAngle.toFixed(1)}°, codos: ${avgElbowAngle.toFixed(1)}°)`);
+        }
+        return false;
       }
-      return false;
+    } else {
+      // FRONTAL: lógica original restaurada
+      const elbowThreshold = isExercising ? 120 : 140;
+      if (avgElbowAngle < elbowThreshold) {
+        if (!isExercising) {
+          console.log(`🔴 REMO FRONTAL: Codos no extendidos (${avgElbowAngle.toFixed(1)}°)`);
+        }
+        return false;
+      }
+      if (avgHipAngle > 160) {
+        if (!isExercising) {
+          console.log(`🔴 REMO FRONTAL: Torso no inclinado (${avgHipAngle.toFixed(1)}°)`);
+        }
+        return false;
+      }
+      const spineThreshold = isExercising ? 50 : 60;
+      if (spineAngle < spineThreshold) {
+        if (!isExercising) {
+          console.log(`🔴 REMO FRONTAL: Espalda muy curvada (${spineAngle.toFixed(1)}°)`);
+        }
+        return false;
+      }
+      if (!isExercising) {
+        console.log(`✅ REMO FRONTAL: Posición inicial correcta (codos: ${avgElbowAngle.toFixed(1)}°, cadera: ${avgHipAngle.toFixed(1)}°)`);
+      }
+      return true;
     }
-
-    if (!isExercising) {
-      console.log(`✅ REMO: Posición inicial correcta (codos: ${avgElbowAngle.toFixed(1)}°, cadera: ${avgHipAngle.toFixed(1)}°)`);
-    }
-    return true;
   }
 
   private detectMovement(angles: BiomechanicalAngles): boolean {
