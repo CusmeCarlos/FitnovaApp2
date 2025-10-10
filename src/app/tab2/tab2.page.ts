@@ -42,32 +42,32 @@ export class Tab2Page implements OnInit, OnDestroy {
 
   // EJERCICIOS DISPONIBLES
   availableExercises = [
-    { 
-      type: ExerciseType.SQUATS, 
-      name: 'Sentadillas', 
+    {
+      type: ExerciseType.SQUATS,
+      name: 'Sentadillas',
       icon: 'fitness-outline',
       description: 'Ejercicio fundamental para piernas y glúteos',
-      difficulty: 'Principiante'
-    },
-    { 
-      type: ExerciseType.PUSHUPS, 
-      name: 'Flexiones', 
-      icon: 'body-outline',
-      description: 'Fortalecimiento del tren superior',
       difficulty: 'Intermedio'
     },
-    { 
-      type: ExerciseType.PLANK, 
-      name: 'Plancha', 
-      icon: 'remove-outline',
-      description: 'Ejercicio isométrico para el core',
-      difficulty: 'Principiante'
+    {
+      type: ExerciseType.DEADLIFTS,
+      name: 'Peso Muerto Libre',
+      icon: 'barbell-outline',
+      description: 'Ejercicio rey para fuerza total del cuerpo',
+      difficulty: 'Avanzado'
     },
-    { 
-      type: ExerciseType.LUNGES, 
-      name: 'Estocadas', 
+    {
+      type: ExerciseType.LUNGES,
+      name: 'Zancadas',
       icon: 'walk-outline',
-      description: 'Trabajo unilateral de piernas',
+      description: 'Trabajo unilateral de piernas y equilibrio',
+      difficulty: 'Intermedio'
+    },
+    {
+      type: ExerciseType.BARBELL_ROW,
+      name: 'Remo con Barra',
+      icon: 'trending-up-outline',
+      description: 'Desarrollo de espalda media y grosor',
       difficulty: 'Intermedio'
     }
   ];

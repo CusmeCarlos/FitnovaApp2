@@ -87,17 +87,28 @@ export enum PostureErrorType {
   INSUFFICIENT_DEPTH = 'INSUFFICIENT_DEPTH',
   HEEL_RISE = 'HEEL_RISE',
   FORWARD_LEAN = 'FORWARD_LEAN',
-  
+
   // Errores de flexiones
   DROPPED_HIPS = 'DROPPED_HIPS',
   HIGH_HIPS = 'HIGH_HIPS',
   EXCESSIVE_ELBOW_FLARE = 'EXCESSIVE_ELBOW_FLARE',
   HEAD_POSITION = 'HEAD_POSITION',
-  
-  // Errores de estocadas
+
+  // Errores de estocadas/zancadas
   KNEE_FORWARD = 'KNEE_FORWARD',
+  KNEE_OVER_TOE = 'KNEE_OVER_TOE',
+  TRUNK_LEAN = 'TRUNK_LEAN',
   UNSTABLE_BALANCE = 'UNSTABLE_BALANCE',
-  
+
+  // Errores de peso muerto
+  HIPS_RISE_EARLY = 'HIPS_RISE_EARLY',
+  BAR_TOO_FAR = 'BAR_TOO_FAR',
+
+  // Errores de remo con barra
+  EXCESSIVE_MOMENTUM = 'EXCESSIVE_MOMENTUM',
+  ELBOW_FLARE = 'ELBOW_FLARE',
+  INCOMPLETE_ROM = 'INCOMPLETE_ROM',
+
   // Errores generales
   POOR_ALIGNMENT = 'POOR_ALIGNMENT',
   EXCESSIVE_SPEED = 'EXCESSIVE_SPEED',
@@ -120,12 +131,9 @@ export interface PostureError {
 // 🏃 TIPOS DE EJERCICIO
 export enum ExerciseType {
   SQUATS = 'SQUATS',
-  PUSHUPS = 'PUSHUPS',
-  PLANK = 'PLANK',
-  LUNGES = 'LUNGES',
   DEADLIFTS = 'DEADLIFTS',
-  BICEP_CURLS = 'BICEP_CURLS',
-  SHOULDER_PRESS = 'SHOULDER_PRESS'
+  LUNGES = 'LUNGES',
+  BARBELL_ROW = 'BARBELL_ROW'
 }
 
 // 🔄 FASES DE REPETICIÓN

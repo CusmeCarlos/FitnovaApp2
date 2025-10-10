@@ -1458,9 +1458,9 @@ private drawSkeleton(pose: PoseKeypoints): void {
   getExerciseName(): string {
     switch (this.exerciseType) {
       case ExerciseType.SQUATS: return 'Sentadillas';
-      case ExerciseType.PUSHUPS: return 'Flexiones';
-      case ExerciseType.PLANK: return 'Plancha';
-      case ExerciseType.LUNGES: return 'Estocadas';
+      case ExerciseType.DEADLIFTS: return 'Peso Muerto';
+      case ExerciseType.LUNGES: return 'Zancadas';
+      case ExerciseType.BARBELL_ROW: return 'Remo con Barra';
       default: return 'Ejercicio';
     }
   }
