@@ -861,45 +861,123 @@ ion-content.dashboard-content {
 }
 
 // ================================================================================
-// 🔥 ERROR MÁS COMÚN - TEXTO VISIBLE
+// 🔥 ERROR ANALYSIS - PREMIUM BLUE
 // ================================================================================
-.common-error-section, .error-analysis {
-  .error-card {
-    background: rgba(255, 87, 34, 0.1);
-    border: 1px solid rgba(255, 87, 34, 0.3);
-    border-radius: 14px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    
-    h4 {
-      color: #f8fafc !important;
-      font-size: 0.85rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin: 0 0 0.75rem;
-    }
-    
-    .error-name {
-      color: #ff5722 !important;
-      font-size: 1.25rem;
-      font-weight: 900;
-      margin: 0 0 0.75rem;
-      letter-spacing: 0.3px;
-    }
-    
-    .error-tip {
-      color: #94a3b8 !important;
-      font-size: 0.875rem;
-      margin: 0;
-      line-height: 1.5;
-      font-weight: 500;
-      
-      strong {
-        color: #f8fafc !important;
-      }
+.error-analysis-premium {
+  background: linear-gradient(135deg,
+    rgba(59, 130, 246, 0.08) 0%,
+    rgba(59, 130, 246, 0.02) 100%
+  ) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+
+  .gradient-blue {
+    background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .blue-badge {
+    background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+    color: white !important;
+    font-weight: 700;
+  }
+}
+
+.premium-error-card {
+  background: linear-gradient(135deg,
+    rgba(59, 130, 246, 0.12) 0%,
+    rgba(59, 130, 246, 0.05) 100%
+  );
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 18px;
+  padding: 1.75rem;
+  margin-bottom: 1.25rem;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle,
+      rgba(59, 130, 246, 0.15) 0%,
+      transparent 70%
+    );
+    animation: rotate 8s linear infinite;
+  }
+
+  .error-icon-wrapper {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+
+    ion-icon {
+      font-size: 1.5rem;
+      color: white;
     }
   }
+
+  h4 {
+    color: rgba(59, 130, 246, 0.8) !important;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 0 0 0.75rem;
+  }
+
+  .error-title {
+    color: #3b82f6 !important;
+    font-size: 1.4rem;
+    font-weight: 900;
+    margin: 0 0 1rem;
+    letter-spacing: 0.3px;
+  }
+
+  .error-tip {
+    color: #94a3b8 !important;
+    font-size: 0.9rem;
+    margin: 0;
+    line-height: 1.6;
+    font-weight: 500;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+
+    ion-icon {
+      color: #60a5fa;
+      font-size: 1.1rem;
+      margin-top: 2px;
+    }
+  }
+}
+
+.premium-chart {
+  h4 {
+    color: rgba(59, 130, 246, 0.9) !important;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 1rem;
+  }
+}
+
+@keyframes rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 // Análisis de errores general
@@ -925,20 +1003,24 @@ ion-content.dashboard-content {
 }
 
 // ================================================================================
-// ⚡ QUICK ACTIONS PREMIUM
+// ⚡ QUICK ACTIONS PREMIUM - BLUE
 // ================================================================================
 .quick-actions {
   margin-top: 2rem;
-  
-  .action-button {
-    --border-radius: 14px;
-    --padding-top: 16px;
-    --padding-bottom: 16px;
-    font-weight: 700;
+
+  .premium-train-button {
+    --border-radius: 16px;
+    --padding-top: 18px;
+    --padding-bottom: 18px;
+    --box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
     margin-bottom: 1rem;
     position: relative;
     overflow: hidden;
-    
+    text-transform: uppercase;
+
     &::before {
       content: '';
       position: absolute;
@@ -946,17 +1028,64 @@ ion-content.dashboard-content {
       left: -100%;
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.25),
+        transparent
+      );
       transition: left 0.6s ease;
     }
-    
+
     &:hover::before {
       left: 100%;
     }
-    
+
     ion-icon {
-      font-size: 1.25rem;
-      margin-right: 0.5rem;
+      font-size: 1.4rem;
+    }
+  }
+
+  .action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .premium-action-btn {
+    --border-radius: 14px;
+    --padding-top: 14px;
+    --padding-bottom: 14px;
+    --border-width: 2px;
+    font-weight: 700;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.2);
+      transform: translate(-50%, -50%);
+      transition: width 0.4s ease, height 0.4s ease;
+    }
+
+    &:hover::after {
+      width: 300px;
+      height: 300px;
+    }
+
+    ion-icon {
+      font-size: 1.2rem;
+      transition: transform 0.3s ease;
+    }
+
+    &:hover ion-icon {
+      transform: scale(1.1);
     }
   }
 }
@@ -1088,22 +1217,102 @@ ion-content.dashboard-content {
   }
 }
 
-// Botón "Ver Todas las Alertas"
-.view-all-btn {
-  --border-width: 1.5px;
-  --border-color: rgba(255, 255, 255, 0.2);
-  --border-radius: 12px;
-  --padding-top: 14px;
-  --padding-bottom: 14px;
-  --color: #94a3b8;
+// ============================================
+// 🎨 BOTÓN PREMIUM "VER TODAS LAS ALERTAS"
+// ============================================
+.view-all-alerts-premium {
+  --border-width: 2px;
+  --border-radius: 14px;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+  --color: #000000;
+  --background: rgba(59, 130, 246, 0.1);
   margin-top: 1rem;
-  font-weight: 600;
-  backdrop-filter: blur(10px);
-  
+  font-weight: 700;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  // Gradiente animado en el borde
+  &::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(90deg,
+      #3b82f6 0%,
+      #60a5fa 25%,
+      #3b82f6 50%,
+      #60a5fa 75%,
+      #3b82f6 100%
+    );
+    background-size: 200% 100%;
+    border-radius: 14px;
+    z-index: -1;
+    animation: borderGlow 3s linear infinite;
+    opacity: 0.7;
+  }
+
+  // Fondo con efecto de brillo
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+
   &:hover {
-    --border-color: #3b82f6;
-    --color: #3b82f6;
-    transform: translateY(-2px);
+    transform: translateY(-3px) scale(1.02);
+    --color: #000000;
+    --background: rgba(59, 130, 246, 0.15);
+
+    &::before {
+      opacity: 1;
+    }
+
+    &::after {
+      left: 100%;
+    }
+
+    ion-icon {
+      transform: scale(1.1);
+
+      &[slot="end"] {
+        transform: translateX(4px) scale(1.1);
+      }
+    }
+  }
+
+  ion-icon {
+    transition: transform 0.3s ease;
+    font-size: 1.2rem;
+
+    &[slot="start"] {
+      color: #3b82f6;
+    }
+
+    &[slot="end"] {
+      color: #60a5fa;
+    }
+  }
+}
+
+@keyframes borderGlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
   }
 }
 

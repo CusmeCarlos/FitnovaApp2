@@ -35,3 +35,30 @@
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
 @import "@ionic/angular/css/palettes/dark.system.css";
+
+// ============================================
+// 🎨 MODAL PREMIUM DE ALERTAS - ESTILOS GLOBALES
+// ============================================
+.alerts-modal-premium {
+  --width: 100%;
+  --max-width: 600px;
+  --height: 90vh;
+  --max-height: 800px;
+  --border-radius: 24px 24px 0 0;
+
+  @media (min-width: 768px) {
+    --width: 90%;
+    --height: 85vh;
+    --border-radius: 24px;
+  }
+
+  ion-modal {
+    --backdrop-opacity: 0.6;
+  }
+
+  .modal-wrapper {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+}

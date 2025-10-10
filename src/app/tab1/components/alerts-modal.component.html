@@ -1,0 +1,110 @@
+<!-- ============================================ -->
+<!-- 🎨 MODAL PREMIUM DE ALERTAS -->
+<!-- ============================================ -->
+
+<ion-header class="ion-no-border premium-header">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="dismiss()">
+        <ion-icon name="close" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title class="gradient-title">
+      <ion-icon name="warning-outline"></ion-icon>
+      Historial de Alertas
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="premium-content">
+
+  <!-- ============================================ -->
+  <!-- 📊 STATS GRID SUPERIOR -->
+  <!-- ============================================ -->
+  <div class="stats-grid" *ngIf="!loading">
+    <div class="stat-card critical">
+      <ion-icon name="alert-circle"></ion-icon>
+      <div class="stat-number">{{ stats.critical }}</div>
+      <div class="stat-label">Críticas</div>
+    </div>
+    <div class="stat-card high">
+      <ion-icon name="warning"></ion-icon>
+      <div class="stat-number">{{ stats.high }}</div>
+      <div class="stat-label">Altas</div>
+    </div>
+    <div class="stat-card medium">
+      <ion-icon name="information-circle"></ion-icon>
+      <div class="stat-number">{{ stats.medium }}</div>
+      <div class="stat-label">Medias</div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- ⏳ LOADING STATE -->
+  <!-- ============================================ -->
+  <div class="loading-container" *ngIf="loading">
+    <ion-spinner name="crescent"></ion-spinner>
+    <p>Cargando alertas...</p>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- 🕒 TIMELINE DE ALERTAS -->
+  <!-- ============================================ -->
+  <div class="alerts-timeline" *ngIf="!loading && alerts.length > 0">
+    <div class="timeline-item" *ngFor="let alert of alerts; let i = index"
+         [@slideDown]>
+
+      <!-- Marcador de Severidad -->
+      <div class="timeline-marker" [class]="'severity-' + getSeverityColor(alert.severity)">
+        <ion-icon [name]="getSeverityIcon(alert.severity)"></ion-icon>
+      </div>
+
+      <!-- Contenido de la Alerta -->
+      <div class="alert-card">
+        <div class="alert-header">
+          <div class="alert-title">
+            <ion-icon name="fitness-outline"></ion-icon>
+            {{ alert.exercise || 'Ejercicio' }}
+          </div>
+          <ion-chip [color]="getSeverityColor(alert.severity)" class="severity-chip">
+            {{ getSeverityText(alert.severity) }}
+          </ion-chip>
+        </div>
+
+        <div class="alert-message">
+          {{ alert.errorType }}
+        </div>
+
+        <div class="alert-meta">
+          <div class="meta-item">
+            <ion-icon name="time-outline"></ion-icon>
+            {{ getRelativeTime(alert.timestamp) }}
+          </div>
+          <div class="meta-item" *ngIf="alert.confidence">
+            <ion-icon name="analytics-outline"></ion-icon>
+            {{ (alert.confidence * 100).toFixed(0) }}% confianza
+          </div>
+        </div>
+
+        <div class="affected-joints" *ngIf="alert.affectedJoints && alert.affectedJoints.length > 0">
+          <div class="joints-label">Articulaciones afectadas:</div>
+          <div class="joints-list">
+            <ion-chip *ngFor="let joint of alert.affectedJoints" size="small" color="light">
+              {{ joint }}
+            </ion-chip>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- 🎉 EMPTY STATE -->
+  <!-- ============================================ -->
+  <div class="empty-state" *ngIf="!loading && alerts.length === 0">
+    <ion-icon name="checkmark-circle-outline" class="success-icon"></ion-icon>
+    <h3>¡Todo perfecto!</h3>
+    <p>No tienes alertas registradas.<br>Sigue entrenando con buena técnica.</p>
+  </div>
+
+</ion-content>

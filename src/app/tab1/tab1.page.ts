@@ -536,23 +536,13 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
   }
   // Ver todas las alertas recientes
   async viewAllAlerts(): Promise<void> {
-    const alerts = this.metrics?.recentAlerts || [];
-
-    if (!alerts.length) {
-      await this.showToast('No hay alertas recientes', 'warning');      return;
-    }
-
-    const message = alerts
-      .map(a => `• ${this.getErrorTypeLabel(a.errorType)} - ${a.exercise} - ${new Date(a.processedAt).toLocaleString('es-ES')}`)
-      .join('<br>');
-
-    const alert = await this.alertController.create({
-      header: 'Todas las Alertas',
-      message,
-      buttons: ['Cerrar']
+    // ✅ ABRIR MODAL PREMIUM DE ALERTAS
+    const modal = await this.modalController.create({
+      component: (await import('./components/alerts-modal.component')).AlertsModalComponent,
+      cssClass: 'alerts-modal-premium'
     });
 
-    await alert.present();
+    await modal.present();
   }
   // OBTENER MENSAJE MOTIVACIONAL SEGÚN EL ESTADO
   getMotivationalMessage(): string {

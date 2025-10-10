@@ -275,37 +275,45 @@
         </div>
       </div>
 
-      <ion-button 
-        fill="outline" 
-        expand="block" 
+      <ion-button
+        fill="outline"
+        expand="block"
         color="medium"
         (click)="viewAllAlerts()"
-        class="view-all-btn">
+        class="view-all-alerts-premium">
+        <ion-icon name="alert-circle-outline" slot="start"></ion-icon>
         Ver Todas las Alertas
+        <ion-icon name="chevron-forward-outline" slot="end"></ion-icon>
       </ion-button>
     </div>
 
-    <!-- Error Analysis Section -->
-    <div class="section-card" *ngIf="hasErrorsByType(metrics)">
+    <!-- Error Analysis Section - PREMIUM BLUE -->
+    <div class="section-card error-analysis-premium" *ngIf="hasErrorsByType(metrics)">
       <div class="section-header">
-        <h3 class="section-title">
+        <h3 class="section-title gradient-blue">
           <ion-icon name="analytics-outline"></ion-icon>
           Análisis de Errores
         </h3>
-        <div class="section-badge">
+        <div class="section-badge blue-badge">
           {{ metrics.criticalErrorsToday || 0 }} hoy
         </div>
       </div>
 
       <div class="error-analysis">
-        <div class="most-common-error" *ngIf="metrics.mostCommonError">
+        <div class="most-common-error premium-error-card" *ngIf="metrics.mostCommonError">
+          <div class="error-icon-wrapper">
+            <ion-icon name="alert-circle-outline"></ion-icon>
+          </div>
           <h4>ERROR MÁS COMÚN</h4>
           <h3 class="error-title">{{ getErrorTypeLabel(metrics.mostCommonError) }}</h3>
-          <p class="error-tip">{{ getTrainingTip() }}</p>
+          <p class="error-tip">
+            <ion-icon name="bulb-outline"></ion-icon>
+            {{ getTrainingTip() }}
+          </p>
         </div>
 
-        <div class="chart-container">
-          <h4>Distribución de Errores</h4>
+        <div class="chart-container premium-chart">
+          <h4>DISTRIBUCIÓN DE ERRORES</h4>
           <div class="chart-wrapper">
             <canvas #errorsChart></canvas>
           </div>
@@ -313,35 +321,36 @@
       </div>
     </div>
 
-    <!-- Quick Actions -->
+    <!-- Quick Actions - PREMIUM BLUE -->
     <div class="quick-actions">
-      <ion-button 
-        expand="block" 
-        color="primary" 
+      <ion-button
+        expand="block"
+        color="primary"
         size="large"
         (click)="navigateToTraining()"
-        class="action-button">
-        <ion-icon name="play-outline" slot="start"></ion-icon>
-        Entrenar Ahora
+        class="action-button premium-train-button">
+        <ion-icon name="play-circle-outline" slot="start"></ion-icon>
+        ENTRENAR AHORA
+        <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
       </ion-button>
 
       <div class="action-row">
-        <ion-button 
-          fill="outline" 
-          color="medium"
+        <ion-button
+          fill="outline"
+          color="primary"
           (click)="navigateToHistory()"
-          class="action-button-small">
+          class="action-button-small premium-action-btn">
           <ion-icon name="time-outline" slot="start"></ion-icon>
           Historial
         </ion-button>
 
-        <ion-button 
-          fill="outline" 
-          color="medium"
-          (click)="navigateToProfile()"
-          class="action-button-small">
-          <ion-icon name="person-outline" slot="start"></ion-icon>
-          Perfil
+        <ion-button
+          fill="outline"
+          color="danger"
+          (click)="resetDashboard()"
+          class="action-button-small premium-action-btn">
+          <ion-icon name="refresh-outline" slot="start"></ion-icon>
+          Reset
         </ion-button>
       </div>
     </div>
