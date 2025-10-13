@@ -32,25 +32,26 @@
 
 .camera-video {
   position: absolute;
-  top: 50%; // ✅ CENTRAR VERTICALMENTE
-  left: 50%; // ✅ CENTRAR HORIZONTALMENTE
-  transform: translate(-50%, -50%) scaleX(-1); // ✅ CENTRADO + ESPEJO
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scaleX(-1) scale(1.1); // ✅ Video con zoom
   width: 100%;
   height: 100%;
-  object-fit: cover; // ✅ CUBRIR SIN DISTORSIÓN
-  object-position: center; // ✅ MANTENER CENTRADO
+  object-fit: contain;
+  object-position: center;
 }
 
 .skeleton-canvas,
 .readiness-notification-canvas,
 .error-alert-canvas {
   position: absolute;
-  top: 50%; // ✅ MISMO CENTRADO QUE VIDEO
+  top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%); // ✅ CENTRADO EXACTO
+  transform: translate(-50%, -50%) scale(0.92); // ✅ Un poquito más pequeño (0.95 -> 0.92)
   width: 100%;
   height: 100%;
   pointer-events: none;
+  object-fit: contain;
 }
 
 .skeleton-canvas {

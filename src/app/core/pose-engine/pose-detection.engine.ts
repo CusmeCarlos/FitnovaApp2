@@ -86,12 +86,12 @@ export class PoseDetectionEngine {
         }
       });
 
-      // ✅ CONFIGURACIÓN OPTIMIZADA PARA EXAMEN
+      // ✅ CONFIGURACIÓN RÁPIDA Y PRECISA
       await this.pose.setOptions({
-        modelComplexity: 1,
+        modelComplexity: 1, // ✅ Balance entre velocidad y precisión
         enableSegmentation: false,
         smoothLandmarks: true,
-        minDetectionConfidence: 0.7,
+        minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5,
         selfieMode: true
       });
@@ -144,12 +144,13 @@ export class PoseDetectionEngine {
         await this.initializeMediaPipe();
       }
 
-      // 2. Obtener stream de cámara
+      // 2. Obtener stream de cámara OPTIMIZADO
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 640 },
           height: { ideal: 480 },
-          facingMode: 'user'
+          facingMode: 'user',
+          frameRate: { ideal: 30 }
         }
       });
 

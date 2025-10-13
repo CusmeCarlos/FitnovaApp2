@@ -1131,16 +1131,16 @@ private drawSkeleton(pose: PoseKeypoints): void {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // ✅ DIBUJAR CONEXIONES usando MediaPipe
-  ctx.lineWidth = 3;
+  // ✅ DIBUJAR CONEXIONES usando MediaPipe - MÁS GRUESAS
+  ctx.lineWidth = 5; // ✅ Líneas más gruesas
   ctx.strokeStyle = '#00ff88';
-  
+
   if (window.drawConnectors && window.POSE_CONNECTIONS) {
     const landmarks = this.convertPoseToLandmarks(pose);
-    
+
     window.drawConnectors(ctx, landmarks, window.POSE_CONNECTIONS, {
       color: '#00ff88',
-      lineWidth: 3
+      lineWidth: 5 // ✅ Líneas más gruesas
     });
   }
 
@@ -1196,9 +1196,9 @@ private drawSkeleton(pose: PoseKeypoints): void {
       if (point && point.visibility > 0.5) {
         const x = point.x * canvas.width;
         const y = point.y * canvas.height;
-        
+
         this.canvasCtx!.beginPath();
-        this.canvasCtx!.arc(x, y, 5, 0, 2 * Math.PI);
+        this.canvasCtx!.arc(x, y, 8, 0, 2 * Math.PI); // ✅ Puntos más grandes (5 -> 8)
         this.canvasCtx!.fill();
       }
     });
