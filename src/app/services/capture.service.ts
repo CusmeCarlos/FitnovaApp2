@@ -255,73 +255,75 @@ export class CaptureService {
   }
 
   // ✅ CAPTURAR Y SUBIR IMAGEN - FIRMA CORREGIDA CON ERRORTYPE
-  private async performCapture(
-    canvas: HTMLCanvasElement,
-    videoElement: HTMLVideoElement,
-    alertId: string,
-    errorType: string // 👈 PARÁMETRO AGREGADO
-  ): Promise<string | null> {
-    try {
-      // 🎨 CREAR CANVAS TEMPORAL PARA COMPOSICIÓN
-      const captureCanvas = document.createElement('canvas');
-      captureCanvas.width = videoElement.videoWidth;
-      captureCanvas.height = videoElement.videoHeight;
-      const ctx = captureCanvas.getContext('2d');
-      
-      if (!ctx) {
-        console.error('❌ No se pudo crear contexto 2D');
-        return null;
-      }
-
-      // 1️⃣ DIBUJAR VIDEO REAL DE FONDO
-      ctx.drawImage(videoElement, 0, 0, captureCanvas.width, captureCanvas.height);
-
-      // 2️⃣ DIBUJAR ESQUELETO ENCIMA (con transparencia)
-      ctx.globalAlpha = 0.7; // Esqueleto semi-transparente
-      ctx.drawImage(canvas, 0, 0, captureCanvas.width, captureCanvas.height);
-      ctx.globalAlpha = 1.0; // Restaurar opacidad
-
-      // 3️⃣ AGREGAR MARCA DE TIEMPO Y TIPO DE ERROR
-      ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-      ctx.fillRect(10, 10, 400, 60);
-      ctx.fillStyle = 'white';
-      ctx.font = 'bold 20px Arial';
-      ctx.fillText(`⚠️ ERROR: ${errorType}`, 20, 40); // 👈 AHORA EXISTE errorType
-      ctx.font = '16px Arial';
-      ctx.fillText(new Date().toLocaleString(), 20, 60);
-
-      // 4️⃣ CONVERTIR A BLOB
-      const blob = await this.canvasToBlob(captureCanvas);
-      if (!blob) return null;
-
-      // 5️⃣ SUBIR A FIREBASE STORAGE
-      const userId = await this.auth.getCurrentUserId();
-      if (!userId || !this.currentSession) return null;
-
-      const timestamp = Date.now();
-      const filename = `error_${alertId}_${timestamp}.png`;
-      const storagePath = `captures/${userId}/${this.currentSession.id}/${filename}`;
-
-      const uploadTask = this.storage.upload(storagePath, blob, {
-        customMetadata: {
-          errorId: alertId,
-          errorType: errorType,
-          sessionId: this.currentSession.id!,
-          uploadedAt: new Date().toISOString()
-        }
-      });
-
-      await uploadTask;
-      const downloadURL = await this.storage.ref(storagePath).getDownloadURL().toPromise();
-      
-      console.log(`📸 Imagen compuesta subida: ${filename}`);
-      return downloadURL;
-
-    } catch (error) {
-      console.error('🛑 Error en captura:', error);
+private async performCapture(
+  canvas: HTMLCanvasElement,
+  videoElement: HTMLVideoElement,
+  alertId: string,
+  errorType: string
+): Promise<string | null> {
+  try {
+    const captureCanvas = document.createElement('canvas');
+    captureCanvas.width = videoElement.videoWidth;
+    captureCanvas.height = videoElement.videoHeight;
+    const ctx = captureCanvas.getContext('2d');
+    
+    if (!ctx) {
+      console.error('❌ No se pudo crear contexto 2D');
       return null;
     }
+
+    // 1️⃣ DIBUJAR VIDEO FLIPPEADO (solo el video se flippea, el esqueleto NO)
+    ctx.save();
+    ctx.scale(-1, 1); // Flip horizontal solo para el video
+    ctx.translate(-captureCanvas.width, 0);
+    ctx.drawImage(videoElement, 0, 0, captureCanvas.width, captureCanvas.height);
+    ctx.restore();
+
+    // 2️⃣ DIBUJAR ESQUELETO ENCIMA SIN FLIP (con transparencia)
+    ctx.globalAlpha = 0.7;
+    ctx.drawImage(canvas, 0, 0, captureCanvas.width, captureCanvas.height);
+    ctx.globalAlpha = 1.0;
+
+    // 3️⃣ AGREGAR MARCA DE TIEMPO Y TIPO DE ERROR
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+    ctx.fillRect(10, 10, 400, 60);
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(`⚠️ ERROR: ${errorType}`, 20, 40);
+    ctx.font = '16px Arial';
+    ctx.fillText(new Date().toLocaleString(), 20, 60);
+
+    // 4️⃣ CONVERTIR A BLOB Y SUBIR
+    const blob = await this.canvasToBlob(captureCanvas);
+    if (!blob) return null;
+
+    const userId = await this.auth.getCurrentUserId();
+    if (!userId || !this.currentSession) return null;
+
+    const timestamp = Date.now();
+    const filename = `error_${alertId}_${timestamp}.png`;
+    const storagePath = `captures/${userId}/${this.currentSession.id}/${filename}`;
+
+    const uploadTask = this.storage.upload(storagePath, blob, {
+      customMetadata: {
+        errorId: alertId,
+        errorType: errorType,
+        sessionId: this.currentSession.id!,
+        timestamp: timestamp.toString()
+      }
+    });
+
+    const snapshot = await uploadTask;
+    const downloadURL = await snapshot.ref.getDownloadURL();
+
+    console.log('✅ Imagen subida correctamente:', downloadURL);
+    return downloadURL;
+
+  } catch (error) {
+    console.error('❌ Error en performCapture:', error);
+    return null;
   }
+}
 
   // ✅ CONVERTIR CANVAS A BLOB
   private async canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
