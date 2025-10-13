@@ -645,3 +645,261 @@ ion-button[fill="outline"] {
 ion-chip ion-label {
   color: inherit !important;
 }
+// ==========================================
+// 🏋️ LISTA DE EJERCICIOS DETALLADA
+// ==========================================
+
+.exercises-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: white !important;
+    
+    ion-icon {
+      font-size: 28px;
+    }
+  }
+}
+
+.exercises-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exercise-card {
+  background: rgba(30, 30, 46, 0.5);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+}
+
+.exercise-content {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.exercise-number {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 20px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.exercise-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exercise-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: white !important;
+  letter-spacing: 0.3px;
+}
+
+.exercise-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  
+  .detail-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-blue) !important;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background: rgba(59, 130, 246, 0.25);
+      transform: scale(1.05);
+    }
+    
+    ion-icon {
+      font-size: 18px;
+    }
+  }
+}
+
+.exercise-instructions {
+  display: flex;
+  gap: 10px;
+  padding: 14px;
+  background: rgba(59, 130, 246, 0.08);
+  border-left: 4px solid var(--accent-blue);
+  border-radius: 10px;
+  animation: fadeIn 0.4s ease;
+  
+  ion-icon {
+    flex-shrink: 0;
+    font-size: 22px;
+    margin-top: 2px;
+    color: var(--accent-blue) !important;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9) !important;
+  }
+}
+
+.target-muscles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 500;
+  
+  ion-icon {
+    font-size: 20px;
+    color: var(--accent-green) !important;
+  }
+  
+  span {
+    text-transform: capitalize;
+  }
+}
+
+.detection-badge {
+  align-self: flex-start;
+  height: 32px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  
+  ion-icon {
+    margin-right: 6px;
+    font-size: 18px;
+  }
+  
+  ion-label {
+    color: var(--accent-green) !important;
+  }
+}
+
+.exercise-modifications {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(251, 191, 36, 0.08);
+  border-left: 4px solid var(--accent-yellow);
+  border-radius: 10px;
+  animation: fadeIn 0.4s ease 0.2s both;
+  
+  ion-icon {
+    flex-shrink: 0;
+    font-size: 20px;
+    margin-top: 2px;
+    color: var(--accent-yellow) !important;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.85) !important;
+    
+    strong {
+      color: var(--accent-yellow) !important;
+      font-weight: 700;
+    }
+  }
+}
+
+// Responsive para móviles
+@media (max-width: 576px) {
+  .exercises-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    
+    .section-title {
+      font-size: 1.1rem;
+      
+      ion-icon {
+        font-size: 24px;
+      }
+    }
+  }
+  
+  .exercise-card {
+    padding: 12px;
+  }
+  
+  .exercise-content {
+    gap: 12px;
+  }
+  
+  .exercise-number {
+    width: 38px;
+    height: 38px;
+    font-size: 17px;
+  }
+  
+  .exercise-name {
+    font-size: 1rem;
+  }
+  
+  .exercise-details {
+    .detail-badge {
+      font-size: 12px;
+      padding: 5px 10px;
+      
+      ion-icon {
+        font-size: 16px;
+      }
+    }
+  }
+  
+  .exercise-instructions {
+    padding: 12px;
+    
+    p {
+      font-size: 13px;
+    }
+  }
+  
+  .detection-badge {
+    height: 28px;
+    font-size: 12px;
+  }
+}

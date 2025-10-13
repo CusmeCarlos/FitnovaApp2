@@ -5,8 +5,10 @@ import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { AlertController, ToastController } from '@ionic/angular';
 import { AuthService } from '../services/auth.service';
-import { DashboardService } from '../services/dashboard.service'; 
+import { DashboardService } from '../services/dashboard.service';
+import { ExerciseService } from '../services/exercise.service';
 import { User } from '../interfaces/user.interface';
+import { Exercise } from '../interfaces/exercise.interface';
 import { PoseCameraComponent } from '../features/training/components/pose-camera/pose-camera.component';
 import { 
   ExerciseType, 
@@ -40,35 +42,49 @@ export class Tab2Page implements OnInit, OnDestroy {
   detectionEnabled = true;
   skeletonVisible = true;
 
-  // EJERCICIOS DISPONIBLES
-  availableExercises = [
+  // EJERCICIOS DISPONIBLES - Cargados dinámicamente desde Firestore
+  availableExercises: Array<{
+    type: ExerciseType;
+    name: string;
+    icon: string;
+    description: string;
+    difficulty: string;
+    exerciseId: string;
+  }> = [];
+
+  // Fallback por si falla la carga de Firestore
+  private fallbackExercises = [
     {
       type: ExerciseType.SQUATS,
       name: 'Sentadillas',
       icon: 'fitness-outline',
       description: 'Ejercicio fundamental para piernas y glúteos',
-      difficulty: 'Intermedio'
+      difficulty: 'Principiante',
+      exerciseId: 'squats_fallback'
     },
     {
       type: ExerciseType.DEADLIFTS,
       name: 'Peso Muerto Libre',
       icon: 'barbell-outline',
       description: 'Ejercicio rey para fuerza total del cuerpo',
-      difficulty: 'Avanzado'
+      difficulty: 'Principiante',
+      exerciseId: 'deadlifts_fallback'
     },
     {
       type: ExerciseType.LUNGES,
       name: 'Zancadas',
       icon: 'walk-outline',
       description: 'Trabajo unilateral de piernas y equilibrio',
-      difficulty: 'Intermedio'
+      difficulty: 'Principiante',
+      exerciseId: 'lunges_fallback'
     },
     {
       type: ExerciseType.BARBELL_ROW,
       name: 'Remo con Barra',
       icon: 'trending-up-outline',
       description: 'Desarrollo de espalda media y grosor',
-      difficulty: 'Intermedio'
+      difficulty: 'Principiante',
+      exerciseId: 'barbell_row_fallback'
     }
   ];
 
@@ -110,19 +126,23 @@ export class Tab2Page implements OnInit, OnDestroy {
     private router: Router,
     private alertController: AlertController,
     private toastController: ToastController,
-    private dashboardService: DashboardService 
+    private dashboardService: DashboardService,
+    private exerciseService: ExerciseService
   ) {
     console.log('Tab2Page constructor');
   }
 
   ngOnInit() {
     console.log('Tab2Page ngOnInit');
-    
+
     // Suscribirse al usuario autenticado
     this.auth.user$.subscribe(user => {
       this.user = user;
       console.log('Usuario cargado:', user?.email);
     });
+
+    // Cargar ejercicios desde Firestore
+    this.loadExercisesWithDetection();
 
     // Cargar estadísticas del día
     this.loadTodayStats();
@@ -151,6 +171,65 @@ export class Tab2Page implements OnInit, OnDestroy {
         console.error('Error cargando rutina activa:', error);
       }
     }
+  }
+
+  /**
+   * Cargar ejercicios con detección desde Firestore
+   */
+  private loadExercisesWithDetection(): void {
+    console.log('🔍 Cargando ejercicios con detección desde Firestore...');
+
+    this.exerciseService.getExercisesWithDetection().subscribe({
+      next: (exercises: Exercise[]) => {
+        console.log('✅ Ejercicios recibidos:', exercises.length);
+
+        if (exercises.length === 0) {
+          console.warn('⚠️ No hay ejercicios en Firestore, usando fallback');
+          this.availableExercises = this.fallbackExercises;
+          return;
+        }
+
+        // Mapear ejercicios de Firestore al formato de Tab2
+        this.availableExercises = exercises
+          .filter(ex => ex.hasPoseDetection && ex.detectionType)
+          .map(ex => ({
+            type: ex.detectionType as ExerciseType,
+            name: ex.displayName,
+            icon: this.getIconForExercise(ex.detectionType as ExerciseType),
+            description: ex.description || 'Ejercicio con detección de postura',
+            difficulty: this.capitalizeFirst(ex.difficulty),
+            exerciseId: ex.id
+          }));
+
+        console.log('✅ Ejercicios con detección cargados:', this.availableExercises.length);
+      },
+      error: (error) => {
+        console.error('❌ Error cargando ejercicios:', error);
+        console.warn('⚠️ Usando ejercicios fallback');
+        this.availableExercises = this.fallbackExercises;
+      }
+    });
+  }
+
+  /**
+   * Obtener icono según tipo de ejercicio
+   */
+  private getIconForExercise(type: ExerciseType): string {
+    const iconMap: Record<ExerciseType, string> = {
+      [ExerciseType.SQUATS]: 'fitness-outline',
+      [ExerciseType.DEADLIFTS]: 'barbell-outline',
+      [ExerciseType.LUNGES]: 'walk-outline',
+      [ExerciseType.BARBELL_ROW]: 'trending-up-outline'
+    };
+    return iconMap[type] || 'fitness-outline';
+  }
+
+  /**
+   * Capitalizar primera letra
+   */
+  private capitalizeFirst(str: string): string {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1);
   }
   // INICIAR ENTRENAMIENTO
   async startTraining(): Promise<void> {
