@@ -16,6 +16,7 @@ import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { take } from 'rxjs/operators';
+import { firstValueFrom } from 'rxjs';
 import { AIGeneratedRoutine } from '../interfaces/profile.interface';
 import { RoutineStateService, RoutineStatus } from '../services/routine-state.service';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
@@ -826,60 +827,114 @@ export class Tab3Page implements OnInit, OnDestroy {
     await alert.present();
   }
 
-  async generateAIRoutine(): Promise<void> {
-    if (!this.canGenerateAI()) {
-      await this.showToast('Completa tu perfil para generar rutina IA', 'warning');
+ async generateAIRoutine(): Promise<void> {
+  if (!this.canGenerateAI()) {
+    await this.showToast('Completa tu perfil para generar rutina IA', 'warning');
+    return;
+  }
+
+  try {
+    // ✅ VERIFICAR LÍMITE DE 3 RUTINAS
+    const routineCount = await this.checkRoutineCount();
+    if (routineCount >= 3) {
+      const alert = await this.alertController.create({
+        header: '⚠️ Límite Alcanzado',
+        message: `
+          <p>Has alcanzado el límite máximo de <strong>3 rutinas</strong>.</p>
+          <p>Actualmente tienes <strong>${routineCount}</strong> rutinas generadas.</p>
+          <br>
+          <p>Para generar una nueva rutina, primero debes eliminar una existente desde el dashboard del entrenador.</p>
+        `,
+        buttons: [
+          {
+            text: 'Ver Mis Rutinas',
+            handler: () => {
+              this.router.navigate(['/routine-view']);
+            }
+          },
+          {
+            text: 'Entendido',
+            role: 'cancel'
+          }
+        ]
+      });
+      await alert.present();
       return;
     }
-  
-    try {
-      // Mostrar loading
-      this.isGeneratingAI = true;
-      this.routineStateService.setGenerating();
-      
-      await this.showToast('Generando rutina personalizada...', 'medium');
-  
-      // Obtener perfil actualizado
-      const currentProfile = await this.profileService.getCurrentProfile().pipe(take(1)).toPromise();
-      if (!currentProfile) {
-        throw new Error('Perfil no encontrado');
-      }
-  
-      console.log('Iniciando generación IA con perfil:', currentProfile.uid);
-  
-      // Generar rutina
-      const result = await this.aiRoutineService.generateAdaptiveRoutine(currentProfile);
-  
-      if (result.success && result.routine) {
-        console.log('Rutina IA generada exitosamente');
-        
-        // ✅ ACTUALIZAR ESTADO MANUAL INMEDIATAMENTE 
-        this.routineStateService.setWaitingApproval(result.routine);
-        
-        // ✅ FORZAR SINCRONIZACIÓN PARA ACTIVAR LISTENERS
-        setTimeout(async () => {
-          await this.routineStateService.forceSyncFromFirebase();
-        }, 2000);
-        
-        await this.showToast('Rutina generada! Esperando aprobación del entrenador.', 'success');
-        
-        // Navegar automáticamente a ver la rutina
-        setTimeout(() => {
-          this.router.navigate(['/routine-view']);
-        }, 1500);
-        
-      } else {
-        throw new Error(result.error || 'Error generando rutina IA');
-      }
-  
-    } catch (error: any) {
-      console.error('Error generando rutina IA:', error);
-      this.routineStateService.setError(error.message || 'Error inesperado');
-      await this.showToast('Error generando rutina: ' + error.message, 'danger');
-    } finally {
-      this.isGeneratingAI = false;
+
+    // Mostrar loading
+    this.isGeneratingAI = true;
+    this.routineStateService.setGenerating();
+    
+    await this.showToast('Generando rutina personalizada...', 'medium');
+
+    // Obtener perfil actualizado
+    const currentProfile = await this.profileService.getCurrentProfile().pipe(take(1)).toPromise();
+    if (!currentProfile) {
+      throw new Error('Perfil no encontrado');
     }
+
+    console.log('Iniciando generación IA con perfil:', currentProfile.uid);
+
+    // Generar rutina
+    const result = await this.aiRoutineService.generateAdaptiveRoutine(currentProfile);
+
+    if (result.success && result.routine) {
+      console.log('Rutina IA generada exitosamente');
+      
+      // ✅ ACTUALIZAR ESTADO MANUAL INMEDIATAMENTE 
+      this.routineStateService.setWaitingApproval(result.routine);
+      
+      // ✅ FORZAR SINCRONIZACIÓN PARA ACTIVAR LISTENERS
+      setTimeout(async () => {
+        await this.routineStateService.forceSyncFromFirebase();
+      }, 2000);
+      
+      await this.showToast('Rutina generada! Esperando aprobación del entrenador.', 'success');
+      
+      // Navegar automáticamente a ver la rutina
+      setTimeout(() => {
+        this.router.navigate(['/routine-view']);
+      }, 1500);
+      
+    } else {
+      throw new Error(result.error || 'Error generando rutina IA');
+    }
+
+  } catch (error: any) {
+    console.error('Error generando rutina IA:', error);
+    this.routineStateService.setError(error.message || 'Error inesperado');
+    await this.showToast('Error generando rutina: ' + error.message, 'danger');
+  } finally {
+    this.isGeneratingAI = false;
   }
+}
+
+// ✅ CORREGIDO: Verificar cantidad de rutinas del usuario
+// ✅ Verificar cantidad de rutinas del usuario (acceso directo a Firestore nativo)
+private async checkRoutineCount(): Promise<number> {
+  try {
+    const user = await firstValueFrom(this.auth.user$);
+    if (!user?.uid) {
+      console.log('⚠️ No hay usuario autenticado');
+      return 0;
+    }
+
+    // Acceder directamente a Firestore nativo
+    const firestore = this.firestore.firestore;
+    const routinesRef = firestore
+      .collection('aiRoutines')
+      .doc(user.uid)
+      .collection('routines');
+
+    const snapshot = await routinesRef.get();
+    console.log(`📊 Rutinas encontradas: ${snapshot.size}`);
+    return snapshot.size || 0;
+  } catch (error) {
+    console.error('❌ Error verificando cantidad de rutinas:', error);
+    return 0;
+  }
+}
 
   // ✅ NUEVO: Método para verificar si puede generar IA
   canGenerateAI(): boolean {

@@ -7,6 +7,7 @@ import { Subscription } from 'rxjs';
 import { take } from 'rxjs/operators';
 import { AngularFirestore } from '@angular/fire/compat/firestore';
 import { AuthService } from '../../services/auth.service';
+import { firstValueFrom } from 'rxjs';
 
 import { 
   IonHeader, 
@@ -74,7 +75,9 @@ export class RoutineViewPage implements OnInit, OnDestroy {
     private alertController: AlertController,
     private toastController: ToastController,
     private auth: AuthService,
-    private firestore: AngularFirestore
+    private firestore: AngularFirestore,
+    private authService: AuthService, // ✅ Agregar esta línea si no existe
+
   ) {}
 
   ngOnInit() {
@@ -225,33 +228,75 @@ export class RoutineViewPage implements OnInit, OnDestroy {
     await alert.present();
   }
 
-  private async doRegenerateRoutine(): Promise<void> {
-    try {
-      this.loading = true;
-      
-      const profile = await this.profileService.getCurrentProfile().pipe(take(1)).toPromise();
-      if (!profile) {
-        throw new Error('Perfil no encontrado');
-      }
+ private async doRegenerateRoutine(): Promise<void> {
+  try {
+    this.loading = true;
 
-      // Generar nueva rutina
-      const result = await this.aiRoutineService.generateAdaptiveRoutine(profile);
-      
-      if (result.success) {
-        await this.showToast('Nueva rutina generada exitosamente', 'success');
-        // El listener automáticamente detectará la nueva rutina
-      } else {
-        throw new Error(result.error || 'Error generando rutina');
-      }
-      
-    } catch (error: any) {
-      console.error('❌ Error regenerando rutina:', error);
-      await this.showError('Error generando nueva rutina: ' + error.message);
-    } finally {
-      this.loading = false;
+    // ✅ VERIFICAR LÍMITE DE 3 RUTINAS
+    const routineCount = await this.checkRoutineCount();
+    if (routineCount >= 3) {
+      const alert = await this.alertController.create({
+        header: '⚠️ Límite Alcanzado',
+        message: `
+          <p>Has alcanzado el límite máximo de <strong>3 rutinas</strong>.</p>
+          <p>Actualmente tienes <strong>${routineCount}</strong> rutinas generadas.</p>
+          <br>
+          <p>No puedes generar más rutinas hasta que elimines alguna existente desde el dashboard del entrenador.</p>
+        `,
+        buttons: ['Entendido']
+      });
+      await alert.present();
+      return;
     }
-  }
+    
+    const profile = await this.profileService.getCurrentProfile().pipe(take(1)).toPromise();
+    if (!profile) {
+      throw new Error('Perfil no encontrado');
+    }
 
+    // Generar nueva rutina
+    const result = await this.aiRoutineService.generateAdaptiveRoutine(profile);
+    
+    if (result.success) {
+      await this.showToast('Nueva rutina generada exitosamente', 'success');
+      // El listener automáticamente detectará la nueva rutina
+    } else {
+      throw new Error(result.error || 'Error generando rutina');
+    }
+    
+  } catch (error: any) {
+    console.error('❌ Error regenerando rutina:', error);
+    await this.showError('Error generando nueva rutina: ' + error.message);
+  } finally {
+    this.loading = false;
+  }
+}
+
+// ✅ CORREGIDO: Verificar cantidad de rutinas del usuario
+// ✅ Verificar cantidad de rutinas del usuario (acceso directo a Firestore nativo)
+private async checkRoutineCount(): Promise<number> {
+  try {
+    const user = await firstValueFrom(this.authService.user$);
+    if (!user?.uid) {
+      console.log('⚠️ No hay usuario autenticado');
+      return 0;
+    }
+
+    // Acceder directamente a Firestore nativo
+    const firestore = this.firestore.firestore;
+    const routinesRef = firestore
+      .collection('aiRoutines')
+      .doc(user.uid)
+      .collection('routines');
+
+    const snapshot = await routinesRef.get();
+    console.log(`📊 Rutinas encontradas: ${snapshot.size}`);
+    return snapshot.size || 0;
+  } catch (error) {
+    console.error('❌ Error verificando cantidad de rutinas:', error);
+    return 0;
+  }
+}
   // ✅ NAVEGAR A ENTRENAMIENTO
   async startTraining(): Promise<void> {
     if (this.routineState.status !== RoutineStatus.APPROVED) {
@@ -301,6 +346,15 @@ export class RoutineViewPage implements OnInit, OnDestroy {
       description: routine.routine?.description || 'Rutina adaptada a tu perfil',
       estimatedCalories: routine.routine?.estimatedCalories || 71
     };
+  }
+
+  // ✅ NUEVO MÉTODO: OBTENER EJERCICIOS DE LA RUTINA
+  getRoutineExercises(): any[] {
+    if (!this.routineState.routine?.routine?.exercises) {
+      return [];
+    }
+    
+    return this.routineState.routine.routine.exercises;
   }
 
   // ✅ OBTENER ESTADO DE CONEXIÓN FORMATEADO

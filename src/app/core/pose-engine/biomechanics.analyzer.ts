@@ -325,7 +325,7 @@ export class BiomechanicsAnalyzer {
     
     const footHeightDiff = Math.abs(leftFootHeight - rightFootHeight);
 
-    if (footHeightDiff > 0.04) { // ✅ 0.022 → 0.04 (menos falsos positivos)
+    if (footHeightDiff > 0.10) { // ✅ Aumentado a 0.10 para menos falsos positivos (principiantes)
       console.log(`🚨 PIE LEVANTADO: diferencia=${footHeightDiff.toFixed(3)}`);
       return false;
     }
@@ -349,7 +349,7 @@ export class BiomechanicsAnalyzer {
     // Si algún tobillo está significativamente más alto que el otro
     const heightDiff = Math.abs(leftAnkleRelative - rightAnkleRelative);
 
-      if (heightDiff > 0.05) { // ✅ 0.03 → 0.05 (menos sensible)
+      if (heightDiff > 0.12) { // ✅ Aumentado a 0.12 para menos falsos positivos (principiantes)
         console.log(`🚨 PIE INDIVIDUAL LEVANTADO: diff=${heightDiff.toFixed(3)}`);
         return false;
       }
@@ -1490,11 +1490,10 @@ export class BiomechanicsAnalyzer {
     const avgKneeAngle = leftVisible >= rightVisible ?
       leftKnee : rightKnee;
 
-    // ✅ UMBRALES MEJORADOS: TOP más alto, BOTTOM más bajo para sentadillas profundas
-    if (avgKneeAngle > 145) {
+    // ✅ UMBRALES AJUSTADOS PARA PRINCIPIANTES: Requiere movimiento más completo
+    if (avgKneeAngle > 160) { // ✅ Más estricto: debe estar casi completamente de pie
       return RepetitionPhase.TOP;
-    } else if (avgKneeAngle < 110) {
-      // ✅ 110° permite sentadillas profundas (hasta 30°)
+    } else if (avgKneeAngle < 100) { // ✅ Más estricto: debe bajar más para contar
       return RepetitionPhase.BOTTOM;
     } else {
       if (this.angleHistory.length >= 2) {

@@ -1,5 +1,4 @@
 <!-- src/app/pages/routine-view/routine-view.page.html -->
-<!-- DISEÑO SIMPLE Y LIMPIO QUE FUNCIONA -->
 
 <ion-header [translucent]="true">
   <ion-toolbar>
@@ -116,6 +115,69 @@
             <ion-chip *ngFor="let muscle of getRoutineInfo().muscleGroups" color="primary">
               <ion-label>{{ muscle }}</ion-label>
             </ion-chip>
+          </div>
+        </div>
+
+        <!-- ⭐ LISTA DE EJERCICIOS DETALLADA ⭐ -->
+        <div *ngIf="getRoutineExercises().length > 0" class="exercises-section">
+          <h3 class="section-title">
+            <ion-icon name="list-outline" color="primary"></ion-icon>
+            Ejercicios de la Rutina
+          </h3>
+          
+          <div class="exercises-list">
+            <div *ngFor="let exercise of getRoutineExercises(); let i = index" class="exercise-card">
+              <div class="exercise-content">
+                <!-- Número de orden -->
+                <div class="exercise-number">
+                  {{i + 1}}
+                </div>
+                
+                <!-- Información del ejercicio -->
+                <div class="exercise-info">
+                  <h4 class="exercise-name">{{ exercise.name }}</h4>
+                  
+                  <div class="exercise-details">
+                    <span class="detail-badge">
+                      <ion-icon name="fitness-outline"></ion-icon>
+                      {{ exercise.sets }} series
+                    </span>
+                    <span class="detail-badge">
+                      <ion-icon name="repeat-outline"></ion-icon>
+                      {{ exercise.reps || (exercise.duration + 's') }}
+                    </span>
+                    <span class="detail-badge">
+                      <ion-icon name="time-outline"></ion-icon>
+                      Descanso: {{ exercise.restTime }}s
+                    </span>
+                  </div>
+                  
+                  <!-- Instrucciones -->
+                  <div *ngIf="exercise.instructions" class="exercise-instructions">
+                    <ion-icon name="information-circle-outline" color="medium"></ion-icon>
+                    <p>{{ exercise.instructions }}</p>
+                  </div>
+                  
+                  <!-- Músculos objetivo -->
+                  <div *ngIf="exercise.targetMuscles?.length > 0" class="target-muscles">
+                    <ion-icon name="body-outline" color="primary"></ion-icon>
+                    <span>{{ exercise.targetMuscles.join(', ') }}</span>
+                  </div>
+                  
+                  <!-- Badge de detección de postura -->
+                  <ion-chip *ngIf="exercise.hasPoseDetection" color="success" class="detection-badge">
+                    <ion-icon name="videocam"></ion-icon>
+                    <ion-label>Con análisis de postura</ion-label>
+                  </ion-chip>
+                  
+                  <!-- Modificaciones (si existen) -->
+                  <div *ngIf="exercise.modifications" class="exercise-modifications">
+                    <ion-icon name="construct-outline" color="warning"></ion-icon>
+                    <p><strong>Modificación:</strong> {{ exercise.modifications }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

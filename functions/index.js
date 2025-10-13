@@ -9,6 +9,7 @@ const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const {getMessaging} = require("firebase-admin/messaging");
 const {OpenAI} = require("openai");
 const functions = require("firebase-functions");
+const exerciseDB = require("./exercise-database");
 
 
 // ✅ CONFIGURAR OPCIONES GLOBALES PARA V2
@@ -564,10 +565,11 @@ async function generatePersonalizedRoutine(profileData) {
     console.log("🔍 DEBUG - generatePersonalizedRoutine iniciada");
     console.log("🔍 DEBUG - openai object existe:", !!openai);
     console.log("🔍 DEBUG - typeof openai:", typeof openai);
-    
-    const safeExercises = await getSafeExercisesForProfile(medicalHistory, fitnessLevel);
-    const goalSpecificExercises = getExercisesForGoals(fitnessGoals.primaryGoals, fitnessLevel);
-    const correctiveExercises = getCorrectiveExercises(errorAnalysis.commonErrors, errorAnalysis.priorityAreas);
+
+    // ✅ USAR EXERCISE-DATABASE.JS PARA CONSULTAR FIRESTORE
+    const safeExercises = await exerciseDB.getSafeExercisesForProfile(medicalHistory, fitnessLevel);
+    const goalSpecificExercises = await exerciseDB.getExercisesForGoals(fitnessGoals.primaryGoals, fitnessLevel);
+    const correctiveExercises = await exerciseDB.getCorrectiveExercises(errorAnalysis.commonErrors, errorAnalysis.priorityAreas);
     
     console.log("🔍 DEBUG - Verificando condición para GPT...");
     
@@ -587,8 +589,9 @@ async function generatePersonalizedRoutine(profileData) {
         
         console.log("✅ DEBUG - GPT respondió exitosamente!");
         console.log("🔍 DEBUG - gptRoutine:", JSON.stringify(gptRoutine, null, 2));
-        
-        const enhancedRoutine = validateAndEnhanceGPTRoutine(gptRoutine, safeExercises, medicalHistory);
+
+        // ✅ USAR VALIDACIÓN DESDE FIRESTORE DATABASE
+        const enhancedRoutine = await exerciseDB.validateAndEnhanceGPTRoutineFromDB(gptRoutine, safeExercises, medicalHistory);
         
         logger.info("✅ Rutina generada exitosamente con GPT-4");
         console.log("🎉 DEBUG - Rutina GPT final:", enhancedRoutine);
@@ -806,65 +809,17 @@ function prepareUserProfileForGPT(personalInfo, fitnessGoals, fitnessLevel, trai
   };
 }
 
-function validateAndEnhanceGPTRoutine(gptRoutine, safeExercises, medicalHistory) {
-  try {
-    const validatedExercises = gptRoutine.exercises.filter(exercise => {
-      const isSafe = safeExercises.some(safe => 
-        safe.name.toLowerCase().includes(exercise.name.toLowerCase()) ||
-        exercise.name.toLowerCase().includes(safe.name.toLowerCase())
-      );
-      
-      if (!isSafe) {
-        logger.warn(`⚠️ Ejercicio ${exercise.name} no está en lista segura, removido`);
-      }
-      
-      return isSafe;
-    });
-
-    if (validatedExercises.length < 3) {
-      logger.warn("⚠️ Muy pocos ejercicios validados, agregando ejercicios seguros básicos");
-      
-      const basicSafeExercises = safeExercises.slice(0, 3).map((exercise, index) => ({
-        id: `safe_${exercise.id}`,
-        name: exercise.name,
-        category: exercise.category,
-        sets: 2,
-        reps: "10-12",
-        duration: 180,
-        restTime: 60,
-        instructions: `Realizar ${exercise.name} de forma controlada y segura`,
-        modifications: exercise.modifications?.knee_pain || "Adaptar según capacidad",
-        targetMuscles: exercise.targetMuscles || ['core'],
-        order: validatedExercises.length + index + 1
-      }));
-      
-      validatedExercises.push(...basicSafeExercises);
-    }
-
-    return {
-      exercises: validatedExercises,
-      adaptations: gptRoutine.adaptations || [],
-      focusAreas: gptRoutine.focusAreas || ['Entrenamiento General'],
-      gptGenerated: true,
-      gptInstructions: gptRoutine.specialInstructions || [],
-      totalDuration: gptRoutine.totalDuration || calculateTotalDuration(validatedExercises),
-      difficultyRating: gptRoutine.difficultyRating || 2
-    };
-
-  } catch (error) {
-    logger.error("❌ Error validando rutina GPT:", error);
-    throw error;
-  }
-}
+// validateAndEnhanceGPTRoutine → MOVIDA A exercise-database.js
 
 async function generateLocalRoutine(profileData) {
   const {medicalHistory, fitnessGoals, fitnessLevel, trainingPreferences, errorAnalysis} = profileData;
-  
+
   logger.info("🔄 Generando rutina con algoritmo local...");
-  
-  const safeExercises = await getSafeExercisesForProfile(medicalHistory, fitnessLevel);
-  const goalSpecificExercises = getExercisesForGoals(fitnessGoals.primaryGoals, fitnessLevel);
-  const correctiveExercises = getCorrectiveExercises(errorAnalysis.commonErrors, errorAnalysis.priorityAreas);
+
+  // ✅ USAR EXERCISE-DATABASE.JS PARA CONSULTAR FIRESTORE
+  const safeExercises = await exerciseDB.getSafeExercisesForProfile(medicalHistory, fitnessLevel);
+  const goalSpecificExercises = await exerciseDB.getExercisesForGoals(fitnessGoals.primaryGoals, fitnessLevel);
+  const correctiveExercises = await exerciseDB.getCorrectiveExercises(errorAnalysis.commonErrors, errorAnalysis.priorityAreas);
   
   const selectedExercises = balanceExerciseSelection({
     safe: safeExercises,
@@ -888,164 +843,18 @@ async function generateLocalRoutine(profileData) {
   };
 }
 
-async function getSafeExercisesForProfile(medicalHistory, fitnessLevel) {
-  const allExercises = [
-    {
-      id: 'squat_basic',
-      name: 'Sentadilla Básica',
-      category: 'strength',
-      targetMuscles: ['quadriceps', 'glutes', 'hamstrings'],
-      equipment: ['bodyweight'],
-      contraindications: ['knee_injury', 'hip_injury', 'back_injury'],
-      modifications: {
-        'knee_pain': 'Reducir profundidad, usar silla de apoyo',
-        'back_pain': 'Mantener espalda contra pared'
-      },
-      difficulty: 'beginner'
-    },
-    {
-      id: 'pushup_basic',
-      name: 'Flexiones Básicas',
-      category: 'strength',
-      targetMuscles: ['chest', 'shoulders', 'triceps'],
-      equipment: ['bodyweight'],
-      contraindications: ['shoulder_injury', 'wrist_injury'],
-      modifications: {
-        'shoulder_pain': 'Flexiones en pared o inclinadas',
-        'wrist_pain': 'Usar puños cerrados o barras paralelas'
-      },
-      difficulty: 'beginner'
-    },
-    {
-      id: 'plank_basic',
-      name: 'Plancha Básica',
-      category: 'strength',
-      targetMuscles: ['core', 'shoulders'],
-      equipment: ['bodyweight'],
-      contraindications: ['lower_back_injury', 'shoulder_injury'],
-      modifications: {
-        'back_pain': 'Plancha en rodillas',
-        'shoulder_pain': 'Plancha en antebrazos'
-      },
-      difficulty: 'beginner'
-    },
-    {
-      id: 'walking_cardio',
-      name: 'Caminata Activa',
-      category: 'cardio',
-      targetMuscles: ['legs', 'cardiovascular'],
-      equipment: ['none'],
-      contraindications: [],
-      modifications: {
-        'low_mobility': 'Caminata lenta y progresiva',
-        'knee_pain': 'Superficies planas, evitar inclinaciones'
-      },
-      difficulty: 'beginner'
-    },
-    {
-      id: 'arm_circles',
-      name: 'Círculos de Brazos',
-      category: 'flexibility',
-      targetMuscles: ['shoulders', 'arms'],
-      equipment: ['bodyweight'],
-      contraindications: ['shoulder_injury'],
-      modifications: {
-        'shoulder_pain': 'Círculos más pequeños y lentos'
-      },
-      difficulty: 'beginner'
-    }
-  ];
-
-  const painfulAreas = medicalHistory.painfulAreas || [];
-  const forbiddenExercises = medicalHistory.forbiddenExercises || '';
-
-  const safeExercises = allExercises.filter(exercise => {
-    const hasContraindication = exercise.contraindications.some(contra => 
-      painfulAreas.some(area => contra.includes(area))
-    );
-
-    const isForbidden = forbiddenExercises.toLowerCase().includes(exercise.name.toLowerCase());
-    const appropriateDifficulty = isAppropriateForLevel(exercise.difficulty, fitnessLevel);
-
-    return !hasContraindication && !isForbidden && appropriateDifficulty;
-  });
-
-  return safeExercises;
-}
-
-function getExercisesForGoals(primaryGoals, fitnessLevel) {
-  const goalExercises = {
-    'weight_loss': [
-      {id: 'burpees_mod', name: 'Burpees Modificados', category: 'cardio', intensity: 'high'},
-      {id: 'jumping_jacks', name: 'Saltos de Tijera', category: 'cardio', intensity: 'moderate'},
-      {id: 'mountain_climbers', name: 'Escaladores', category: 'cardio', intensity: 'high'}
-    ],
-    'muscle_gain': [
-      {id: 'squat_weighted', name: 'Sentadillas con Peso', category: 'strength', intensity: 'high'},
-      {id: 'pushup_variations', name: 'Variaciones de Flexiones', category: 'strength', intensity: 'moderate'},
-      {id: 'lunges', name: 'Zancadas', category: 'strength', intensity: 'moderate'}
-    ],
-    'strength': [
-      {id: 'deadlift_basic', name: 'Peso Muerto Básico', category: 'strength', intensity: 'high'},
-      {id: 'pull_ups_assisted', name: 'Dominadas Asistidas', category: 'strength', intensity: 'high'},
-      {id: 'overhead_press', name: 'Press de Hombros', category: 'strength', intensity: 'moderate'}
-    ],
-    'endurance': [
-      {id: 'cardio_intervals', name: 'Intervalos Cardiovasculares', category: 'cardio', intensity: 'variable'},
-      {id: 'circuit_training', name: 'Entrenamiento en Circuito', category: 'cardio', intensity: 'high'},
-      {id: 'steady_cardio', name: 'Cardio Sostenido', category: 'cardio', intensity: 'moderate'}
-    ],
-    'flexibility': [
-      {id: 'full_body_stretch', name: 'Estiramiento Completo', category: 'flexibility', intensity: 'low'},
-      {id: 'yoga_basic', name: 'Yoga Básico', category: 'flexibility', intensity: 'low'},
-      {id: 'dynamic_stretching', name: 'Estiramiento Dinámico', category: 'flexibility', intensity: 'moderate'}
-    ],
-    'general_fitness': [
-      {id: 'functional_movement', name: 'Movimiento Funcional', category: 'strength', intensity: 'moderate'},
-      {id: 'balance_training', name: 'Entrenamiento de Balance', category: 'balance', intensity: 'low'},
-      {id: 'core_stability', name: 'Estabilidad del Core', category: 'strength', intensity: 'moderate'}
-    ]
-  };
-
-  let selectedExercises = [];
-  primaryGoals.forEach(goal => {
-    if (goalExercises[goal]) {
-      selectedExercises.push(...goalExercises[goal]);
-    }
-  });
-
-  return selectedExercises;
-}
-
-function getCorrectiveExercises(commonErrors, priorityAreas) {
-  const correctiveMap = {
-    'KNEE_VALGUS': [
-      {id: 'wall_squat', name: 'Sentadilla en Pared', category: 'corrective'},
-      {id: 'goblet_squat', name: 'Sentadilla Copa', category: 'corrective'}
-    ],
-    'ROUNDED_BACK': [
-      {id: 'neck_stretches', name: 'Estiramientos de Cuello', category: 'corrective'},
-      {id: 'chin_tucks', name: 'Retracciones de Barbilla', category: 'corrective'}
-    ],
-    'INSUFFICIENT_DEPTH': [
-      {id: 'shoulder_blade_squeezes', name: 'Compresión de Omóplatos', category: 'corrective'},
-      {id: 'door_chest_stretch', name: 'Estiramiento de Pecho en Puerta', category: 'corrective'}
-    ],
-    'POOR_ALIGNMENT': [
-      {id: 'glute_activation', name: 'Activación de Glúteos', category: 'corrective'},
-      {id: 'hip_abduction', name: 'Abducción de Cadera', category: 'corrective'}
-    ]
-  };
-
-  let correctiveExercises = [];
-  commonErrors.forEach(error => {
-    if (correctiveMap[error]) {
-      correctiveExercises.push(...correctiveMap[error]);
-    }
-  });
-
-  return correctiveExercises;
-}
+// ====================================================================
+// ⚠️ FUNCIONES DE EJERCICIOS MOVIDAS A exercise-database.js
+// ====================================================================
+// Las siguientes funciones ahora consultan Firestore directamente:
+// - getSafeExercisesForProfile() → exerciseDB.getSafeExercisesForProfile()
+// - getExercisesForGoals() → exerciseDB.getExercisesForGoals()
+// - getCorrectiveExercises() → exerciseDB.getCorrectiveExercises()
+// - validateAndEnhanceGPTRoutine() → exerciseDB.validateAndEnhanceGPTRoutineFromDB()
+//
+// Esto elimina listas hardcodeadas y centraliza los ejercicios en Firestore.
+// Ver: functions/exercise-database.js
+// ====================================================================
 
 function balanceExerciseSelection({safe, goalSpecific, corrective, duration, intensity}) {
   const targetExerciseCount = Math.ceil(duration / 5);
