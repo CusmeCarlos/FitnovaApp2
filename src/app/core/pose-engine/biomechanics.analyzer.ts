@@ -52,6 +52,11 @@ export class BiomechanicsAnalyzer {
   private readonly MOVEMENT_THRESHOLD_FRONTAL = 6; // Para vista frontal
   private readonly MOVEMENT_THRESHOLD_PROFILE = 8; // Para vista de perfil (más sensible)
 
+   // ✅ NUEVO: Tracking para detectar sentadilla poco profunda
+  private descendingStartTime: number = 0;
+  private descendingStartAngle: number = 180;
+  private hasShownShallowSquatWarning: boolean = false;
+
   // ✅ CONTADORES DE FASE PARA REPETICIONES
   private phaseTransitions = {
     topCount: 0,
@@ -523,8 +528,8 @@ export class BiomechanicsAnalyzer {
     const spineAngle = angles.spine_angle || 85;
 
     // 🔥 SOLO ALERTAR SI ES REALMENTE PELIGROSO (< 40°)
-    if (spineAngle < 40 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
-      const severity = spineAngle < 30 ? 9 : 7;
+    if (spineAngle < 60 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
+    const severity = spineAngle < 45 ? 9 : 7;
       errors.push({
         type: PostureErrorType.ROUNDED_BACK,
         severity: severity,
@@ -538,13 +543,13 @@ export class BiomechanicsAnalyzer {
     }
 
     // ✅ SENTADILLA POCO PROFUNDA - SOLO SI ES MUY EVIDENTE Y MUY RARA VEZ
-    if (kneeAngle > 130 &&  // Más permisivo: 130° en lugar de 120°
+    if (kneeAngle > 110 &&  // Más permisivo: 130° en lugar de 120°
         this.currentPhase === RepetitionPhase.BOTTOM &&
-        this.repetitionCounter >= 3 && // Solo mostrar después de 3 repeticiones
+        this.repetitionCounter >= 2 && // Solo mostrar después de 3 repeticiones
         this.checkErrorCooldown(PostureErrorType.INSUFFICIENT_DEPTH, timestamp)) {
       errors.push({
         type: PostureErrorType.INSUFFICIENT_DEPTH,
-        severity: 3, // Severidad muy baja
+        severity: 5, // Severidad muy baja
         description: 'Intenta bajar un poco más',
         recommendation: 'Baja más si puedes, flexiona más las rodillas',
         affectedJoints: ['left_knee', 'right_knee'],
@@ -1026,63 +1031,132 @@ export class BiomechanicsAnalyzer {
   // ✅ MÉTODOS AUXILIARES
   // ============================================================================
 
-  private performRealExerciseAnalysis(pose: PoseKeypoints, angles: BiomechanicalAngles): MovementAnalysis {
-    this.angleHistory.push(angles);
-    if (this.angleHistory.length > this.SMOOTHING_WINDOW) {
-      this.angleHistory.shift();
-    }
+// REEMPLAZA TODO EL MÉTODO performRealExerciseAnalysis
 
-    const newPhase = this.detectPhase(angles);
-    this.phaseHistory.push(newPhase);
-    if (this.phaseHistory.length > this.SMOOTHING_WINDOW) {
-      this.phaseHistory.shift();
-    }
-
-    const smoothedPhase = this.getMostCommonPhase();
-
-    if (smoothedPhase !== this.currentPhase) {
-      console.log(`📊 Cambio de fase: ${this.currentPhase} → ${smoothedPhase}`);
-      this.currentPhase = smoothedPhase;
-    }
-
-    // Detectar errores actuales
-    const errors = this.detectRealPosturalErrors(pose, angles);
-
-    // ✅ ARREGLADO: Acumular TODOS los errores durante la repetición
-    errors.forEach(error => {
-      // Solo agregar si no existe ya ese tipo de error
-      if (!this.currentRepetitionErrors.some(e => e.type === error.type)) {
-        this.currentRepetitionErrors.push(error);
-        console.log(`📝 Error acumulado para calificación: ${error.description} (severity: ${error.severity})`);
-      }
-    });
-
-    // Verificar si completó repetición
-    if (this.isRepetitionComplete(smoothedPhase)) {
-      this.repetitionCounter++;
-
-      // ✅ NUEVO: Generar feedback basado en errores acumulados
-      const feedback = this.generateRepetitionFeedback(this.currentRepetitionErrors);
-      console.log(`🎉 REPETICIÓN #${this.repetitionCounter} - ${feedback.quality.toUpperCase()}: ${feedback.message}`);
-
-      // Limpiar errores para siguiente repetición
-      this.currentRepetitionErrors = [];
-    }
-
-    const leftKnee = angles.left_knee_angle || 180;
-    const rightKnee = angles.right_knee_angle || 180;
-    const avgKneeAngle = (leftKnee + rightKnee) / 2;
-
-    // Solo procesar errores si está agachado (< 150°) o en posición inicial correcta (> 140°)
-    const isInExercisePosition = avgKneeAngle < 150 || avgKneeAngle > 140;
-
-    if (!isInExercisePosition) {
-      console.log('⏸️ Ignorando errores - usuario en movimiento (no ejercitando)');
-    }
-
-    const quality = this.calculateQualityScore(errors, angles);
-    return this.createBasicAnalysis(errors, smoothedPhase, this.repetitionCounter, quality);
+private performRealExerciseAnalysis(pose: PoseKeypoints, angles: BiomechanicalAngles): MovementAnalysis {
+  this.angleHistory.push(angles);
+  if (this.angleHistory.length > this.SMOOTHING_WINDOW) {
+    this.angleHistory.shift();
   }
+
+  const newPhase = this.detectPhase(angles);
+  this.phaseHistory.push(newPhase);
+  if (this.phaseHistory.length > this.SMOOTHING_WINDOW) {
+    this.phaseHistory.shift();
+  }
+
+  const smoothedPhase = this.getMostCommonPhase();
+
+  if (smoothedPhase !== this.currentPhase) {
+    console.log(`📊 Cambio de fase: ${this.currentPhase} → ${smoothedPhase}`);
+    
+    // ✅ NUEVO: Tracking cuando empieza a descender
+    if (smoothedPhase === RepetitionPhase.DESCENDING && this.currentPhase === RepetitionPhase.TOP) {
+      this.descendingStartTime = Date.now();
+      const leftKnee = angles.left_knee_angle || 180;
+      const rightKnee = angles.right_knee_angle || 180;
+      const leftVisible = pose.left_knee?.visibility || 0;
+      const rightVisible = pose.right_knee?.visibility || 0;
+      this.descendingStartAngle = leftVisible > rightVisible ? leftKnee : rightKnee;
+      this.hasShownShallowSquatWarning = false;
+      console.log('🔽 Empezó a descender desde', this.descendingStartAngle.toFixed(1), '°');
+    }
+    
+    // ✅ NUEVO: Reset cuando llega a BOTTOM o vuelve a TOP
+    if (smoothedPhase === RepetitionPhase.BOTTOM || smoothedPhase === RepetitionPhase.TOP) {
+      this.descendingStartTime = 0;
+      this.hasShownShallowSquatWarning = false;
+    }
+    
+    this.currentPhase = smoothedPhase;
+  }
+
+  // Detectar errores actuales
+  const errors = this.detectRealPosturalErrors(pose, angles);
+
+  // ✅ NUEVO: Detectar si está en DESCENDING por más de 2 segundos sin llegar a BOTTOM
+  const leftKnee = angles.left_knee_angle || 180;
+  const rightKnee = angles.right_knee_angle || 180;
+  const leftVisible = pose.left_knee?.visibility || 0;
+  const rightVisible = pose.right_knee?.visibility || 0;
+  const currentKneeAngle = leftVisible > rightVisible ? leftKnee : rightKnee;
+  
+  if (smoothedPhase === RepetitionPhase.DESCENDING && 
+      this.descendingStartTime > 0 && 
+      !this.hasShownShallowSquatWarning) {
+    
+    const timeInDescending = Date.now() - this.descendingStartTime;
+    
+    // Si lleva más de 2 segundos bajando Y el ángulo es mayor a 110° (no bajó suficiente)
+    if (timeInDescending > 2000 && currentKneeAngle > 110) {
+      console.log(`⚠️ Sentadilla poco profunda detectada: ${timeInDescending}ms en DESCENDING, ángulo: ${currentKneeAngle.toFixed(1)}°`);
+      
+      const timestamp = Date.now();
+      const shallowSquatError: PostureError = {
+        type: PostureErrorType.INSUFFICIENT_DEPTH,
+        severity: 6,
+        description: 'Baja más',
+        recommendation: 'Flexiona más las rodillas, intenta bajar más profundo',
+        affectedJoints: ['left_knee', 'right_knee'],
+        confidence: 0.85,
+        timestamp
+      };
+      
+      // ✅ AGREGAR AL ARRAY DE ERRORES ACTUAL (para mostrarlo AHORA)
+      errors.push(shallowSquatError);
+      this.hasShownShallowSquatWarning = true;
+    }
+  }
+
+  // Acumular TODOS los errores durante la repetición
+  errors.forEach(error => {
+    if (!this.currentRepetitionErrors.some(e => e.type === error.type)) {
+      this.currentRepetitionErrors.push(error);
+      console.log(`📝 Error acumulado para calificación: ${error.description} (severity: ${error.severity})`);
+    }
+  });
+
+  // Verificar si completó repetición
+  if (this.isRepetitionComplete(smoothedPhase)) {
+    this.repetitionCounter++;
+    const feedback = this.generateRepetitionFeedback(this.currentRepetitionErrors);
+    this.emitRepetitionFeedback(feedback, this.repetitionCounter);
+    console.log(`🎉 REPETICIÓN #${this.repetitionCounter} - ${feedback.quality.toUpperCase()}: ${feedback.message}`);
+    this.currentRepetitionErrors = [];
+  }
+
+  const avgKneeAngle = (leftKnee + rightKnee) / 2;
+  const isInExercisePosition = avgKneeAngle < 150 || avgKneeAngle > 140;
+
+  if (!isInExercisePosition) {
+    console.log('⏸️ Ignorando errores - usuario en movimiento (no ejercitando)');
+  }
+
+  const quality = this.calculateQualityScore(errors, angles);
+  return this.createBasicAnalysis(errors, smoothedPhase, this.repetitionCounter, quality);
+}
+
+// ✅✅ NUEVO MÉTODO: Emitir feedback de repetición
+// Este método debe agregarse al final de la clase BiomechanicsAnalyzer
+private emitRepetitionFeedback(
+  feedback: { message: string, quality: 'excellent' | 'good' | 'regular' }, 
+  repCount: number
+): void {
+  // Crear un evento customizado que el componente pose-camera puede escuchar
+  const event = new CustomEvent('repetitionFeedback', {
+    detail: {
+      message: feedback.message,
+      quality: feedback.quality,
+      repetitionNumber: repCount,
+      shouldShowFullMessage: repCount % 5 === 0 // Solo mostrar mensaje completo cada 5 reps
+    }
+  });
+  
+  // Emitir el evento
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(event);
+  }
+}
   
   private performReadinessAnalysis(pose: PoseKeypoints, angles: BiomechanicalAngles): MovementAnalysis {
     const errors = this.detectReadinessErrors(pose, angles);
@@ -1857,6 +1931,9 @@ export class BiomechanicsAnalyzer {
     this.outOfPositionFrames = 0;
     this.wasReady = false;
     this.hasStartedExercising = false; // ✅ RESETEAR FLAG
+    this.descendingStartTime = 0;
+    this.descendingStartAngle = 180;
+    this.hasShownShallowSquatWarning = false;
     console.log('🔄 Análisis reseteado');
   }
 

@@ -32,8 +32,9 @@ export class AudioService {
   // 🎚️ CONFIGURACIONES
   private audioConfig = {
     rate: 0.9,
-    pitch: 0.7,
+    pitch: 0.4,
     volume: 1.0,
+    voice: 'es-es-x-dam-local',
     language: 'es-ES'
   };
 

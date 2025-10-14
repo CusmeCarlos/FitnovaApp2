@@ -145,6 +145,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   async ngOnInit() {
     console.log('🚀 PoseCameraComponent ngOnInit');
     this.setupSubscriptions();
+    this.setupRepetitionFeedbackListener();
     
     // ✅ CONFIGURAR SERVICIOS CON FCM
     this.audioService.setEnabled(this.enableAudio);
@@ -167,8 +168,68 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     console.log('🧹 PoseCameraComponent ngOnDestroy');
+     if (typeof window !== 'undefined') {
+    window.removeEventListener('repetitionFeedback', this.setupRepetitionFeedbackListener);
+  }
     this.cleanup();
   }
+
+  // ✅✅ NUEVO MÉTODO: Configurar listener de feedback
+private setupRepetitionFeedbackListener(): void {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('repetitionFeedback', ((event: CustomEvent) => {
+      const { message, quality, repetitionNumber, shouldShowFullMessage } = event.detail;
+      
+      console.log(`✅ Feedback recibido - Rep #${repetitionNumber}`);
+      
+      // ✅ MOSTRAR SOLO CUADRO VERDE en CADA repetición
+      this.showGreenBoxFeedback(quality, shouldShowFullMessage ? message : null);
+      
+    }) as EventListener);
+  }
+}
+
+// ✅✅ NUEVO MÉTODO: Mostrar cuadro verde de feedback
+private showGreenBoxFeedback(quality: string, message: string | null): void {
+  const canvas = this.overlayElementRef.nativeElement;
+  const ctx = this.overlayCtx;
+  
+  if (!ctx) return;
+
+  // Limpiar canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // ✅ COLOR según calidad
+  let borderColor = '#4caf50'; // Verde por defecto (excellent)
+  if (quality === 'good') borderColor = '#8bc34a'; // Verde claro
+  if (quality === 'regular') borderColor = '#ffc107'; // Amarillo
+
+  // ✅ DIBUJAR SOLO EL CUADRO VERDE (SIN TEXTO)
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 4;
+  ctx.setLineDash([]);
+  ctx.strokeRect(2, 2, canvas.width - 10, canvas.height - 10);
+
+  // ✅ SI ES REPETICIÓN 5, 10, 15... MOSTRAR MENSAJE
+  if (message) {
+    // Fondo semi-transparente
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(20, 20, canvas.width - 40, 100);
+
+    // Texto del mensaje
+    ctx.fillStyle = borderColor;
+    ctx.font = 'bold 28px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(message, canvas.width / 2, 80);
+  }
+
+  // ✅ AUTO-LIMPIAR después de 800ms
+  setTimeout(() => {
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }, 800);
+}
 
   // ✅ INICIALIZAR SERVICIOS CON FCM SIMPLE
   private async initializeServices(): Promise<void> {
