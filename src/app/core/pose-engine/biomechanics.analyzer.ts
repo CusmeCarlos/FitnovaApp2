@@ -442,7 +442,35 @@ export class BiomechanicsAnalyzer {
     const logPrefix = isExercising ? '🔴 EJERCICIO' : '🟠 PREPARACIÓN';
 
     const feetDistance = Math.abs((pose.left_ankle?.x || 0) - (pose.right_ankle?.x || 0));
-
+    // ✅ NUEVO: DETECCIÓN DE ESPALDA CURVADA EN VISTA FRONTAL
+      const leftShoulder = pose.left_shoulder;
+      const rightShoulder = pose.right_shoulder;
+      const leftHip = pose.left_hip;
+      const rightHip = pose.right_hip;
+      
+      if (leftShoulder && rightShoulder && leftHip && rightHip &&
+          leftShoulder.visibility > 0.7 && rightShoulder.visibility > 0.7 &&
+          leftHip.visibility > 0.7 && rightHip.visibility > 0.7) {
+        
+        // Calcular distancia vertical entre hombros y caderas
+        const avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+        const avgHipY = (leftHip.y + rightHip.y) / 2;
+        const torsoLength = avgHipY - avgShoulderY;
+        
+        // Si el torso está muy comprimido = encorvado
+        if (torsoLength < 0.15 && this.checkErrorCooldown(PostureErrorType.ROUNDED_BACK, timestamp)) {
+          errors.push({
+            type: PostureErrorType.ROUNDED_BACK,
+            severity: baseSeverity + 2,
+            description: isExercising ? 'Espalda curvada' : 'Espalda encorvada',
+            recommendation: 'Endereza la espalda, saca el pecho',
+            affectedJoints: ['spine'],
+            confidence: 0.75,
+            timestamp
+          });
+          console.log(`${logPrefix}: Espalda curvada (torso: ${torsoLength.toFixed(3)})`);
+        }
+      }
     // ✅ ERROR: PIES MUY JUNTOS
     if (feetDistance < 0.15 && this.checkErrorCooldown(PostureErrorType.POOR_ALIGNMENT, timestamp)) {
       errors.push({
