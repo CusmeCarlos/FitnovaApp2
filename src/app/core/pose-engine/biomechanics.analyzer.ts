@@ -51,7 +51,7 @@ export class BiomechanicsAnalyzer {
   private readonly SMOOTHING_WINDOW = 5;
   private readonly MOVEMENT_THRESHOLD_FRONTAL = 6; // Para vista frontal
   private readonly MOVEMENT_THRESHOLD_PROFILE = 8; // Para vista de perfil (más sensible)
-  
+
   // ✅ CONTADORES DE FASE PARA REPETICIONES
   private phaseTransitions = {
     topCount: 0,
@@ -60,6 +60,9 @@ export class BiomechanicsAnalyzer {
   };
 
   private wasReady = false;
+
+  // ✅ NUEVO: Almacenar errores de la repetición actual
+  private currentRepetitionErrors: PostureError[] = [];
 
   constructor() {
     console.log('🧠 BiomechanicsAnalyzer inicializado - VERSIÓN CORREGIDA');
@@ -280,23 +283,23 @@ export class BiomechanicsAnalyzer {
     return isInRange && hasVisibility;
   }
 
-  // ✅ CORREGIDO: Detección de rodillas MÁS SENSIBLE
+  // ✅ CORREGIDO: Detección de rodillas MÁS TOLERANTE para principiantes
   private checkKneePosition(pose: PoseKeypoints): boolean {
     const leftKnee = pose.left_knee;
     const rightKnee = pose.right_knee;
-    
-    if (!leftKnee || !rightKnee || 
+
+    if (!leftKnee || !rightKnee ||
         leftKnee.visibility < 0.8 || rightKnee.visibility < 0.8) {
       return true; // Si no se detecta claramente, no molestar
     }
-    
+
     const kneeDistance = Math.abs(leftKnee.x - rightKnee.x);
-    const goodKneePosition = kneeDistance > 0.13; // ✅ 0.08 → 0.13 (MÁS SENSIBLE)
-    
+    const goodKneePosition = kneeDistance > 0.08; // ✅ Más tolerante para principiantes
+
     if (!goodKneePosition) {
       console.log(`🚨 RODILLAS MUY JUNTAS: distancia=${kneeDistance.toFixed(3)}`);
     }
-    
+
     return goodKneePosition;
   }
 
@@ -776,15 +779,16 @@ export class BiomechanicsAnalyzer {
       }
     }
 
-    // ✅ ERROR: TORSO INCLINADO HACIA ADELANTE (severity 6)
+    // ✅ ERROR: TORSO INCLINADO HACIA ADELANTE (severity 4 - sugerencia, no crítico)
     const spineAngle = angles.spine_angle || 85;
 
-    if (spineAngle < 75 && this.checkErrorCooldown(PostureErrorType.TRUNK_LEAN, timestamp)) {
+    if (spineAngle < 70 && this.currentPhase === RepetitionPhase.BOTTOM &&
+        this.checkErrorCooldown(PostureErrorType.TRUNK_LEAN, timestamp)) {
       errors.push({
         type: PostureErrorType.TRUNK_LEAN,
-        severity: 6,
+        severity: 4, // ✅ Severity baja: cuenta la repetición pero da feedback
         description: 'Torso inclinado hacia adelante',
-        recommendation: 'Mantén torso vertical, fortalece core',
+        recommendation: 'Para la próxima, intenta mantener el torso más recto',
         affectedJoints: ['spine'],
         confidence: 0.8,
         timestamp
@@ -797,6 +801,30 @@ export class BiomechanicsAnalyzer {
 
   private detectFrontalLungeErrors(pose: PoseKeypoints, angles: BiomechanicalAngles, timestamp: number): PostureError[] {
     const errors: PostureError[] = [];
+
+    // ✅ NUEVO: ERROR PIES MUY UNIDOS AL INICIO (solo en preparación)
+    if (this.readinessState === ReadinessState.GETTING_READY ||
+        this.readinessState === ReadinessState.READY_TO_START) {
+      const leftAnkle = pose.left_ankle;
+      const rightAnkle = pose.right_ankle;
+
+      if (leftAnkle && rightAnkle && leftAnkle.visibility > 0.7 && rightAnkle.visibility > 0.7) {
+        const feetDistance = Math.abs(leftAnkle.x - rightAnkle.x);
+
+        if (feetDistance < 0.12 && this.checkErrorCooldown(PostureErrorType.POOR_ALIGNMENT, timestamp)) {
+          errors.push({
+            type: PostureErrorType.POOR_ALIGNMENT,
+            severity: 6,
+            description: 'Pies muy unidos para zancadas',
+            recommendation: 'Separa más los pies antes de empezar - coloca un pie adelante',
+            affectedJoints: ['left_ankle', 'right_ankle'],
+            confidence: 0.9,
+            timestamp
+          });
+          console.log(`🟠 ZANCADA FRONTAL: Pies muy unidos ${feetDistance.toFixed(3)}`);
+        }
+      }
+    }
 
     // ✅ ERROR: RODILLA DELANTERA COLAPSA HACIA DENTRO (severity 7)
     if (!this.checkKneePosition(pose) &&
@@ -1003,38 +1031,56 @@ export class BiomechanicsAnalyzer {
     if (this.angleHistory.length > this.SMOOTHING_WINDOW) {
       this.angleHistory.shift();
     }
-  
+
     const newPhase = this.detectPhase(angles);
     this.phaseHistory.push(newPhase);
     if (this.phaseHistory.length > this.SMOOTHING_WINDOW) {
       this.phaseHistory.shift();
     }
-  
+
     const smoothedPhase = this.getMostCommonPhase();
-    
+
     if (smoothedPhase !== this.currentPhase) {
       console.log(`📊 Cambio de fase: ${this.currentPhase} → ${smoothedPhase}`);
       this.currentPhase = smoothedPhase;
     }
-  
+
+    // Detectar errores actuales
+    const errors = this.detectRealPosturalErrors(pose, angles);
+
+    // ✅ ARREGLADO: Acumular TODOS los errores durante la repetición
+    errors.forEach(error => {
+      // Solo agregar si no existe ya ese tipo de error
+      if (!this.currentRepetitionErrors.some(e => e.type === error.type)) {
+        this.currentRepetitionErrors.push(error);
+        console.log(`📝 Error acumulado para calificación: ${error.description} (severity: ${error.severity})`);
+      }
+    });
+
+    // Verificar si completó repetición
     if (this.isRepetitionComplete(smoothedPhase)) {
       this.repetitionCounter++;
-      console.log(`🎉 REPETICIÓN #${this.repetitionCounter}`);
+
+      // ✅ NUEVO: Generar feedback basado en errores acumulados
+      const feedback = this.generateRepetitionFeedback(this.currentRepetitionErrors);
+      console.log(`🎉 REPETICIÓN #${this.repetitionCounter} - ${feedback.quality.toUpperCase()}: ${feedback.message}`);
+
+      // Limpiar errores para siguiente repetición
+      this.currentRepetitionErrors = [];
     }
-  
-    const errors = this.detectRealPosturalErrors(pose, angles);
+
     const leftKnee = angles.left_knee_angle || 180;
     const rightKnee = angles.right_knee_angle || 180;
     const avgKneeAngle = (leftKnee + rightKnee) / 2;
-  
+
     // Solo procesar errores si está agachado (< 150°) o en posición inicial correcta (> 140°)
     const isInExercisePosition = avgKneeAngle < 150 || avgKneeAngle > 140;
-  
+
     if (!isInExercisePosition) {
       console.log('⏸️ Ignorando errores - usuario en movimiento (no ejercitando)');
     }
-  
-    const quality = this.calculateQualityScore(errors, angles);  
+
+    const quality = this.calculateQualityScore(errors, angles);
     return this.createBasicAnalysis(errors, smoothedPhase, this.repetitionCounter, quality);
   }
   
@@ -1358,6 +1404,22 @@ export class BiomechanicsAnalyzer {
       return false;
     }
 
+    // ✅ NUEVO: Verificar que los pies NO estén muy unidos al inicio
+    if (!isExercising) {
+      const leftAnkle = pose.left_ankle;
+      const rightAnkle = pose.right_ankle;
+
+      if (leftAnkle && rightAnkle && leftAnkle.visibility > 0.7 && rightAnkle.visibility > 0.7) {
+        const feetDistance = Math.abs(leftAnkle.x - rightAnkle.x);
+
+        // Los pies deben estar al menos a distancia de ancho de caderas (0.15)
+        if (feetDistance < 0.12) {
+          console.log(`🔴 ZANCADA: Pies muy unidos (${feetDistance.toFixed(3)}). Separa más los pies para hacer zancadas`);
+          return false;
+        }
+      }
+    }
+
     if (!isExercising) {
       console.log(`✅ ZANCADA: Posición inicial correcta (rodillas: ${avgKneeAngle.toFixed(1)}°)`);
     }
@@ -1517,11 +1579,11 @@ export class BiomechanicsAnalyzer {
     const rightHip = angles.right_hip_angle || 180;
     const avgHipAngle = (leftHip + rightHip) / 2;
 
-    // TOP: Cadera extendida (de pie)
+    // TOP: Cadera extendida (de pie) - Más estricto para principiantes
     // BOTTOM: Cadera flexionada (barra en el suelo)
-    if (avgHipAngle > 165) {
+    if (avgHipAngle > 170) { // ✅ Más estricto: debe estar completamente erguido
       return RepetitionPhase.TOP;
-    } else if (avgHipAngle < 100) {
+    } else if (avgHipAngle < 90) { // ✅ Más estricto: debe bajar más
       return RepetitionPhase.BOTTOM;
     } else {
       if (this.angleHistory.length >= 2) {
@@ -1547,11 +1609,11 @@ export class BiomechanicsAnalyzer {
     // En zancadas, una rodilla está más flexionada que la otra
     const frontKnee = Math.min(leftKnee, rightKnee); // La pierna delantera
 
-    // TOP: De pie, rodilla delantera extendida
+    // TOP: De pie, rodilla delantera extendida - Más estricto para principiantes
     // BOTTOM: Rodilla delantera flexionada ~90°
-    if (frontKnee > 145) {
+    if (frontKnee > 155) { // ✅ Más estricto: debe estar casi completamente de pie
       return RepetitionPhase.TOP;
-    } else if (frontKnee < 100) {
+    } else if (frontKnee < 95) { // ✅ Más estricto: debe bajar más
       return RepetitionPhase.BOTTOM;
     } else {
       if (this.angleHistory.length >= 2) {
@@ -1575,11 +1637,11 @@ export class BiomechanicsAnalyzer {
     const rightElbow = angles.right_elbow_angle || 180;
     const avgElbowAngle = (leftElbow + rightElbow) / 2;
 
-    // TOP: Codos flexionados (barra cerca del cuerpo)
+    // TOP: Codos flexionados (barra cerca del cuerpo) - Más estricto para principiantes
     // BOTTOM: Codos extendidos (barra abajo)
-    if (avgElbowAngle < 60) {
+    if (avgElbowAngle < 50) { // ✅ Más estricto: debe flexionar más los codos
       return RepetitionPhase.TOP; // Contracción máxima
-    } else if (avgElbowAngle > 140) {
+    } else if (avgElbowAngle > 150) { // ✅ Más estricto: debe extender más
       return RepetitionPhase.BOTTOM; // Extensión completa
     } else {
       if (this.angleHistory.length >= 2) {
@@ -1719,15 +1781,60 @@ export class BiomechanicsAnalyzer {
     }
   }
 
-  generatePositiveMessage(): string {
-    const messages = [
-      '¡Excelente repetición! Sigue así',
-      '¡Perfecto! Repetición completada correctamente',
-      '¡Muy bien! Gran técnica en esa repetición',
-      '¡Increíble! Repetición ejecutada perfectamente',
-      '¡Fantástico! Técnica impecable en esa repetición'
+  // ✅ NUEVO: Sistema de calificación de repeticiones según calidad
+  generateRepetitionFeedback(errors: PostureError[]): { message: string, quality: 'excellent' | 'good' | 'regular' } {
+    // Calcular severidad total de errores
+    const totalSeverity = errors.reduce((sum, error) => sum + error.severity, 0);
+    const hasHighSeverityError = errors.some(e => e.severity >= 7);
+    const hasMediumSeverityError = errors.some(e => e.severity >= 4 && e.severity < 7);
+
+    // SIN ERRORES = EXCELENTE
+    if (errors.length === 0 || totalSeverity === 0) {
+      const excellentMessages = [
+        '¡Excelente repetición! Técnica perfecta',
+        '¡Perfecto! Repetición completada correctamente',
+        '¡Increíble! Técnica impecable',
+        '¡Fantástico! Sigue así, lo haces muy bien',
+        '¡Excepcional! Repetición perfecta'
+      ];
+      return {
+        message: excellentMessages[Math.floor(Math.random() * excellentMessages.length)],
+        quality: 'excellent'
+      };
+    }
+
+    // ERRORES LEVES (severity < 7) = BUENA
+    if (!hasHighSeverityError && hasMediumSeverityError) {
+      const goodMessages = [
+        'Buena repetición, puedes mejorar un poco la técnica',
+        'Bien hecho, casi perfecto',
+        'Repetición válida, sigue trabajando en tu forma',
+        'Buen trabajo, mejora algunos detalles',
+        'Repetición correcta, afina tu técnica'
+      ];
+      return {
+        message: goodMessages[Math.floor(Math.random() * goodMessages.length)],
+        quality: 'good'
+      };
+    }
+
+    // ERRORES GRAVES (severity >= 7) = REGULAR
+    const regularMessages = [
+      'Repetición regular, corrige tu postura',
+      'Cuenta la repetición, pero mejora la técnica',
+      'Repetición válida, trabaja en corregir los errores',
+      'Regular, presta atención a la forma',
+      'Completada, pero necesitas mejorar la ejecución'
     ];
-    return messages[Math.floor(Math.random() * messages.length)];
+    return {
+      message: regularMessages[Math.floor(Math.random() * regularMessages.length)],
+      quality: 'regular'
+    };
+  }
+
+  generatePositiveMessage(): string {
+    // Método legacy - mantener por compatibilidad
+    return this.generateRepetitionFeedback([]).message;
   }
 
   private resetAnalysis(): void {

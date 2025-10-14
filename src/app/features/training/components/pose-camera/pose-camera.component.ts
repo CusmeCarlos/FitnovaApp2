@@ -321,6 +321,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
       } else {
         // En preparación: solo mostrar estado, NO errores
         this.currentErrors = [];
+        this.errorDetected.emit([]);
       }
   
     } catch (error) {
@@ -954,17 +955,24 @@ private clearReadinessNotification(): void {
   }
 }
  // Reemplazar processExerciseErrors
- private processExerciseErrors(errors: PostureError[], previousCount: number): void {
+private processExerciseErrors(errors: PostureError[], previousCount: number): void {
+  // ✅ SIEMPRE EMITIR ERRORES, incluso si la lista está vacía
+  console.log('🔍 processExerciseErrors llamado con', errors.length, 'errores');
+  
+  // ✅ EMITIR PRIMERO (CRÍTICO)
+  this.errorDetected.emit(errors);
+  console.log('📤 Errores emitidos a tab2.page:', errors.length);
+  
+  // Luego procesar para display visual y audio
   const newErrors = this.filterNewErrors(errors);
 
   if (newErrors.length > 0) {
-    console.log('🚨 Errores detectados:', newErrors.map(e => e.description));
+    console.log('🚨 Errores nuevos para mostrar:', newErrors.map(e => e.description));
 
     const mostSevere = this.getMostSevereError(newErrors);
     if (mostSevere) {
-      // Crear alerta unificada
-      const alert: UnifiedAlert = {
-        type: 'error',
+      const alert = {
+        type: 'error' as const,
         message: mostSevere.description,
         severity: mostSevere.severity,
         color: this.getErrorColor(mostSevere.severity),
@@ -985,24 +993,6 @@ private clearReadinessNotification(): void {
           this.audioService.speak(mostSevere.recommendation, 'info', 'normal');
         }
       }
-    }
-  } else {
-    // Sin errores
-    if (this.repetitionCount > previousCount) {
-      const goodMessage = this.biomechanicsAnalyzer.generatePositiveMessage();
-      
-      const alert: UnifiedAlert = {
-        type: 'success',
-        message: '¡EXCELENTE REPETICIÓN!',
-        severity: 1,
-        color: this.errorColors.good,
-        duration: 2000,
-        timestamp: Date.now(),
-        icon: '🎉'
-      };
-
-      this.showUnifiedAlert(alert);
-      this.audioService.speakSuccess(goodMessage);
     }
   }
 }

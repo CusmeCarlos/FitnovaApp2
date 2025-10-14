@@ -434,31 +434,58 @@ export class Tab2Page implements OnInit, OnDestroy {
     console.log('Pose detectada con', Object.keys(pose).length, 'puntos');
   }
 
-  // Mejorar tracking de errores
-  onErrorDetected(errors: PostureError[]): void {
-    this.sessionData.errors = errors;
-    this.sessionStats.errorsDetected += errors.length;
-    this.sessionStats.correctionsGiven += errors.length;
-    this.sessionStats.suggestionsGiven += errors.length;
-    
-    // Agregar tracking de errores por sesión
-    this.sessionData.suggestionsGiven += errors.length;
-    
-    this.loadTodayStats();
-
-    // Log para debugging
-    console.log('Errores detectados:', errors.map(e => ({
-      type: e.type,
-      severity: e.severity,
-      description: e.description
-    })));
-
-    // Mostrar toast para errores críticos
-    const criticalErrors = errors.filter(e => e.severity >= 7);
-    if (criticalErrors.length > 0) {
-      this.showErrorToast(`¡Atención! ${criticalErrors[0].description}`);
-    }
+ onErrorDetected(errors: PostureError[]): void {
+  // ✅ IMPORTANTE: Este método DEBE ser llamado incluso si errors está vacío
+  console.log('🎯 onErrorDetected llamado con', errors.length, 'errores');
+  
+  if (errors.length === 0) {
+    console.log('⚠️ No hay errores para procesar');
+    return;
   }
+  
+  this.sessionData.errors = errors;
+  this.sessionStats.errorsDetected += errors.length;
+  
+  // ✅ SUGERENCIAS: Errores con severidad baja (< 7)
+  const sugerencias = errors.filter(e => e.severity < 7).length;
+  this.sessionStats.suggestionsGiven += sugerencias;
+  
+  // ✅ CORRECCIONES: Errores con severidad alta (>= 7)
+  const correcciones = errors.filter(e => e.severity >= 7).length;
+  this.sessionStats.correctionsGiven += correcciones;
+  
+  // Agregar tracking de errores por sesión
+  this.sessionData.suggestionsGiven += sugerencias;
+  
+  this.loadTodayStats();
+
+  // Log para debugging mejorado
+  console.log('📊 Errores detectados:', errors.map(e => ({
+    type: e.type,
+    severity: e.severity,
+    description: e.description,
+    categoria: e.severity >= 7 ? 'CORRECCIÓN' : 'SUGERENCIA'
+  })));
+  
+  console.log(`✅ Stats actualizados:`);
+  console.log(`   - Sugerencias (severidad < 7): ${sugerencias}`);
+  console.log(`   - Correcciones (severidad >= 7): ${correcciones}`);
+  console.log(`   - Total errores: ${errors.length}`);
+  console.log(`   - Acumulado Sugerencias: ${this.sessionStats.suggestionsGiven}`);
+  console.log(`   - Acumulado Correcciones: ${this.sessionStats.correctionsGiven}`);
+
+  // Mostrar toast para errores críticos
+  const criticalErrors = errors.filter(e => e.severity >= 7);
+  if (criticalErrors.length > 0) {
+    this.showErrorToast(`¡Atención! ${criticalErrors[0].description}`);
+  }
+  
+  // Opcional: Mostrar mensaje diferente para sugerencias leves
+  const mildErrors = errors.filter(e => e.severity < 7 && e.severity >= 5);
+  if (mildErrors.length > 0 && criticalErrors.length === 0) {
+    console.log(`💡 Sugerencia: ${mildErrors[0].description}`);
+  }
+}
 
   // Mejor tracking de repeticiones
   onRepetitionCounted(count: number): void {
