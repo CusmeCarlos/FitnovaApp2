@@ -240,8 +240,8 @@ export class DashboardService {
     const mostCommonError = _.maxBy(Object.entries(errorsByType), '1')?.[0] || '';
 
     const weeklyProgress = this.calculateWeeklyProgress(alerts);
-    const weeklyImprovement = this.calculateWeeklyImprovement(alerts);
     const accuracyTrend = this.calculateAccuracyTrend(alerts);
+    const weeklyImprovement = this.calculateWeeklyImprovement(alerts);
     const exerciseStats = this.calculateExerciseStats(alerts);
 
     // ← AGREGAR LOG PARA DEBUGGING
@@ -317,20 +317,62 @@ export class DashboardService {
     }));
   }
 
-  private calculateWeeklyImprovement(alerts: CriticalAlert[]): number {
-    if (alerts.length < 2) return 0;
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const thisWeekErrors = alerts.filter(alert => 
-      alert.processedAt >= weekAgo && alert.processedAt < now).length;
-    const lastWeekErrors = alerts.filter(alert => 
-      alert.processedAt >= twoWeeksAgo && alert.processedAt < weekAgo).length;
-    if (lastWeekErrors === 0 && thisWeekErrors === 0) return 0;
-    if (lastWeekErrors === 0) return thisWeekErrors > 0 ? -100 : 0;
-    const improvement = ((lastWeekErrors - thisWeekErrors) / lastWeekErrors) * 100;
-    return Math.max(-100, Math.min(100, Math.round(improvement)));
-  }
+ private calculateWeeklyImprovement(alerts: CriticalAlert[]): number {
+  if (alerts.length < 2) return 0;
+  
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+  
+  // ✅ CAMBIO: Obtener alertas por semana
+  const thisWeekAlerts = alerts.filter(alert => 
+    alert.processedAt >= weekAgo && alert.processedAt < now);
+  const lastWeekAlerts = alerts.filter(alert => 
+    alert.processedAt >= twoWeeksAgo && alert.processedAt < weekAgo);
+  
+  // ✅ CAMBIO: Calcular precisión promedio, no cantidad de errores
+  const thisWeekAccuracy = this.calculateWeekAccuracy(thisWeekAlerts);
+  const lastWeekAccuracy = this.calculateWeekAccuracy(lastWeekAlerts);
+  
+  // ✅ CAMBIO: Validaciones mejoradas
+  if (thisWeekAlerts.length === 0 && lastWeekAlerts.length === 0) return 0;
+  if (lastWeekAlerts.length === 0) return 0; // Sin referencia previa, mostrar 0%
+  if (thisWeekAlerts.length === 0) return -10; // Esta semana sin entrenamientos
+  
+  // ✅ CAMBIO: Fórmula basada en precisión
+  const improvement = thisWeekAccuracy - lastWeekAccuracy;
+  
+  // ✅ CAMBIO: Límites razonables
+  return Math.max(-50, Math.min(50, Math.round(improvement)));
+}
+private calculateWeekAccuracy(weekAlerts: CriticalAlert[]): number {
+  if (weekAlerts.length === 0) return 0;
+  
+  // Obtener confidence promedio
+  const confidences = weekAlerts
+    .filter(alert => alert.confidence && alert.confidence > 0)
+    .map(alert => alert.confidence);
+  
+  if (confidences.length === 0) return 50; // Precisión base sin datos
+  
+  const avgConfidence = confidences.reduce((sum, conf) => sum + conf, 0) / confidences.length;
+  
+  // Penalizar por severidad de errores
+  const severityPenalty = weekAlerts.reduce((penalty, alert) => {
+    const weights = { 'low': 2, 'medium': 5, 'high': 8, 'critical': 12 };
+    return penalty + (weights[alert.severity] || 5);
+  }, 0);
+  
+  // Estimar sesiones (aproximadamente 3-4 errores por sesión)
+  const estimatedSessions = Math.max(1, Math.ceil(weekAlerts.length / 3.5));
+  const avgPenaltyPerSession = severityPenalty / estimatedSessions;
+  
+  // Calcular precisión final
+  const baseAccuracy = avgConfidence * 100;
+  const finalAccuracy = Math.max(0, baseAccuracy - avgPenaltyPerSession);
+  
+  return Math.round(finalAccuracy);
+}
 
   private calculateAccuracyTrend(alerts: CriticalAlert[]): 
     { date: string; accuracy: number }[] {

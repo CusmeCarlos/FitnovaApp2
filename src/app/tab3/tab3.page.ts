@@ -835,29 +835,30 @@ export class Tab3Page implements OnInit, OnDestroy {
 
   try {
     // ✅ VERIFICAR LÍMITE DE 3 RUTINAS
-    const routineCount = await this.checkRoutineCount();
-    if (routineCount >= 3) {
+    // ✅ VERIFICAR LÍMITE DIARIO DE 3 RUTINAS
+    const todayRoutineCount = await this.checkTodayRoutineCount();
+    if (todayRoutineCount >= 3) {
       const alert = await this.alertController.create({
-        header: '⚠️ Límite Alcanzado',
-        message: `
-          <p>Has alcanzado el límite máximo de <strong>3 rutinas</strong>.</p>
-          <p>Actualmente tienes <strong>${routineCount}</strong> rutinas generadas.</p>
-          <br>
-          <p>Para generar una nueva rutina, primero debes eliminar una existente desde el dashboard del entrenador.</p>
-        `,
-        buttons: [
-          {
-            text: 'Ver Mis Rutinas',
-            handler: () => {
-              this.router.navigate(['/routine-view']);
-            }
-          },
-          {
-            text: 'Entendido',
-            role: 'cancel'
-          }
-        ]
-      });
+  header: '⚠️ Límite Diario Alcanzado',
+  message: `
+    <p>Has generado <strong>3 rutinas hoy</strong>.</p>
+    <p>Actualmente tienes <strong>${todayRoutineCount}</strong> rutinas generadas hoy.</p>
+    <br>
+    <p>Puedes generar más rutinas mañana o contactar a tu entrenador.</p>
+  `,
+  buttons: [
+    {
+      text: 'Ver Mis Rutinas',
+      handler: () => {
+        this.router.navigate(['/routine-view']);
+      }
+    },
+    {
+      text: 'Entendido',
+      role: 'cancel'
+    }
+  ]
+});
       await alert.present();
       return;
     }
@@ -910,9 +911,8 @@ export class Tab3Page implements OnInit, OnDestroy {
   }
 }
 
-// ✅ CORREGIDO: Verificar cantidad de rutinas del usuario
-// ✅ Verificar cantidad de rutinas del usuario (acceso directo a Firestore nativo)
-private async checkRoutineCount(): Promise<number> {
+// ✅ Verificar rutinas generadas HOY (límite diario)
+private async checkTodayRoutineCount(): Promise<number> {
   try {
     const user = await firstValueFrom(this.auth.user$);
     if (!user?.uid) {
@@ -920,18 +920,28 @@ private async checkRoutineCount(): Promise<number> {
       return 0;
     }
 
+    // Calcular inicio del día actual
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Calcular fin del día actual
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
     // Acceder directamente a Firestore nativo
     const firestore = this.firestore.firestore;
     const routinesRef = firestore
       .collection('aiRoutines')
       .doc(user.uid)
-      .collection('routines');
+      .collection('routines')
+      .where('generatedAt', '>=', today)
+      .where('generatedAt', '<=', endOfDay);
 
     const snapshot = await routinesRef.get();
-    console.log(`📊 Rutinas encontradas: ${snapshot.size}`);
+    console.log(`📊 Rutinas generadas HOY: ${snapshot.size}`);
     return snapshot.size || 0;
   } catch (error) {
-    console.error('❌ Error verificando cantidad de rutinas:', error);
+    console.error('❌ Error verificando rutinas de hoy:', error);
     return 0;
   }
 }

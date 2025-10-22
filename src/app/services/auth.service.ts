@@ -40,22 +40,38 @@ export class AuthService {
   async login(email: string, password: string): Promise<void> {
     try {
       console.log('🔐 Iniciando login para:', email);
-      
+
       const userCredential = await this.afAuth.signInWithEmailAndPassword(email, password);
-      
+
       if (userCredential.user) {
-        // 🔥 1. Actualizar última actividad inmediatamente
+        // 🔥 1. Sincronizar estado de email verificado
+        await this.syncEmailVerificationStatus(userCredential.user.uid);
+
+        // 🔥 2. Actualizar última actividad inmediatamente
         await this.updateLastActiveAt(userCredential.user.uid);
-        
-        // 🔥 2. Iniciar timer de actividad automática
+
+        // 🔥 3. Iniciar timer de actividad automática
         this.startActivityTimer();
-        
+
         await this.showSuccessToast('¡Bienvenido a FitNova!');
         this.router.navigate(['/tabs']);
       }
     } catch (error: any) {
       console.error('❌ Error en login:', error);
       throw error;
+    }
+  }
+
+  // 🔄 SINCRONIZAR ESTADO DE EMAIL VERIFICADO
+  private async syncEmailVerificationStatus(uid: string): Promise<void> {
+    try {
+      console.log('🔍 Sincronizando estado de email verificado para:', uid);
+      const checkEmailVerification = firebase.functions().httpsCallable('checkEmailVerification');
+      const result = await checkEmailVerification({ uid });
+      console.log('✅ Email verification sync result:', result.data);
+    } catch (error) {
+      console.warn('⚠️ No se pudo sincronizar emailVerified:', error);
+      // No lanzar error porque esto no debe bloquear el login
     }
   }
 
