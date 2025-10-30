@@ -87,6 +87,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   currentPhase: RepetitionPhase = RepetitionPhase.IDLE;
   currentQualityScore = 0;
 
+
   // ✅ ESTADOS DE PREPARACIÓN
   currentReadinessState: ReadinessState = ReadinessState.NOT_READY;
   readinessMessage = '';
@@ -97,6 +98,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   private hasSessionStarted = false;
   private criticalErrorsSent = new Set<string>(); // Para evitar spam de notificaciones
   private isStopping = false; // ✅ Para prevenir múltiples clicks
+  
 
   private currentAlert: UnifiedAlert | null = null;
   private alertQueue: UnifiedAlert[] = [];
@@ -112,6 +114,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
   private canvasCtx: CanvasRenderingContext2D | null = null;
   private overlayCtx: CanvasRenderingContext2D | null = null;
   private readinessCtx: CanvasRenderingContext2D | null = null; // ✅ NUEVO
+
 
   // ✅ SUBSCRIPCIONES
   private subscriptions: Subscription[] = [];
@@ -138,6 +141,7 @@ export class PoseCameraComponent implements OnInit, AfterViewInit, OnDestroy {
     private cloudFunctions: CloudFunctionsService, // ✅ NUEVO
     private fcmService: FCMService, // ✅ NUEVO FCM SERVICE
     private cdr: ChangeDetectorRef
+
   ) {
     console.log('🎬 PoseCameraComponent constructor con todos los servicios');
   }
@@ -1090,10 +1094,10 @@ private handleReadinessStateChange(prevState: ReadinessState, newState: Readines
         this.drawReadinessNotification(this.currentReadinessState, this.readinessMessage);
         this.audioService.speakReadiness('¡Listo para empezar! Comienza el ejercicio');
         break;
-        
+      
       case ReadinessState.EXERCISING:
         this.clearReadinessNotification();
-        this.audioService.speakReadiness('¡Perfecto! Continúa con el ejercicio');
+        this.audioService.speakReadiness('Continua');
         break;
     }
   }
@@ -1182,22 +1186,23 @@ private drawSkeleton(pose: PoseKeypoints): void {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // ✅ DIBUJAR CONEXIONES usando MediaPipe - MÁS GRUESAS
-  ctx.lineWidth = 5; // ✅ Líneas más gruesas
-  ctx.strokeStyle = '#00ff88';
+  // 🎨 COLOR ORIGINAL VERDE
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#00ff88'; // Verde original
 
   if (window.drawConnectors && window.POSE_CONNECTIONS) {
     const landmarks = this.convertPoseToLandmarks(pose);
 
     window.drawConnectors(ctx, landmarks, window.POSE_CONNECTIONS, {
-      color: '#00ff88',
-      lineWidth: 5 // ✅ Líneas más gruesas
+      color: '#00ff88', // Verde original
+      lineWidth: 5
     });
   }
 
-  // ✅ DIBUJAR PUNTOS CLAVE
+  // ✅ DIBUJAR TODOS LOS 33 PUNTOS CLAVE
   this.drawKeyPoints(pose);
 }
+
 
   // 🔄 CONVERTIR POSE A LANDMARKS DE MEDIAPIPE
   private convertPoseToLandmarks(pose: PoseKeypoints): any[] {
@@ -1226,34 +1231,60 @@ private drawSkeleton(pose: PoseKeypoints): void {
     });
   }
 
-  // 🎯 DIBUJAR PUNTOS CLAVE
-  private drawKeyPoints(pose: PoseKeypoints): void {
-    if (!this.canvasCtx) return;
+ // ✅ REEMPLAZAR el método drawKeyPoints en pose-camera.component.ts
+private drawKeyPoints(pose: PoseKeypoints): void {
+  if (!this.canvasCtx) return;
 
-    const canvas = this.canvasElementRef.nativeElement;
-    const keyPoints = [
-      'left_shoulder', 'right_shoulder',
-      'left_elbow', 'right_elbow',
-      'left_wrist', 'right_wrist',
-      'left_hip', 'right_hip',
-      'left_knee', 'right_knee',
-      'left_ankle', 'right_ankle'
-    ];
+  const canvas = this.canvasElementRef.nativeElement;
 
-    this.canvasCtx.fillStyle = '#ff6b6b';
+  // 🎯 TODOS LOS 33 PUNTOS DE MEDIAPIPE
+  const allKeyPoints = [
+    'nose', 'left_eye_inner', 'left_eye', 'left_eye_outer',
+    'right_eye_inner', 'right_eye', 'right_eye_outer',
+    'left_ear', 'right_ear', 'mouth_left', 'mouth_right',
+    'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
+    'left_wrist', 'right_wrist', 'left_pinky', 'right_pinky',
+    'left_index', 'right_index', 'left_thumb', 'right_thumb',
+    'left_hip', 'right_hip', 'left_knee', 'right_knee',
+    'left_ankle', 'right_ankle', 'left_heel', 'right_heel',
+    'left_foot_index', 'right_foot_index'
+  ];
 
-    keyPoints.forEach(pointName => {
-      const point = pose[pointName as keyof PoseKeypoints];
-      if (point && point.visibility > 0.5) {
-        const x = point.x * canvas.width;
-        const y = point.y * canvas.height;
+  // 🎨 COLOR ORIGINAL (ROJO/ROSA)
+  this.canvasCtx.fillStyle = '#ff6b6b'; // Color original
 
-        this.canvasCtx!.beginPath();
-        this.canvasCtx!.arc(x, y, 8, 0, 2 * Math.PI); // ✅ Puntos más grandes (5 -> 8)
-        this.canvasCtx!.fill();
+  allKeyPoints.forEach((pointName) => {
+    const point = pose[pointName as keyof PoseKeypoints];
+    
+    if (point && point.visibility > 0.3) {
+      const x = point.x * canvas.width;
+      const y = point.y * canvas.height;
+
+      let radius = 4;
+      
+      if (['nose', 'left_shoulder', 'right_shoulder', 'left_hip', 'right_hip', 
+           'left_knee', 'right_knee', 'left_ankle', 'right_ankle'].includes(pointName)) {
+        radius = 8;
+      } else if (['left_elbow', 'right_elbow', 'left_wrist', 'right_wrist'].includes(pointName)) {
+        radius = 6;
       }
-    });
-  }
+      
+      if (this.canvasCtx) {
+        this.canvasCtx.beginPath();
+        this.canvasCtx.arc(x, y, radius, 0, 2 * Math.PI);
+        this.canvasCtx.fill();
+      }
+    }
+  });
+
+  const visiblePoints = allKeyPoints.filter(pointName => {
+    const point = pose[pointName as keyof PoseKeypoints];
+    return point && point.visibility > 0.3;
+  }).length;
+  
+  console.log(`🎯 Puntos visibles: ${visiblePoints}/33`);
+}
+
 
   // 🚦 DIBUJAR OVERLAY DE PREPARACIÓN
   private drawPreparationOverlay(message: string, color: string): void {

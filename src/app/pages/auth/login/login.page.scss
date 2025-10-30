@@ -559,3 +559,290 @@
   25% { transform: translateX(-5px); }
   75% { transform: translateX(5px); }
 }
+// ================================================================================
+// 🚨 TOAST DE ERROR ULTRA PREMIUM - ESTILO FINZENAPP
+// ================================================================================
+:root {
+  --toast-premium-bg: linear-gradient(135deg, 
+    rgba(20, 25, 40, 0.98) 0%, 
+    rgba(30, 35, 50, 0.95) 50%, 
+    rgba(25, 30, 45, 0.98) 100%);
+  --toast-error-accent: #ef4444;
+  --toast-error-glow: rgba(239, 68, 68, 0.4);
+  --toast-border-gradient: linear-gradient(135deg, 
+    rgba(239, 68, 68, 0.6) 0%, 
+    rgba(248, 113, 113, 0.3) 50%, 
+    rgba(239, 68, 68, 0.6) 100%);
+}
+
+.ultra-premium-error-toast {
+  --background: transparent !important;
+  --border-radius: 0px !important;
+  --box-shadow: none !important;
+  --margin-start: 0px !important;
+  --margin-end: 0px !important;
+  --margin-top: 0px !important;
+  --margin-bottom: 0px !important;
+  
+  .toast-wrapper {
+    background: var(--toast-premium-bg) !important;
+    border: 2px solid transparent !important;
+    border-radius: 20px !important;
+    backdrop-filter: blur(30px) !important;
+    padding: 0 !important;
+    margin: 1.5rem 1rem !important;
+    position: relative !important;
+    overflow: hidden !important;
+    
+    // ✨ BORDE ANIMADO CON GRADIENTE
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--toast-border-gradient);
+      border-radius: 20px;
+      padding: 2px;
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask-composite: subtract;
+      -webkit-mask-composite: xor;
+      animation: borderPulse 2s ease-in-out infinite;
+      z-index: -1;
+    }
+    
+    // ✨ EFECTO DE BRILLO SUPERIOR
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.6) 50%, 
+        transparent 100%);
+      border-radius: 20px 20px 0 0;
+    }
+    
+    // ✨ SOMBRA PREMIUM CON GLOW
+    box-shadow: 
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 20px 40px -12px rgba(0, 0, 0, 0.8),
+      0 0 60px var(--toast-error-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    
+    .toast-container {
+      padding: 0 !important;
+      
+      .toast-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        
+        .premium-toast-content {
+          display: flex;
+          align-items: center;
+          padding: 1.5rem 1.25rem;
+          gap: 1rem;
+          position: relative;
+          
+          // ✨ ICONO CON ANIMACIÓN Y GLOW
+          .toast-icon-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, 
+              rgba(239, 68, 68, 0.2) 0%, 
+              rgba(220, 38, 38, 0.1) 100%);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            position: relative;
+            overflow: hidden;
+            
+            &::before {
+              content: '';
+              position: absolute;
+              top: 0;
+              left: -100%;
+              width: 100%;
+              height: 100%;
+              background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.2), 
+                transparent);
+              animation: shimmer 2s ease-in-out infinite;
+            }
+            
+            ion-icon {
+              font-size: 1.5rem;
+              color: var(--toast-error-accent) !important;
+              filter: drop-shadow(0 0 8px var(--toast-error-glow));
+              animation: iconPulse 2s ease-in-out infinite;
+              z-index: 1;
+            }
+          }
+          
+          // ✨ CONTENIDO DE TEXTO
+          .toast-text-content {
+            flex: 1;
+            
+            .toast-title {
+              color: #ffffff !important;
+              font-size: 1rem !important;
+              font-weight: 700 !important;
+              margin-bottom: 0.25rem !important;
+              text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+              letter-spacing: 0.3px;
+            }
+            
+            .toast-message {
+              color: rgba(255, 255, 255, 0.85) !important;
+              font-size: 0.875rem !important;
+              font-weight: 500 !important;
+              line-height: 1.4 !important;
+              margin: 0 !important;
+            }
+          }
+          
+          // ✨ BOTÓN DE CIERRE PREMIUM
+          .toast-close-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            &:hover {
+              background: rgba(255, 255, 255, 0.1);
+              border-color: rgba(255, 255, 255, 0.2);
+              transform: scale(1.05);
+            }
+            
+            ion-icon {
+              font-size: 1.1rem;
+              color: rgba(255, 255, 255, 0.7) !important;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// ================================================================================
+// 🎬 ANIMACIONES PREMIUM
+// ================================================================================
+
+// Animación de entrada ultra suave
+@keyframes premiumSlideIn {
+  0% {
+    transform: translateY(-100px) translateX(-50%) scale(0.8);
+    opacity: 0;
+    filter: blur(10px);
+  }
+  60% {
+    transform: translateY(10px) translateX(-50%) scale(1.02);
+    opacity: 0.9;
+    filter: blur(2px);
+  }
+  100% {
+    transform: translateY(0) translateX(-50%) scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+// Pulso del borde
+@keyframes borderPulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.01);
+  }
+}
+
+// Efecto shimmer
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+// Pulso del icono
+@keyframes iconPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px var(--toast-error-glow));
+  }
+  50% {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 16px var(--toast-error-glow));
+  }
+}
+
+// Aplicar animación de entrada
+.ultra-premium-error-toast .toast-wrapper {
+  animation: premiumSlideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+// ================================================================================
+// 🌙 MODO OSCURO MEJORADO
+// ================================================================================
+@media (prefers-color-scheme: dark) {
+  .ultra-premium-error-toast .toast-wrapper {
+    box-shadow: 
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 25px 50px -12px rgba(0, 0, 0, 0.9),
+      0 0 80px var(--toast-error-glow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  }
+}
+
+// ================================================================================
+// 🔥 EFECTOS RESPONSIVOS
+// ================================================================================
+@media (max-width: 480px) {
+  .ultra-premium-error-toast .toast-wrapper {
+    margin: 1rem 0.75rem !important;
+    
+    .premium-toast-content {
+      padding: 1.25rem 1rem !important;
+      gap: 0.75rem !important;
+      
+      .toast-icon-wrapper {
+        width: 42px !important;
+        height: 42px !important;
+        
+        ion-icon {
+          font-size: 1.3rem !important;
+        }
+      }
+      
+      .toast-text-content {
+        .toast-title {
+          font-size: 0.9rem !important;
+        }
+        
+        .toast-message {
+          font-size: 0.8rem !important;
+        }
+      }
+    }
+  }
+}

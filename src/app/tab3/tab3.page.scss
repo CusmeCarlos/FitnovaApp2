@@ -795,17 +795,16 @@ ion-content.profile-content {
   }
 }
 
-// ================================================================================
-// ⚠️ CRITICAL SECTION FOR AI
+// ⚠️ CRITICAL SECTION FOR AI - CAMBIADO A AZUL
 // ================================================================================
 .critical-section {
-  border: 2px solid var(--profile-warning);
+  border: 2px solid var(--accent-blue);
   border-radius: 16px;
   padding: 1.5rem;
   margin: 1.5rem 0;
-  background: rgba(251, 191, 36, 0.1);
+  background: rgba(59, 130, 246, 0.1);
   backdrop-filter: blur(20px);
-  box-shadow: 0 8px 32px rgba(255, 193, 7, 0.1);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1);
   position: relative;
   
   &::before {
@@ -815,30 +814,30 @@ ion-content.profile-content {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--accent-yellow), var(--accent-orange));
+    background: linear-gradient(90deg, var(--accent-blue), #60a5fa);
   }
   
   h4 {
-    color: var(--profile-warning) !important;
+    color: var(--accent-blue) !important;
     font-weight: 700;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    text-shadow: 0 0 8px rgba(255, 193, 7, 0.2);
+    text-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
     
     ion-icon {
-      color: var(--profile-warning) !important;
+      color: var(--accent-blue) !important;
       animation: pulse 2s ease-in-out infinite;
     }
   }
   
   .critical-notice {
-    background: rgba(255, 193, 7, 0.15);
+    background: rgba(59, 130, 246, 0.15);
     border-radius: 12px;
     padding: 1rem;
     margin-bottom: 1.5rem;
-    border-left: 4px solid var(--profile-warning);
+    border-left: 4px solid var(--accent-blue);
     backdrop-filter: blur(10px);
     
     p {
@@ -851,16 +850,16 @@ ion-content.profile-content {
 }
 
 // ================================================================================
-// 💪 CAPACITY SECTION
+// 💪 CAPACITY SECTION - CAMBIADO A AZUL
 // ================================================================================
 .capacity-section {
-  border: 2px solid var(--profile-primary);
+  border: 2px solid var(--accent-blue);
   border-radius: 16px;
   padding: 1.5rem;
   margin: 1.5rem 0;
-  background: rgba(255, 87, 34, 0.1);
+  background: rgba(59, 130, 246, 0.1);
   backdrop-filter: blur(20px);
-  box-shadow: 0 8px 32px rgba(255, 87, 34, 0.1);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1);
   position: relative;
   
   &::before {
@@ -870,26 +869,26 @@ ion-content.profile-content {
     left: 0;
     right: 0;
     height: 3px;
-    background: var(--ai-gradient);
+    background: linear-gradient(90deg, var(--accent-blue), #60a5fa);
   }
   
   h4 {
-    color: var(--profile-primary) !important;
+    color: var(--accent-blue) !important;
     font-weight: 700;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    text-shadow: 0 0 8px rgba(255, 87, 34, 0.2);
+    text-shadow: 0 0 8px rgba(59, 130, 246, 0.2);
     
     ion-icon {
-      color: var(--profile-primary) !important;
+      color: var(--accent-blue) !important;
     }
   }
 }
 
-// ================================================================================
-// 🔘 BODY AREAS SECTION
+/// ================================================================================
+// 🔘 BODY AREAS SECTION - CAMBIADO A AZUL  
 // ================================================================================
 .body-areas-section {
   margin: 1.5rem 0;
@@ -924,9 +923,9 @@ ion-content.profile-content {
       transition: all 0.3s ease;
       
       &:hover {
-        --background: rgba(255, 87, 34, 0.1);
+        --background: rgba(59, 130, 246, 0.1);
         transform: translateY(-2px);
-        border-color: var(--accent-orange);
+        border-color: var(--accent-blue);
       }
       
       ion-checkbox {
@@ -950,13 +949,13 @@ ion-content.profile-content {
         
         ion-icon {
           font-size: 1.3rem;
-          color: var(--profile-primary) !important;
+          color: var(--accent-blue) !important;
         }
       }
       
       &:has(ion-checkbox:checked) {
-        --background: rgba(255, 87, 34, 0.15);
-        border-color: var(--accent-orange);
+        --background: rgba(59, 130, 246, 0.15);
+        border-color: var(--accent-blue);
         
         .body-area-label {
           color: #ffffff !important;
@@ -1090,7 +1089,7 @@ ion-item {
 }
 
 // ================================================================================
-// 🎯 GOALS GRID
+// 🎯 GOALS GRID - CAMBIADO A AZUL
 // ================================================================================
 .goals-grid {
   display: grid;
@@ -1118,9 +1117,9 @@ ion-item {
     
     &.selected,
     &:has(ion-checkbox:checked) {
-      --background: rgba(255, 87, 34, 0.15);
-      border-color: var(--profile-primary);
-      box-shadow: 0 8px 24px rgba(255, 87, 34, 0.2);
+      --background: rgba(59, 130, 246, 0.15);
+      border-color: var(--accent-blue);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
     }
     
     .goal-label {
@@ -1132,7 +1131,7 @@ ion-item {
 }
 
 // ================================================================================
-// 📊 LEVEL OPTIONS
+// 📊 LEVEL OPTIONS - CAMBIADO A AZUL
 // ================================================================================
 .level-options {
   .level-item {
@@ -1152,9 +1151,9 @@ ion-item {
     
     &.selected,
     &:has(ion-radio:checked) {
-      --background: rgba(255, 87, 34, 0.15);
-      border-color: var(--profile-primary);
-      box-shadow: 0 8px 24px rgba(255, 87, 34, 0.2);
+      --background: rgba(59, 130, 246, 0.15);
+      border-color: var(--accent-blue);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
     }
     
     .level-label {
@@ -1176,7 +1175,6 @@ ion-item {
     }
   }
 }
-
 // ================================================================================
 // 🔘 FORM ACTIONS
 // ================================================================================
@@ -1476,6 +1474,146 @@ ion-item {
     transform: scale(1.2);
   }
 }
+// ================================================================================
+// 🧠 LOADING AI PREMIUM - VERSIÓN LIMPIA
+// ================================================================================
+:global(.ai-loading-premium) {
+  --backdrop-opacity: 0.8;
+  
+  .loading-wrapper {
+    background: linear-gradient(135deg, 
+      rgba(20, 25, 40, 0.95) 0%, 
+      rgba(30, 35, 50, 0.98) 100%) !important;
+    border: 2px solid rgba(59, 130, 246, 0.5) !important;
+    border-radius: 20px !important;
+    backdrop-filter: blur(20px) !important;
+    box-shadow: 
+      0 20px 40px rgba(0, 0, 0, 0.8),
+      0 0 60px rgba(59, 130, 246, 0.4) !important;
+    
+    .loading-content {
+      color: #ffffff !important;
+      font-size: 1rem !important;
+      font-weight: 600 !important;
+      text-align: center !important;
+      padding: 1rem !important;
+    }
+    
+    .loading-spinner {
+      svg {
+        width: 48px !important;
+        height: 48px !important;
+        stroke: #3b82f6 !important;
+        animation: spin 1s linear infinite, glow 2s ease-in-out infinite alternate !important;
+      }
+    }
+  }
+}
 
+// Animaciones
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
+@keyframes glow {
+  from { filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.5)); }
+  to { filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.8)); }
+}
+// ================================================================================
+// 📅 INPUTS DE FECHA PREMIUM
+// ================================================================================
+.form-item {
+  ion-input[type="date"] {
+    --color: #ffffff !important;
+    --placeholder-color: rgba(255, 255, 255, 0.6) !important;
+    --background: rgba(255, 255, 255, 0.05) !important;
+    --border-radius: 12px !important;
+    --padding-start: 1rem !important;
+    --padding-end: 1rem !important;
+    --min-height: 48px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 12px !important;
+    backdrop-filter: blur(10px) !important;
+    transition: all 0.3s ease !important;
+    
+    &:focus-within {
+      --border-color: var(--accent-blue) !important;
+      border-color: var(--accent-blue) !important;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+      transform: translateY(-1px) !important;
+    }
+    
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.3) !important;
+      transform: translateY(-1px) !important;
+    }
+    
+    // ✨ ESTILO DEL CALENDARIO PICKER
+    &::-webkit-calendar-picker-indicator {
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3e%3c/rect%3e%3cline x1='16' y1='2' x2='16' y2='6'%3e%3c/line%3e%3cline x1='8' y1='2' x2='8' y2='6'%3e%3c/line%3e%3cline x1='3' y1='10' x2='21' y2='10'%3e%3c/line%3e%3c/svg%3e") !important;
+      background-size: 20px 20px !important;
+      background-repeat: no-repeat !important;
+      background-position: center !important;
+      filter: brightness(1.2) !important;
+      width: 20px !important;
+      height: 20px !important;
+      cursor: pointer !important;
+      margin-right: 0.5rem !important;
+      transition: transform 0.2s ease !important;
+      
+      &:hover {
+        transform: scale(1.1) !important;
+        filter: brightness(1.5) !important;
+      }
+    }
+    
+    // ✨ TEXTO DE LA FECHA
+    .native-input {
+      color: #ffffff !important;
+      font-weight: 500 !important;
+      font-size: 0.95rem !important;
+    }
+  }
+}
+
+// ================================================================================
+// 🎨 EFECTOS ESPECIALES PARA FECHAS
+// ================================================================================
+
+// Animación cuando se selecciona una fecha
+@keyframes dateSelected {
+  0% {
+    background: rgba(59, 130, 246, 0.1);
+    transform: scale(1);
+  }
+  50% {
+    background: rgba(59, 130, 246, 0.2);
+    transform: scale(1.02);
+  }
+  100% {
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(1);
+  }
+}
+
+.form-item ion-input[type="date"]:focus-within {
+  animation: dateSelected 0.5s ease-out;
+}
+
+// ================================================================================
+// 📱 RESPONSIVE PARA FECHAS
+// ================================================================================
+@media (max-width: 480px) {
+  .form-item ion-input[type="date"] {
+    --min-height: 44px !important;
+    --padding-start: 0.75rem !important;
+    --padding-end: 0.75rem !important;
+    
+    &::-webkit-calendar-picker-indicator {
+      width: 18px !important;
+      height: 18px !important;
+      background-size: 18px 18px !important;
+    }
+  }
+}
 }

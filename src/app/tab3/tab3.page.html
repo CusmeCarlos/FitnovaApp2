@@ -263,15 +263,15 @@
               </ion-item>
             </div>
 
+            <!-- FECHA DE NACIMIENTO SIMPLE -->
             <ion-item class="form-item">
               <ion-label position="stacked">Fecha de Nacimiento</ion-label>
-              <ion-datetime 
+              <ion-input 
                 formControlName="dateOfBirth" 
-                presentation="date"
-                displayFormat="DD/MM/YYYY"
-                [max]="maxDate"
-                placeholder="Selecciona tu fecha de nacimiento">
-              </ion-datetime>
+                type="date"
+                [max]="maxDate.split('T')[0]"
+                placeholder="DD/MM/AAAA">
+              </ion-input>
             </ion-item>
 
             <ion-item class="form-item">
@@ -568,14 +568,16 @@
           <div class="form-section">
             <h4>Evaluaciones Médicas</h4>
             
-            <ion-item class="form-item">
-              <ion-label position="stacked">Último Chequeo Médico</ion-label>
-              <ion-datetime 
-                formControlName="lastMedicalCheckup" 
-                presentation="date" 
-                placeholder="Fecha del último chequeo">
-              </ion-datetime>
-            </ion-item>
+            <!-- ÚLTIMO CHEQUEO MÉDICO SIMPLE -->
+              <ion-item class="form-item">
+                <ion-label position="stacked">Último Chequeo Médico</ion-label>
+                <ion-input 
+                  formControlName="lastMedicalCheckup" 
+                  type="date"
+                  [max]="maxDate.split('T')[0]"
+                  placeholder="DD/MM/AAAA">
+                </ion-input>
+              </ion-item>
 
             <ion-item class="form-item">
               <ion-checkbox formControlName="doctorClearance"></ion-checkbox>

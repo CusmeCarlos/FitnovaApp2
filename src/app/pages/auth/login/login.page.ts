@@ -1,10 +1,10 @@
 // src/app/pages/auth/login/login.page.ts
-// ✅ CORREGIDO - SOLO EMAIL/PASSWORD SEGÚN DOCUMENTO
+// ✅ CORREGIDO - CON MANEJO DE ERRORES ESPECÍFICOS
 
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { LoadingController } from '@ionic/angular';
+import { LoadingController, ToastController } from '@ionic/angular';
 import { AuthService } from '../../../services/auth.service';
 import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
@@ -31,7 +31,8 @@ export class LoginPage implements OnInit {
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private loadingController: LoadingController
+    private loadingController: LoadingController,
+    private toastController: ToastController
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -57,7 +58,7 @@ export class LoginPage implements OnInit {
     this.showPassword = !this.showPassword;
   }
 
-  // ✅ SUBMIT LOGIN FORM
+  // ✅ SUBMIT LOGIN FORM CON MANEJO DE ERRORES ESPECÍFICOS
   async onSubmit() {
     if (this.loginForm.invalid) return;
     
@@ -72,16 +73,60 @@ export class LoginPage implements OnInit {
       const { email, password } = this.loginForm.value;
       await this.authService.login(email, password);
       // El AuthService maneja el éxito y navegación
-    } catch (error) {
-      // El ErrorHandlerService maneja todos los errores
-      console.log('Error capturado en login page:', error);
+    } catch (error: any) {
+      console.error('❌ Error en login:', error);
+      
+      // ✅ MOSTRAR MENSAJE DE ERROR ESPECÍFICO
+      let errorMessage = 'Correo o contraseña incorrecta. Verifica e intenta nuevamente';
+      
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+          case 'auth/invalid-login-credentials':
+            errorMessage = 'Correo o contraseña incorrecta. Verifica e intenta nuevamente';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'Demasiados intentos fallidos. Intenta más tarde';
+            break;
+          case 'auth/user-disabled':
+            errorMessage = 'Esta cuenta ha sido deshabilitada';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = 'Error de conexión. Verifica tu conexión a internet';
+            break;
+          default:
+            errorMessage = 'Correo o contraseña incorrecta. Verifica e intenta nuevamente';
+        }
+      }
+      
+      // ✅ MOSTRAR TOAST PREMIUM CON ERROR
+      await this.showErrorToast(errorMessage);
     } finally {
       await loading.dismiss();
       this.loading = false;
     }
   }
 
-  // 🗑️ ELIMINADO: googleLogin() - No está en documento
-  // 🗑️ ELIMINADO: Links a reset-password - No está en documento
-  // 🗑️ ELIMINADO: Links a register - Solo credenciales entrenador
+  // ✅ MÉTODO PARA MOSTRAR TOAST DE ERROR PREMIUM
+  private async showErrorToast(message: string): Promise<void> {
+    const toast = await this.toastController.create({
+      message: message,
+      duration: 4000,
+      position: 'top',
+      color: 'danger',
+      cssClass: 'custom-error-toast',
+      buttons: [
+        {
+          text: '✕',
+          role: 'cancel',
+          handler: () => {
+            console.log('Toast cerrado');
+          }
+        }
+      ]
+    });
+    await toast.present();
+  }
 }

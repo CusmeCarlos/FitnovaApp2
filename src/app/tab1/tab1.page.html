@@ -126,7 +126,7 @@
           <ion-icon name="analytics-outline"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number">{{ metrics.accuracy }}%</span>
+          <span class="stat-number">{{ formatAccuracy(metrics.accuracy) }}%</span>
           <span class="stat-label">Precisión</span>
         </div>
         <div class="stat-badge" [style.background-color]="getAccuracyBadgeColor(metrics.accuracy)">
@@ -221,7 +221,7 @@
           <div class="exercise-accuracy">
             <div class="accuracy-circle" 
                  [style.background]="'conic-gradient(#4caf50 ' + exercise.avgAccuracy + '%, #2a2a2a 0)'">
-              <span>{{ exercise.avgAccuracy }}%</span>
+              <span>{{ formatAccuracy(exercise.avgAccuracy) }}%</span>
             </div>
           </div>
         </div>
@@ -236,7 +236,7 @@
           Tendencia de Precisión
         </h3>
         <div class="section-badge">
-          {{ metrics.accuracy }}% promedio
+          {{ formatAccuracy(metrics.accuracy) }}% promedio
         </div>
       </div>
 

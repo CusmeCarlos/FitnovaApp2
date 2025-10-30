@@ -25,7 +25,9 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('progressChart', { static: false }) progressChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('accuracyChart', { static: false }) accuracyChartRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('errorsChart', { static: false }) errorsChartRef!: ElementRef<HTMLCanvasElement>;
-
+  formatAccuracy(value: number): number {
+  return Math.round(value || 0);
+  }
   // DATOS DEL USUARIO Y MÉTRICAS
   user: User | null = null;
   metrics: DashboardMetrics | null = null;
@@ -76,6 +78,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     this.subscriptions.unsubscribe();
     this.destroyCharts();
   }
+
 
   // CARGAR DATOS DEL USUARIO
   private loadUserData(): void {

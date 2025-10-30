@@ -44,7 +44,6 @@ import {
   IonItem,
   IonSelect,
   IonSelectOption,
-  IonDatetime,
   IonCheckbox,
   ToastController,
   AlertController,
@@ -80,7 +79,6 @@ import {
     IonItem,
     IonSelect,
     IonSelectOption,
-    IonDatetime,
     IonCheckbox,
     IonRadio,
     IonRadioGroup
@@ -203,7 +201,8 @@ export class Tab3Page implements OnInit, OnDestroy {
   ngOnInit() {
     this.initializeSubscriptions();
     this.setupFormChangeListeners();
-    
+     const today = new Date();
+  this.maxDate = today.toISOString().split('T')[0];
     // ✅ NUEVO: Suscribirse a cambios de rutina en tiempo real
     this.initializeRoutineStateSubscription();
   }
@@ -568,11 +567,17 @@ export class Tab3Page implements OnInit, OnDestroy {
   }
 
   // ✅ CAMBIAR SECCIÓN ACTIVA
-  changeSection(section: any): void {
-    if (section && typeof section === 'string') {
-      this.currentSection = section as 'personal' | 'medical' | 'goals' | 'level' | 'preferences';
-    }
+ // ✅ CAMBIAR SECCIÓN ACTIVA - CON SCROLL AL INICIO
+changeSection(section: any): void {
+  if (section && typeof section === 'string') {
+    this.currentSection = section as 'personal' | 'medical' | 'goals' | 'level' | 'preferences';
+    
+    // ✅ SCROLL AL INICIO CUANDO SE CAMBIA MANUALMENTE DE SECCIÓN
+    setTimeout(() => {
+      this.scrollToTop();
+    }, 100);
   }
+}
 
   // ✅ CALCULAR COMPLETACIÓN DE PERFIL
   private calculateProfileCompletion(): void {
@@ -613,198 +618,238 @@ export class Tab3Page implements OnInit, OnDestroy {
     this.profileCompletionPercentage = Math.round((completedSections / totalSections) * 100);
   }
 
-  async savePersonalInfo(): Promise<void> {
-    if (this.personalInfoForm.invalid) {
-      await this.showValidationErrors('Información Personal');
-      return;
+  // ✅ GUARDAR INFORMACIÓN PERSONAL - CON AUTO-NAVEGACIÓN
+// ✅ GUARDAR INFORMACIÓN PERSONAL - CON AUTO-NAVEGACIÓN Y SCROLL
+async savePersonalInfo(): Promise<void> {
+  if (this.personalInfoForm.invalid) {
+    await this.showValidationErrors('Información Personal');
+    return;
+  }
+
+  this.isSaving = true;
+  try {
+    const formValue = this.personalInfoForm.value;
+    
+    // Extraer solo la parte de fecha (YYYY-MM-DD)
+    let dateOfBirth = null;
+    if (formValue.dateOfBirth) {
+      const dateStr = formValue.dateOfBirth.split('T')[0]; // "2004-10-12"
+      dateOfBirth = dateStr;
     }
+    
+    const personalInfo = { 
+      ...formValue,
+      dateOfBirth: dateOfBirth
+    };
+
+    console.log('📅 Fecha que se va a guardar:', dateOfBirth);
+
+    const success = await this.profileService.updatePersonalInfo(personalInfo);
+    
+    if (success) {
+      await this.showToast('Información personal guardada correctamente', 'success');
+      
+      // ✅ NAVEGACIÓN AUTOMÁTICA AL SIGUIENTE TAB CON SCROLL
+      setTimeout(() => {
+        this.changeSection('medical');
+        this.scrollToTop();
+      }, 1000);
+      
+    } else {
+      await this.showToast('Error al guardar la información personal', 'danger');
+    }
+  } catch (error) {
+    console.error('Error guardando:', error);
+    await this.showToast('Error inesperado al guardar', 'danger');
+  } finally {
+    this.isSaving = false;
+  }
+}
+
+// ✅ GUARDAR HISTORIAL MÉDICO - CON AUTO-NAVEGACIÓN Y SCROLL
+async saveMedicalHistory(): Promise<void> {
+  this.isSaving = true;
+  try {
+    const formValue = this.medicalHistoryForm.value;
+    const expandedMedicalHistory = {
+      // Campos básicos existentes
+      conditions: this.getArrayValues('medicalHistoryForm', 'conditions'),
+      injuries: this.getArrayValues('medicalHistoryForm', 'injuries'),
+      limitations: this.getArrayValues('medicalHistoryForm', 'limitations'),
+      currentConditions: this.getArrayValues('medicalHistoryForm', 'currentConditions'),
+      chronicDiseases: this.getArrayValues('medicalHistoryForm', 'chronicDiseases'),
+      allergies: this.getArrayValues('medicalHistoryForm', 'allergies'),
+      medications: this.getArrayValues('medicalHistoryForm', 'medications'),
+      heartConditions: this.getArrayValues('medicalHistoryForm', 'heartConditions'),
+      
+      // ✅ NUEVOS CAMPOS CRÍTICOS PARA IA
+      currentInjuries: formValue.currentInjuries || '',
+      painfulAreas: this.selectedBodyAreas,
+      forbiddenExercises: formValue.forbiddenExercises || '',
+      movementLimitations: formValue.movementLimitations || '',
+      exercisesToAvoid: formValue.exercisesToAvoid || '',
+      
+      // ✅ CAPACIDAD FÍSICA PARA IA
+      physicalCapacity: {
+        walkingCapacity: formValue.walkingCapacity,
+        stairsCapacity: formValue.stairsCapacity,
+        weightExperience: formValue.weightExperience,
+        maxComfortableWeight: formValue.maxComfortableWeight || 0,
+        energyLevel: formValue.energyLevel
+      },
+
+      // Campos existentes
+      lastMedicalCheckup: formValue.lastMedicalCheckup || null,
+      doctorClearance: formValue.doctorClearance || false,
+      doctorNotes: formValue.doctorNotes || '',
+      lastUpdated: new Date(),
+      
+      // ✅ INDICADORES PARA IA
+      aiReadiness: this.aiReadinessPercentage,
+      readyForAI: this.isAIReady
+    };
+
+    const success = await this.profileService.updateMedicalHistory(expandedMedicalHistory);
+    
+    if (success) {
+      await this.showToast('Historial médico guardado correctamente', 'success');
+      
+      // ✅ NAVEGACIÓN AUTOMÁTICA AL SIGUIENTE TAB CON SCROLL
+      setTimeout(() => {
+        this.changeSection('goals');
+        this.scrollToTop();
+      }, 1000);
+      
+      if (this.isAIReady) {
+        await this.showAIReadyAlert();
+      }
+    } else {
+      await this.showToast('Error al guardar el historial médico', 'danger');
+    }
+  } catch (error) {
+    console.error('Error guardando historial médico:', error);
+    await this.showToast('Error inesperado al guardar', 'danger');
+  } finally {
+    this.isSaving = false;
+  }
+}
+
+// ✅ GUARDAR OBJETIVOS FITNESS - CON AUTO-NAVEGACIÓN Y SCROLL
+async saveFitnessGoals(): Promise<void> {
+  if (this.fitnessGoalsForm.invalid) {
+    await this.showValidationErrors('Objetivos de Fitness');
+    return;
+  }
+
+  this.isSaving = true;
+  try {
+    const formValue = this.fitnessGoalsForm.value;
+    const fitnessGoals = { ...formValue, lastUpdated: new Date() };
+
+    const success = await this.profileService.updateFitnessGoals(fitnessGoals);
+    
+    if (success) {
+      await this.showToast('Objetivos de fitness guardados correctamente', 'success');
+      
+      // ✅ NAVEGACIÓN AUTOMÁTICA AL SIGUIENTE TAB CON SCROLL
+      setTimeout(() => {
+        this.changeSection('level');
+        this.scrollToTop();
+      }, 1000);
+      
+    } else {
+      await this.showToast('Error al guardar objetivos', 'danger');
+    }
+  } catch (error) {
+    await this.showToast('Error inesperado al guardar', 'danger');
+  } finally {
+    this.isSaving = false;
+  }
+}
+
+// ✅ GUARDAR NIVEL FITNESS - CON AUTO-NAVEGACIÓN Y SCROLL
+async saveFitnessLevel(): Promise<void> {
+  if (this.fitnessLevelForm.invalid) {
+    await this.showValidationErrors('Nivel de Fitness');
+    return;
+  }
+
+  this.isSaving = true;
+  try {
+    const formValue = this.fitnessLevelForm.value;
+    
+    // ✅ Guardar nivel principal
+    const success = await this.profileService.updateFitnessLevel(formValue.overallLevel);
+    
+    if (success) {
+      await this.showToast('Nivel de fitness guardado correctamente', 'success');
+      
+      // ✅ NAVEGACIÓN AUTOMÁTICA AL SIGUIENTE TAB CON SCROLL
+      setTimeout(() => {
+        this.changeSection('preferences');
+        this.scrollToTop();
+      }, 1000);
+      
+    } else {
+      await this.showToast('Error al guardar nivel de fitness', 'danger');
+    }
+  } catch (error) {
+    await this.showToast('Error inesperado al guardar', 'danger');
+  } finally {
+    this.isSaving = false;
+  }
+}
+
+// ✅ GUARDAR PREFERENCIAS DE ENTRENAMIENTO - ÚLTIMA SECCIÓN CON SCROLL
+async saveTrainingPreferences(): Promise<void> {
+  if (this.trainingPreferencesForm.invalid) {
+    await this.showValidationErrors('Preferencias de Entrenamiento');
+    return;
+  }
+
+  this.isSaving = true;
+  try {
+    const formValue = this.trainingPreferencesForm.value;
+    const trainingPreferences = { ...formValue, lastUpdated: new Date() };
+
+    const success = await this.profileService.updateTrainingPreferences(trainingPreferences);
+    
+    if (success) {
+      await this.showToast('¡Perfil completado! Listo para generar rutinas IA', 'success');
+      
+      // ✅ COMO ES LA ÚLTIMA SECCIÓN, VOLVER AL INICIO CON SCROLL
+      setTimeout(() => {
+        this.changeSection('personal');
+        this.scrollToTop();
+      }, 1500);
+      
+    } else {
+      await this.showToast('Error al guardar preferencias', 'danger');
+    }
+  } catch (error) {
+    await this.showToast('Error inesperado al guardar', 'danger');
+  } finally {
+    this.isSaving = false;
+  }
+}
+
+// ✅ MÉTODO PARA HACER SCROLL AL INICIO
+private scrollToTop(): void {
+  // Método 1: Scroll suave usando ion-content
+  const content = document.querySelector('ion-content');
+  if (content) {
+    content.scrollToTop(400); // 400ms de duración
+  }
   
-    this.isSaving = true;
-    try {
-      const formValue = this.personalInfoForm.value;
-      
-      // Extraer solo la parte de fecha (YYYY-MM-DD)
-      let dateOfBirth = null;
-      if (formValue.dateOfBirth) {
-        const dateStr = formValue.dateOfBirth.split('T')[0]; // "2004-10-12"
-        dateOfBirth = dateStr;
-      }
-      
-      const personalInfo = { 
-        ...formValue,
-        dateOfBirth: dateOfBirth
-      };
-  
-      console.log('📅 Fecha que se va a guardar:', dateOfBirth);
-  
-      const success = await this.profileService.updatePersonalInfo(personalInfo);
-      
-      if (success) {
-        await this.showToast('Información personal guardada correctamente', 'success');
-      } else {
-        await this.showToast('Error al guardar la información personal', 'danger');
-      }
-    } catch (error) {
-      console.error('Error guardando:', error);
-      await this.showToast('Error inesperado al guardar', 'danger');
-    } finally {
-      this.isSaving = false;
-    }
-  }
-
-  // ✅ GUARDAR HISTORIAL MÉDICO EXPANDIDO
-  async saveMedicalHistory(): Promise<void> {
-    this.isSaving = true;
-    try {
-      const formValue = this.medicalHistoryForm.value;
-      const expandedMedicalHistory = {
-        // Campos básicos existentes
-        conditions: this.getArrayValues('medicalHistoryForm', 'conditions'),
-        injuries: this.getArrayValues('medicalHistoryForm', 'injuries'),
-        limitations: this.getArrayValues('medicalHistoryForm', 'limitations'),
-        currentConditions: this.getArrayValues('medicalHistoryForm', 'currentConditions'),
-        chronicDiseases: this.getArrayValues('medicalHistoryForm', 'chronicDiseases'),
-        allergies: this.getArrayValues('medicalHistoryForm', 'allergies'),
-        medications: this.getArrayValues('medicalHistoryForm', 'medications'),
-        heartConditions: this.getArrayValues('medicalHistoryForm', 'heartConditions'),
-        
-        // ✅ NUEVOS CAMPOS CRÍTICOS PARA IA
-        currentInjuries: formValue.currentInjuries || '',
-        painfulAreas: this.selectedBodyAreas,
-        forbiddenExercises: formValue.forbiddenExercises || '',
-        movementLimitations: formValue.movementLimitations || '',
-        exercisesToAvoid: formValue.exercisesToAvoid || '',
-        
-        // ✅ CAPACIDAD FÍSICA PARA IA
-        physicalCapacity: {
-          walkingCapacity: formValue.walkingCapacity,
-          stairsCapacity: formValue.stairsCapacity,
-          weightExperience: formValue.weightExperience,
-          maxComfortableWeight: formValue.maxComfortableWeight || 0,
-          energyLevel: formValue.energyLevel
-        },
-
-        // Campos existentes
-        lastMedicalCheckup: formValue.lastMedicalCheckup || null,
-        doctorClearance: formValue.doctorClearance || false,
-        doctorNotes: formValue.doctorNotes || '',
-        lastUpdated: new Date(),
-        
-        // ✅ INDICADORES PARA IA
-        aiReadiness: this.aiReadinessPercentage,
-        readyForAI: this.isAIReady
-      };
-
-      const success = await this.profileService.updateMedicalHistory(expandedMedicalHistory);
-      
-      if (success) {
-        await this.showToast('Historial médico guardado - Listo para IA', 'success');
-        
-        if (this.isAIReady) {
-          await this.showAIReadyAlert();
-        }
-      } else {
-        await this.showToast('Error al guardar el historial médico', 'danger');
-      }
-    } catch (error) {
-      console.error('Error guardando historial médico:', error);
-      await this.showToast('Error inesperado al guardar', 'danger');
-    } finally {
-      this.isSaving = false;
-    }
-  }
-
-  // ✅ GUARDAR OBJETIVOS FITNESS
-  async saveFitnessGoals(): Promise<void> {
-    if (this.fitnessGoalsForm.invalid) {
-      await this.showValidationErrors('Objetivos de Fitness');
-      return;
-    }
-
-    this.isSaving = true;
-    try {
-      const formValue = this.fitnessGoalsForm.value;
-      const fitnessGoals = { ...formValue, lastUpdated: new Date() };
-
-      const success = await this.profileService.updateFitnessGoals(fitnessGoals);
-      
-      if (success) {
-        await this.showToast('Objetivos de fitness guardados', 'success');
-      } else {
-        await this.showToast('Error al guardar objetivos', 'danger');
-      }
-    } catch (error) {
-      await this.showToast('Error inesperado al guardar', 'danger');
-    } finally {
-      this.isSaving = false;
-    }
-  }
-
-  async saveFitnessLevel(): Promise<void> {
-    if (this.fitnessLevelForm.invalid) {
-      await this.showValidationErrors('Nivel de Fitness');
-      return;
-    }
-  
-    this.isSaving = true;
-    try {
-      const formValue = this.fitnessLevelForm.value;
-      
-      // ✅ Guardar nivel principal
-      const success = await this.profileService.updateFitnessLevel(formValue.overallLevel);
-      
-      if (success) {
-        // ✅ También guardar los campos adicionales
-        const userDoc = await this.profileService.getCurrentProfile().pipe(take(1)).toPromise();
-        if (userDoc?.uid) {
-          const docRef = firebase.firestore().collection('profiles').doc(userDoc.uid);
-          await docRef.set({
-            fitnessLevelDetails: {
-              strengthTraining: formValue.strengthTraining || null,
-              cardioTraining: formValue.cardioTraining || null,
-              flexibilityTraining: formValue.flexibilityTraining || null,
-              sportsExperience: formValue.sportsExperience || null,
-              yearsOfTraining: formValue.yearsOfTraining || 0,
-              monthsOfTraining: formValue.monthsOfTraining || 0,
-              previousGymExperience: formValue.previousGymExperience || false,
-              lastUpdated: new Date()
-            },
-            lastUpdated: new Date()
-          }, { merge: true });
-        }
-        
-        await this.showToast('Nivel de fitness guardado correctamente', 'success');
-      } else {
-        await this.showToast('Error al guardar nivel', 'danger');
-      }
-    } catch (error) {
-      console.error('Error guardando nivel fitness:', error);
-      await this.showToast('Error inesperado al guardar', 'danger');
-    } finally {
-      this.isSaving = false;
-    }
-  }
-
-  // ✅ GUARDAR PREFERENCIAS DE ENTRENAMIENTO
-  async saveTrainingPreferences(): Promise<void> {
-    this.isSaving = true;
-    try {
-      const formValue = this.trainingPreferencesForm.value;
-      const trainingPreferences = { ...formValue, lastUpdated: new Date() };
-
-      const success = await this.profileService.updateTrainingPreferences(trainingPreferences);
-      
-      if (success) {
-        await this.showToast('Preferencias de entrenamiento guardadas', 'success');
-      } else {
-        await this.showToast('Error al guardar preferencias', 'danger');
-      }
-    } catch (error) {
-      await this.showToast('Error inesperado al guardar', 'danger');
-    } finally {
-      this.isSaving = false;
-    }
-  }
+  // Método 2: Fallback usando window.scrollTo (por si no funciona el anterior)
+  setTimeout(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'smooth'
+    });
+  }, 100);
+}
 
   // ✅ MOSTRAR ALERTA CUANDO ESTÉ LISTO PARA IA
   async showAIReadyAlert(): Promise<void> {
@@ -827,47 +872,55 @@ export class Tab3Page implements OnInit, OnDestroy {
     await alert.present();
   }
 
- async generateAIRoutine(): Promise<void> {
+async generateAIRoutine(): Promise<void> {
   if (!this.canGenerateAI()) {
     await this.showToast('Completa tu perfil para generar rutina IA', 'warning');
     return;
   }
 
+  // ✅ LOADING SIMPLE Y ELEGANTE SIN HTML
+  const loading = await this.loadingController.create({
+    message: 'Generando rutina personalizada con IA...',
+    spinner: 'circular',
+    cssClass: 'ai-loading-premium',
+    backdropDismiss: false
+  });
+
   try {
-    // ✅ VERIFICAR LÍMITE DE 3 RUTINAS
     // ✅ VERIFICAR LÍMITE DIARIO DE 3 RUTINAS
     const todayRoutineCount = await this.checkTodayRoutineCount();
     if (todayRoutineCount >= 3) {
       const alert = await this.alertController.create({
-  header: '⚠️ Límite Diario Alcanzado',
-  message: `
-    <p>Has generado <strong>3 rutinas hoy</strong>.</p>
-    <p>Actualmente tienes <strong>${todayRoutineCount}</strong> rutinas generadas hoy.</p>
-    <br>
-    <p>Puedes generar más rutinas mañana o contactar a tu entrenador.</p>
-  `,
-  buttons: [
-    {
-      text: 'Ver Mis Rutinas',
-      handler: () => {
-        this.router.navigate(['/routine-view']);
-      }
-    },
-    {
-      text: 'Entendido',
-      role: 'cancel'
-    }
-  ]
-});
+        header: '⚠️ Límite Diario Alcanzado',
+        message: `
+          <p>Has generado <strong>3 rutinas hoy</strong>.</p>
+          <p>Actualmente tienes <strong>${todayRoutineCount}</strong> rutinas generadas hoy.</p>
+          <br>
+          <p>Puedes generar más rutinas mañana o contactar a tu entrenador.</p>
+        `,
+        buttons: [
+          {
+            text: 'Ver Mis Rutinas',
+            handler: () => {
+              this.router.navigate(['/routine-view']);
+            }
+          },
+          {
+            text: 'Entendido',
+            role: 'cancel'
+          }
+        ]
+      });
       await alert.present();
       return;
     }
 
-    // Mostrar loading
+    // ✅ MOSTRAR LOADING LIMPIO
+    await loading.present();
+    
+    // Mostrar estado interno
     this.isGeneratingAI = true;
     this.routineStateService.setGenerating();
-    
-    await this.showToast('Generando rutina personalizada...', 'medium');
 
     // Obtener perfil actualizado
     const currentProfile = await this.profileService.getCurrentProfile().pipe(take(1)).toPromise();
@@ -907,6 +960,8 @@ export class Tab3Page implements OnInit, OnDestroy {
     this.routineStateService.setError(error.message || 'Error inesperado');
     await this.showToast('Error generando rutina: ' + error.message, 'danger');
   } finally {
+    // ✅ CERRAR LOADING Y LIMPIAR ESTADOS
+    await loading.dismiss();
     this.isGeneratingAI = false;
   }
 }
