@@ -121,16 +121,19 @@
         </div>
       </div>
 
-      <div class="stat-card secondary" (click)="navigateToProfile()">
+      <div class="stat-card secondary" (click)="openWeeklyHistoryModal()">
         <div class="stat-icon">
-          <ion-icon name="analytics-outline"></ion-icon>
+          <ion-icon name="checkmark-circle-outline"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number">{{ formatAccuracy(metrics.accuracy) }}%</span>
-          <span class="stat-label">Precisión</span>
+          <span class="stat-number"
+                [style.color]="(currentWeekSummary && currentWeekSummary.totalErrorsReduced > 0) ? '#4caf50' : '#666'">
+            {{ (currentWeekSummary && currentWeekSummary.totalErrorsReduced > 0) ? '+' : '' }}{{ currentWeekSummary?.totalErrorsReduced || 0 }}
+          </span>
+          <span class="stat-label">Errores Reducidos</span>
         </div>
-        <div class="stat-badge" [style.background-color]="getAccuracyBadgeColor(metrics.accuracy)">
-          {{ getAccuracyBadgeText(metrics.accuracy) }}
+        <div class="stat-badge" [style.background-color]="(currentWeekSummary && currentWeekSummary.totalErrorsReduced > 0) ? '#4caf50' : '#666'">
+          Esta Semana
         </div>
       </div>
 
@@ -144,62 +147,153 @@
         </div>
       </div>
 
-      <div class="stat-card success">
+      <div class="stat-card success" (click)="openWeeklyHistoryModal()">
         <div class="stat-icon">
-          <ion-icon name="trending-up-outline" 
-                    [style.color]="getImprovementColor(metrics.weeklyImprovement)"></ion-icon>
+          <ion-icon name="trending-up-outline"
+                    [style.color]="(currentWeekSummary && currentWeekSummary.totalErrorsReduced > 0) ? '#4caf50' : '#ff5722'"></ion-icon>
         </div>
         <div class="stat-info">
-          <span class="stat-number" 
-                [style.color]="getImprovementColor(metrics.weeklyImprovement)">
-            {{ getImprovementText(metrics.weeklyImprovement) }}
+          <span class="stat-number"
+                [style.color]="(currentWeekSummary && currentWeekSummary.totalErrorsReduced > 0) ? '#4caf50' : '#ff5722'">
+            {{ currentWeekSummary?.exerciseCount || 0 }}
           </span>
-          <span class="stat-label">Mejora Semanal</span>
+          <span class="stat-label">Ejercicios Mejorados</span>
         </div>
       </div>
     </div>
 
-    <!-- Weekly Progress Section -->
-    <div class="section-card">
+    <!-- Historial Semanal - Vista Previa -->
+    <div class="section-card history-preview-section">
       <div class="section-header">
         <h3 class="section-title">
           <ion-icon name="calendar-outline"></ion-icon>
-          Tu Progreso Semanal
+          Historial de Errores Semanales
         </h3>
-        <div class="section-badge">
-          {{ (metrics.weeklyGoalProgress | number:'1.0-0') || 0 }}% completado
-        </div>
+        <ion-button fill="clear" size="small" (click)="openWeeklyHistoryModal()">
+          <ion-icon name="eye-outline" slot="start"></ion-icon>
+          Más Detalles
+        </ion-button>
       </div>
 
-      <div class="weekly-goal">
-        <div class="goal-header">
-          <span>Objetivo Semanal</span>
-          <span>{{ getCompletedDaysCount() }}/5 días</span>
-        </div>
-        
-        <div class="goal-progress">
-          <div class="progress-bar">
-            <div class="progress-fill" 
-                 [style.width.%]="metrics.weeklyGoalProgress || 0">
+      <!-- Vista previa de últimas 3 semanas -->
+      <div class="history-preview-content">
+        <div class="preview-weeks" *ngIf="weeklyHistoryPreview && weeklyHistoryPreview.length > 0">
+          <div class="preview-week-item"
+               *ngFor="let week of weeklyHistoryPreview; let i = index"
+               [class.current-week]="i === 0"
+               (click)="openWeeklyHistoryModal()">
+            <div class="week-info">
+              <div class="week-label">
+                <ion-icon [name]="i === 0 ? 'star' : 'calendar-outline'"></ion-icon>
+                <span>{{ week.weekLabel }}</span>
+                <ion-badge *ngIf="i === 0" color="success">Actual</ion-badge>
+              </div>
+              <div class="week-stats">
+                <span class="exercises-count">{{ week.exerciseCount }} ejercicio{{ week.exerciseCount !== 1 ? 's' : '' }}</span>
+              </div>
+            </div>
+            <div class="week-reduction"
+                 [style.color]="week.totalErrorsReduced > 0 ? '#4caf50' : '#666'">
+              <span class="reduction-value">
+                {{ week.totalErrorsReduced > 0 ? '+' : '' }}{{ week.totalErrorsReduced }}
+              </span>
+              <span class="reduction-unit">errores</span>
             </div>
           </div>
         </div>
 
-        <div class="goal-days">
-          <div class="day-item" 
-               *ngFor="let day of weeklyGoalDays" 
-               [class.completed]="day.completed">
-            <span class="day-letter">{{ day.label }}</span>
+        <div class="empty-history" *ngIf="!weeklyHistoryPreview || weeklyHistoryPreview.length === 0">
+          <ion-icon name="fitness-outline"></ion-icon>
+          <p>Completa 2 sesiones del mismo ejercicio para empezar tu historial</p>
+        </div>
+
+        <!-- Indicador de más contenido -->
+        <div class="more-indicator" *ngIf="weeklyHistoryPreview && weeklyHistoryPreview.length >= 3">
+          <ion-button expand="block" fill="outline" (click)="openWeeklyHistoryModal()">
+            <ion-icon name="chevron-down-outline" slot="start"></ion-icon>
+            Ver historial completo
+            <ion-icon name="chevron-down-outline" slot="end"></ion-icon>
+          </ion-button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progreso por Ejercicio - Reducción de Errores -->
+    <div class="section-card exercise-progress-section">
+      <div class="section-header">
+        <h3 class="section-title">
+          <ion-icon name="barbell-outline"></ion-icon>
+          Progreso Detallado por Ejercicio
+        </h3>
+        <div class="section-badge" *ngIf="currentWeekSummary && currentWeekSummary.exercises.length > 0">
+          {{ currentWeekSummary.exerciseCount }} ejercicio{{ currentWeekSummary.exerciseCount !== 1 ? 's' : '' }}
+        </div>
+      </div>
+
+      <!-- Lista de ejercicios con progreso -->
+      <div class="exercise-progress-list" *ngIf="currentWeekSummary && currentWeekSummary.exercises.length > 0">
+        <div class="exercise-progress-item" *ngFor="let exercise of currentWeekSummary.exercises">
+          <div class="exercise-header">
+            <div class="exercise-title">
+              <ion-icon name="fitness-outline"></ion-icon>
+              <h4>{{ exercise.exerciseName }}</h4>
+            </div>
+            <div class="exercise-result"
+                 [style.color]="exercise.errorReduction > 0 ? '#4caf50' : exercise.errorReduction < 0 ? '#ff5722' : '#ff9800'">
+              <span class="result-value">
+                {{ exercise.errorReduction > 0 ? '+' : '' }}{{ exercise.errorReduction }}
+              </span>
+              <span class="result-label">errores</span>
+            </div>
+          </div>
+
+          <div class="exercise-comparison">
+            <div class="session-box session-1">
+              <div class="session-label">Sesión 1</div>
+              <div class="session-errors">{{ exercise.session1Errors }}</div>
+              <div class="session-subtitle">errores</div>
+            </div>
+
+            <div class="comparison-arrow">
+              <ion-icon name="arrow-forward-outline"></ion-icon>
+            </div>
+
+            <div class="session-box session-2">
+              <div class="session-label">Sesión 2</div>
+              <div class="session-errors">{{ exercise.session2Errors }}</div>
+              <div class="session-subtitle">errores</div>
+            </div>
+          </div>
+
+          <!-- Barra de progreso visual -->
+          <div class="progress-visualization">
+            <div class="progress-bar-comparison">
+              <div class="bar session-1-bar"
+                   [style.width.%]="getErrorPercentage(exercise.session1Errors, exercise)">
+                <span>{{ exercise.session1Errors }}</span>
+              </div>
+              <div class="bar session-2-bar"
+                   [style.width.%]="getErrorPercentage(exercise.session2Errors, exercise)">
+                <span>{{ exercise.session2Errors }}</span>
+              </div>
+            </div>
+            <div class="progress-labels">
+              <span>S1</span>
+              <span>S2</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Chart Container -->
-      <div class="chart-container" *ngIf="metrics.weeklyProgress">
-        <h4>Entrenamientos vs Errores</h4>
-        <div class="chart-wrapper">
-          <canvas #progressChart></canvas>
-        </div>
+      <!-- Estado vacío cuando no hay ejercicios -->
+      <div class="empty-exercise-progress" *ngIf="!currentWeekSummary || currentWeekSummary.exercises.length === 0">
+        <ion-icon name="barbell-outline"></ion-icon>
+        <h4>Completa 2 sesiones del mismo ejercicio</h4>
+        <p>Aquí verás una comparación detallada entre tu primera y segunda sesión, mostrando cuántos errores redujiste.</p>
+        <ion-button fill="outline" (click)="navigateToTraining()">
+          <ion-icon name="add-circle-outline" slot="start"></ion-icon>
+          Comenzar Entrenamiento
+        </ion-button>
       </div>
     </div>
 
@@ -228,24 +322,6 @@
       </div>
     </div>
 
-    <!-- Accuracy Trend Section -->
-    <div class="section-card" *ngIf="metrics.accuracyTrend">
-      <div class="section-header">
-        <h3 class="section-title">
-          <ion-icon name="trending-up-outline"></ion-icon>
-          Tendencia de Precisión
-        </h3>
-        <div class="section-badge">
-          {{ formatAccuracy(metrics.accuracy) }}% promedio
-        </div>
-      </div>
-
-      <div class="chart-container">
-        <div class="chart-wrapper">
-          <canvas #accuracyChart></canvas>
-        </div>
-      </div>
-    </div>
 
     <!-- Recent Alerts Section -->
     <div class="section-card" *ngIf="metrics.recentAlerts && metrics.recentAlerts.length > 0">

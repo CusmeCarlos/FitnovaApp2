@@ -1421,18 +1421,683 @@ ion-content.dashboard-content {
   .dashboard-container {
     padding: 1rem 0.875rem;
   }
-  
+
   .stats-grid {
     gap: 0.75rem;
     margin-bottom: 1.5rem;
   }
-  
+
   .section-card {
     padding: 1.25rem;
     margin-bottom: 1rem;
   }
-  
+
   .welcome-section {
     margin-bottom: 1.5rem;
+  }
+}
+
+// ================================================================================
+// ✨ SECCIÓN DE REDUCCIÓN DE ERRORES - NUEVA
+// ================================================================================
+.error-reduction-section {
+  background: linear-gradient(135deg,
+    rgba(76, 175, 80, 0.08) 0%,
+    rgba(76, 175, 80, 0.02) 100%
+  ) !important;
+  border: 1px solid rgba(76, 175, 80, 0.2) !important;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle,
+      rgba(76, 175, 80, 0.1) 0%,
+      transparent 70%
+    );
+    animation: rotate 10s linear infinite;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 1;
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #4caf50 !important;
+      font-size: 1.2rem;
+      font-weight: 800;
+      margin: 0;
+
+      ion-icon {
+        font-size: 1.5rem;
+        color: #4caf50;
+      }
+    }
+
+    ion-button {
+      --background: rgba(76, 175, 80, 0.15);
+      --color: #4caf50;
+      --border-radius: 12px;
+      --padding-start: 14px;
+      --padding-end: 14px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+
+      &:hover {
+        --background: rgba(76, 175, 80, 0.25);
+        transform: translateY(-2px);
+      }
+
+      ion-icon {
+        font-size: 1.1rem;
+      }
+    }
+  }
+
+  .error-reduction-content {
+    position: relative;
+    z-index: 1;
+
+    .total-reduction {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 2px solid rgba(76, 175, 80, 0.3);
+      border-radius: 16px;
+      margin-bottom: 1.5rem;
+
+      .reduction-number {
+        font-size: 3.5rem;
+        font-weight: 900;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .reduction-label {
+        font-size: 1rem;
+        color: #94a3b8;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+    }
+
+    .exercises-improved {
+      h4 {
+        color: #f8fafc !important;
+        font-size: 1rem;
+        font-weight: 700;
+        margin: 0 0 1rem 0;
+        letter-spacing: 0.5px;
+      }
+
+      .exercise-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+
+        .exercise-item {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 12px;
+          padding: 1rem;
+          transition: all 0.3s ease;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(76, 175, 80, 0.3);
+            transform: translateX(4px);
+          }
+
+          .exercise-info {
+            .exercise-name {
+              display: block;
+              color: #f8fafc;
+              font-size: 0.95rem;
+              font-weight: 700;
+              margin-bottom: 0.5rem;
+            }
+
+            .exercise-progress {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              flex-wrap: wrap;
+
+              .session-errors {
+                font-size: 0.85rem;
+                font-weight: 600;
+                padding: 4px 10px;
+                border-radius: 8px;
+
+                &.first {
+                  background: rgba(255, 87, 34, 0.2);
+                  color: #ff5722;
+                }
+
+                &.second {
+                  background: rgba(76, 175, 80, 0.2);
+                  color: #4caf50;
+                }
+              }
+
+              ion-icon {
+                font-size: 1rem;
+                color: #64748b;
+              }
+
+              .error-diff {
+                font-size: 1rem;
+                font-weight: 900;
+                padding: 4px 10px;
+                background: rgba(76, 175, 80, 0.15);
+                border-radius: 8px;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .empty-reduction {
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 2px dashed rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+
+      ion-icon {
+        font-size: 3.5rem;
+        color: #64748b;
+        margin-bottom: 1rem;
+      }
+
+      p {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        font-weight: 500;
+        margin: 0;
+        line-height: 1.5;
+      }
+    }
+  }
+}
+
+// ================================================================================
+// 📅 HISTORIAL SEMANAL - VISTA PREVIA
+// ================================================================================
+.history-preview-section {
+  background: linear-gradient(135deg,
+    rgba(59, 130, 246, 0.08) 0%,
+    rgba(59, 130, 246, 0.02) 100%
+  ) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle,
+      rgba(59, 130, 246, 0.1) 0%,
+      transparent 70%
+    );
+    animation: rotate 10s linear infinite;
+  }
+
+  .section-header {
+    position: relative;
+    z-index: 1;
+
+    .section-title {
+      color: #3b82f6 !important;
+
+      ion-icon {
+        color: #3b82f6;
+      }
+    }
+
+    ion-button {
+      --background: rgba(59, 130, 246, 0.15);
+      --color: #3b82f6;
+    }
+  }
+
+  .history-preview-content {
+    position: relative;
+    z-index: 1;
+
+    .preview-weeks {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+
+      .preview-week-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        &.current-week {
+          background: rgba(59, 130, 246, 0.12);
+          border-color: rgba(59, 130, 246, 0.3);
+
+          .week-label {
+            ion-icon {
+              color: #fbbf24;
+            }
+          }
+        }
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(59, 130, 246, 0.4);
+          transform: translateX(4px);
+        }
+
+        .week-info {
+          flex: 1;
+
+          .week-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.35rem;
+
+            ion-icon {
+              font-size: 1rem;
+              color: #64748b;
+            }
+
+            span {
+              color: #f8fafc;
+              font-size: 0.95rem;
+              font-weight: 700;
+            }
+
+            ion-badge {
+              font-size: 0.65rem;
+              font-weight: 700;
+              padding: 2px 8px;
+            }
+          }
+
+          .week-stats {
+            .exercises-count {
+              color: #94a3b8;
+              font-size: 0.8rem;
+              font-weight: 500;
+            }
+          }
+        }
+
+        .week-reduction {
+          text-align: right;
+
+          .reduction-value {
+            display: block;
+            font-size: 1.5rem;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+          }
+
+          .reduction-unit {
+            display: block;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+        }
+      }
+    }
+
+    .empty-history {
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 2px dashed rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+
+      ion-icon {
+        font-size: 3.5rem;
+        color: #64748b;
+        margin-bottom: 1rem;
+      }
+
+      p {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        font-weight: 500;
+        margin: 0;
+        line-height: 1.5;
+      }
+    }
+
+    .more-indicator {
+      margin-top: 1rem;
+
+      ion-button {
+        --border-color: rgba(59, 130, 246, 0.3);
+        --color: #3b82f6;
+        --background: transparent;
+        font-weight: 700;
+        text-transform: none;
+
+        &:hover {
+          --background: rgba(59, 130, 246, 0.1);
+        }
+
+        ion-icon {
+          font-size: 1rem;
+        }
+      }
+    }
+  }
+}
+
+// ================================================================================
+// 💪 PROGRESO DETALLADO POR EJERCICIO
+// ================================================================================
+.exercise-progress-section {
+  background: linear-gradient(135deg,
+    rgba(139, 92, 246, 0.08) 0%,
+    rgba(139, 92, 246, 0.02) 100%
+  ) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2) !important;
+
+  .section-title {
+    color: #8b5cf6 !important;
+
+    ion-icon {
+      color: #8b5cf6;
+    }
+  }
+
+  .exercise-progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+
+    .exercise-progress-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(139, 92, 246, 0.3);
+        transform: translateY(-2px);
+      }
+
+      .exercise-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.25rem;
+
+        .exercise-title {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+
+          ion-icon {
+            font-size: 1.5rem;
+            color: #8b5cf6;
+          }
+
+          h4 {
+            color: #f8fafc;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 0;
+          }
+        }
+
+        .exercise-result {
+          text-align: right;
+
+          .result-value {
+            display: block;
+            font-size: 1.75rem;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+          }
+
+          .result-label {
+            display: block;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+        }
+      }
+
+      .exercise-comparison {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+
+        .session-box {
+          flex: 1;
+          text-align: center;
+          padding: 1rem;
+          border-radius: 12px;
+          transition: all 0.3s ease;
+
+          &.session-1 {
+            background: rgba(255, 87, 34, 0.12);
+            border: 2px solid rgba(255, 87, 34, 0.3);
+          }
+
+          &.session-2 {
+            background: rgba(76, 175, 80, 0.12);
+            border: 2px solid rgba(76, 175, 80, 0.3);
+          }
+
+          .session-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+          }
+
+          .session-errors {
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+          }
+
+          &.session-1 .session-errors {
+            color: #ff5722;
+          }
+
+          &.session-2 .session-errors {
+            color: #4caf50;
+          }
+
+          .session-subtitle {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-weight: 600;
+          }
+        }
+
+        .comparison-arrow {
+          ion-icon {
+            font-size: 2rem;
+            color: #64748b;
+          }
+        }
+      }
+
+      .progress-visualization {
+        .progress-bar-comparison {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+
+          .bar {
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: white;
+            transition: all 0.5s ease;
+            min-width: 50px;
+
+            &.session-1-bar {
+              background: linear-gradient(135deg, #ff5722 0%, #ff7043 100%);
+            }
+
+            &.session-2-bar {
+              background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+            }
+
+            span {
+              text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            }
+          }
+        }
+
+        .progress-labels {
+          display: flex;
+          gap: 0.5rem;
+          font-size: 0.75rem;
+          color: #94a3b8;
+          font-weight: 700;
+
+          span {
+            flex: 1;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+        }
+      }
+    }
+  }
+
+  .empty-exercise-progress {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 2px dashed rgba(139, 92, 246, 0.3);
+    border-radius: 16px;
+
+    ion-icon {
+      font-size: 4rem;
+      color: #8b5cf6;
+      margin-bottom: 1.5rem;
+    }
+
+    h4 {
+      color: #f8fafc;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0 0 0.75rem 0;
+    }
+
+    p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin: 0 0 1.5rem 0;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    ion-button {
+      --border-color: #8b5cf6;
+      --color: #8b5cf6;
+      --background: transparent;
+      font-weight: 700;
+
+      &:hover {
+        --background: rgba(139, 92, 246, 0.1);
+      }
+    }
+  }
+}
+
+// Estilos para el modal de historial
+.historical-weeks-alert {
+  --max-width: 500px;
+  --backdrop-opacity: 0.75;
+
+  .alert-wrapper {
+    background: #1e293b !important;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 18px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+
+    .alert-head {
+      background: linear-gradient(135deg,
+        rgba(59, 130, 246, 0.15) 0%,
+        rgba(59, 130, 246, 0.05) 100%
+      );
+      border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+
+      h2 {
+        color: #3b82f6 !important;
+        font-weight: 800;
+      }
+    }
+
+    .alert-message {
+      color: #94a3b8 !important;
+      padding: 1rem;
+    }
+
+    .alert-button-group {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+
+      button {
+        color: #3b82f6 !important;
+        font-weight: 700;
+      }
+    }
   }
 }

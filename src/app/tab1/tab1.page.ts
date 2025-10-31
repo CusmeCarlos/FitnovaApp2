@@ -5,6 +5,7 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } fr
 import { Router } from '@angular/router'; // Para navegación
 import { AuthService } from '../services/auth.service';
 import { DashboardService, DashboardMetrics } from '../services/dashboard.service';
+import { ErrorReductionService, CurrentWeekSummary } from '../services/error-reduction.service';
 import { User } from '../interfaces/user.interface';
 import { Subscription } from 'rxjs';
 import { Chart, registerables, ChartConfiguration, ChartTypeRegistry } from 'chart.js';
@@ -31,6 +32,8 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
   // DATOS DEL USUARIO Y MÉTRICAS
   user: User | null = null;
   metrics: DashboardMetrics | null = null;
+  currentWeekSummary: CurrentWeekSummary | null = null;
+  weeklyHistoryPreview: any[] = [];
   isLoading = true;
   lastUpdated: Date = new Date();
   
@@ -56,9 +59,10 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
   constructor(
     private auth: AuthService,
     private dashboardService: DashboardService,
-    private router: Router, // 
-    private alertController: AlertController, // 
-    private toastController: ToastController, // 
+    private errorReductionService: ErrorReductionService,
+    private router: Router, //
+    private alertController: AlertController, //
+    private toastController: ToastController, //
     private modalController: ModalController,
   ) {}
 
@@ -66,6 +70,7 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
     console.log(' Inicializando Tab1 Dashboard Avanzado...');
     this.loadUserData();
     this.loadDashboardMetrics();
+    this.loadWeeklyErrorReduction();
   }
 
   ngAfterViewInit() {
@@ -653,5 +658,122 @@ export class Tab1Page implements OnInit, OnDestroy, AfterViewInit {
       console.error('❌ Error mostrando toast de error:', error);
     }
   }
-  
+
+  // CARGAR REDUCCIÓN DE ERRORES SEMANAL
+  private loadWeeklyErrorReduction(): void {
+    const weekSub = this.errorReductionService.getCurrentWeek$().subscribe({
+      next: (summary) => {
+        this.currentWeekSummary = summary;
+        console.log('📊 Resumen semanal de reducción de errores:', summary);
+
+        // Cargar vista previa del historial
+        this.loadHistoryPreview();
+      },
+      error: (error) => {
+        console.error('❌ Error cargando resumen semanal:', error);
+      }
+    });
+
+    this.subscriptions.add(weekSub);
+
+    // Cargar datos iniciales
+    this.errorReductionService.loadCurrentWeekSummary();
+  }
+
+  // CARGAR VISTA PREVIA DEL HISTORIAL (últimas 3 semanas incluyendo la actual)
+  private async loadHistoryPreview(): Promise<void> {
+    try {
+      // Obtener historial completo
+      const historicalWeeks = await this.errorReductionService.getHistoricalWeeks();
+
+      // Crear array con semana actual + últimas 2 del historial
+      this.weeklyHistoryPreview = [];
+
+      // Agregar semana actual primero
+      if (this.currentWeekSummary) {
+        this.weeklyHistoryPreview.push({
+          weekNumber: this.currentWeekSummary.weekNumber,
+          year: this.currentWeekSummary.year,
+          weekLabel: 'Semana Actual',
+          totalErrorsReduced: this.currentWeekSummary.totalErrorsReduced,
+          exerciseCount: this.currentWeekSummary.exerciseCount
+        });
+      }
+
+      // Agregar últimas 2 semanas del historial
+      if (historicalWeeks.length > 0) {
+        const recentWeeks = historicalWeeks.slice(0, 2);
+        this.weeklyHistoryPreview.push(...recentWeeks);
+      }
+
+      console.log('📊 Vista previa del historial cargada:', this.weeklyHistoryPreview.length, 'semanas');
+    } catch (error) {
+      console.error('❌ Error cargando vista previa del historial:', error);
+      this.weeklyHistoryPreview = [];
+    }
+  }
+
+  // ABRIR MODAL DE HISTORIAL DE SEMANAS
+  async openWeeklyHistoryModal(): Promise<void> {
+    try {
+      const historicalWeeks = await this.errorReductionService.getHistoricalWeeks();
+
+      if (historicalWeeks.length === 0) {
+        await this.showToast('Aún no tienes historial de semanas anteriores', 'warning');
+        return;
+      }
+
+      const alert = await this.alertController.create({
+        header: '📅 Historial de Semanas',
+        message: this.buildHistoricalWeeksMessage(historicalWeeks),
+        cssClass: 'historical-weeks-alert',
+        buttons: ['Cerrar']
+      });
+
+      await alert.present();
+    } catch (error) {
+      console.error('❌ Error abriendo historial de semanas:', error);
+      await this.showToast('Error cargando historial', 'danger');
+    }
+  }
+
+  // CONSTRUIR MENSAJE HTML PARA HISTORIAL
+  private buildHistoricalWeeksMessage(weeks: any[]): string {
+    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+
+    weeks.forEach((week, index) => {
+      const isRecent = index < 4;
+      const bgColor = isRecent ? '#f0f8ff' : '#f9f9f9';
+
+      html += `
+        <div style="background: ${bgColor}; padding: 12px; margin: 8px 0; border-radius: 8px; border-left: 4px solid #2196f3;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="font-size: 15px; color: #333;">${week.weekLabel}</strong>
+              <p style="margin: 5px 0 0 0; font-size: 13px; color: #666;">
+                ${week.exerciseCount} ejercicio${week.exerciseCount !== 1 ? 's' : ''} mejorado${week.exerciseCount !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 20px; font-weight: bold; color: ${week.totalErrorsReduced > 0 ? '#4caf50' : '#666'};">
+                ${week.totalErrorsReduced > 0 ? '+' : ''}${week.totalErrorsReduced}
+              </span>
+              <p style="margin: 2px 0 0 0; font-size: 11px; color: #999;">errores</p>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+    return html;
+  }
+
+  // CALCULAR PORCENTAJE DE ERRORES PARA BARRAS DE PROGRESO
+  getErrorPercentage(errors: number, exercise: any): number {
+    const maxErrors = Math.max(exercise.session1Errors, exercise.session2Errors);
+    if (maxErrors === 0) return 0;
+    return (errors / maxErrors) * 100;
+  }
+
 }

@@ -7,17 +7,18 @@ import { AlertController, ToastController } from '@ionic/angular';
 import { AuthService } from '../services/auth.service';
 import { DashboardService } from '../services/dashboard.service';
 import { ExerciseService } from '../services/exercise.service';
+import { ErrorReductionService } from '../services/error-reduction.service';
 import { User } from '../interfaces/user.interface';
 import { Exercise } from '../interfaces/exercise.interface';
 import { PoseCameraComponent } from '../features/training/components/pose-camera/pose-camera.component';
-import { 
-  ExerciseType, 
-  PoseKeypoints, 
+import {
+  ExerciseType,
+  PoseKeypoints,
   PostureError,
   RepetitionPhase,
   PostureErrorType
 } from '../shared/models/pose.models';
-import firebase from 'firebase/compat/app'; 
+import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore'; 
 
 @Component({
@@ -127,7 +128,8 @@ export class Tab2Page implements OnInit, OnDestroy {
     private alertController: AlertController,
     private toastController: ToastController,
     private dashboardService: DashboardService,
-    private exerciseService: ExerciseService
+    private exerciseService: ExerciseService,
+    private errorReductionService: ErrorReductionService
   ) {
     console.log('Tab2Page constructor');
   }
@@ -300,17 +302,17 @@ export class Tab2Page implements OnInit, OnDestroy {
     console.log('Entrenamiento iniciado con ID:', this.sessionData.sessionId);
   }
 
-  // stopTraining con integración al Dashboard
+  // stopTraining con integración al Dashboard y reducción de errores
   async stopTraining(): Promise<void> {
     try {
       if (!this.isTrainingActive) return;
 
       console.log('Parando entrenamiento...');
-      
+
       this.isTrainingActive = false;
       this.trainingStarted = false;
       this.showCamera = false;
-      
+
       // Parar timer
       if (this.sessionTimer) {
         clearInterval(this.sessionTimer);
@@ -322,11 +324,24 @@ export class Tab2Page implements OnInit, OnDestroy {
         this.sessionDuration = Math.floor((Date.now() - this.sessionStartTime) / 1000);
       }
 
+      // Registrar sesión con el servicio de reducción de errores
+      const exerciseName = this.getExerciseName();
+      const exerciseId = this.getCurrentExerciseId();
+      const errorsCount = this.sessionStats.errorsDetected;
+
+      const sessionResult = await this.errorReductionService.recordExerciseSession(
+        exerciseId,
+        exerciseName,
+        errorsCount
+      );
+
+      console.log('📊 Resultado de sesión:', sessionResult);
+
       // Actualizar Dashboard con datos reales
       await this.updateDashboardWithRealData();
 
-      // Mostrar resumen de sesión
-      await this.showSessionSummary();
+      // Mostrar alerta personalizada según el tipo de sesión
+      await this.showSessionResultAlert(sessionResult);
 
       // Resetear datos
       this.sessionStartTime = null;
@@ -336,6 +351,7 @@ export class Tab2Page implements OnInit, OnDestroy {
 
     } catch (error) {
       console.error('Error parando entrenamiento:', error);
+      await this.showErrorToast('Error al finalizar entrenamiento');
     }
   }
 
@@ -702,37 +718,160 @@ private async finalizeTrainingSession(): Promise<void> {
     console.error('❌ Error guardando sesión:', error);
   }
 }
-// Método para testing rápido (opcional)
-async startQuickTest(): Promise<void> {
-  console.log('Iniciando test rápido...');
-  
-  // Simular sesión de entrenamiento para testing
-  this.initializeTraining();
-  
-  // Simular datos después de 2 segundos
-  setTimeout(async () => {
-    // Simular repeticiones
-    this.onRepetitionCounted(5);
-    
-    // Simular errores
-    const fakeError: PostureError = {
-      type: PostureErrorType.KNEE_VALGUS,
-      severity: 8,
-      description: 'Mantén las rodillas alineadas durante la sentadilla',
-      recommendation: 'Separar más los pies',
-      confidence: 0.9,
-      timestamp: Date.now(),
-      affectedJoints: ['knee'],
-      correctionCues: ['Separar más los pies', 'Activar glúteos']
-    };
-    this.onErrorDetected([fakeError]);
-    
-    // Terminar sesión después de otros 2 segundos
-    setTimeout(() => {
-      this.stopTraining();
+  // Método para testing rápido (opcional)
+  async startQuickTest(): Promise<void> {
+    console.log('Iniciando test rápido...');
+
+    // Simular sesión de entrenamiento para testing
+    this.initializeTraining();
+
+    // Simular datos después de 2 segundos
+    setTimeout(async () => {
+      // Simular repeticiones
+      this.onRepetitionCounted(5);
+
+      // Simular errores
+      const fakeError: PostureError = {
+        type: PostureErrorType.KNEE_VALGUS,
+        severity: 8,
+        description: 'Mantén las rodillas alineadas durante la sentadilla',
+        recommendation: 'Separar más los pies',
+        confidence: 0.9,
+        timestamp: Date.now(),
+        affectedJoints: ['knee'],
+        correctionCues: ['Separar más los pies', 'Activar glúteos']
+      };
+      this.onErrorDetected([fakeError]);
+
+      // Terminar sesión después de otros 2 segundos
+      setTimeout(() => {
+        this.stopTraining();
+      }, 2000);
+
     }, 2000);
-    
-  }, 2000);
-}
+  }
+
+  /**
+   * Obtener ID del ejercicio actual
+   */
+  private getCurrentExerciseId(): string {
+    const exercise = this.availableExercises.find(ex => ex.type === this.currentExercise);
+    return exercise ? exercise.exerciseId : `exercise_${this.currentExercise}`;
+  }
+
+  /**
+   * Mostrar alerta personalizada según el resultado de la sesión
+   */
+  private async showSessionResultAlert(result: {
+    isFirstSession: boolean;
+    isSecondSession: boolean;
+    sessionNumber: number;
+    message: string;
+    errorReduction?: number;
+    session1Errors?: number;
+  }): Promise<void> {
+    let header = '';
+    let messageHtml = '';
+
+    if (result.isFirstSession) {
+      // Primera sesión
+      header = '🎯 Primera Sesión Completada';
+      messageHtml = `
+        <div style="text-align: center; padding: 10px;">
+          <h3 style="color: #4caf50; margin-bottom: 10px;">¡Excelente inicio!</h3>
+          <p style="font-size: 16px; margin: 15px 0;">
+            <strong>${this.getExerciseName()}</strong>
+          </p>
+          <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 10px 0;">
+            <p style="font-size: 18px; color: #ff5722; margin: 5px 0;">
+              <strong>${this.sessionStats.errorsDetected}</strong> errores detectados
+            </p>
+          </div>
+          <p style="font-size: 14px; color: #666; margin-top: 15px;">
+            Esta es tu línea base. En la próxima sesión veremos tu mejora.
+          </p>
+        </div>
+      `;
+    } else if (result.isSecondSession && result.errorReduction !== undefined && result.session1Errors !== undefined) {
+      // Segunda sesión con reducción de errores
+      const improvement = result.errorReduction > 0 ? 'mejorado' : result.errorReduction < 0 ? 'empeorado' : 'mantenido';
+      const color = result.errorReduction > 0 ? '#4caf50' : result.errorReduction < 0 ? '#ff5722' : '#ff9800';
+      const emoji = result.errorReduction > 0 ? '🎉' : result.errorReduction < 0 ? '💪' : '📊';
+
+      header = `${emoji} Segunda Sesión - ¡Progreso!`;
+      messageHtml = `
+        <div style="text-align: center; padding: 10px;">
+          <h3 style="color: ${color}; margin-bottom: 10px;">
+            ${result.errorReduction > 0 ? '¡Mejoraste!' : result.errorReduction < 0 ? 'Sigue practicando' : 'Mantuviste tu nivel'}
+          </h3>
+          <p style="font-size: 16px; margin: 15px 0;">
+            <strong>${this.getExerciseName()}</strong>
+          </p>
+          <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 10px 0;">
+            <p style="font-size: 14px; margin: 5px 0;">
+              <span style="color: #666;">Primera sesión:</span>
+              <strong style="color: #ff5722;">${result.session1Errors} errores</strong>
+            </p>
+            <p style="font-size: 24px; margin: 10px 0;">↓</p>
+            <p style="font-size: 14px; margin: 5px 0;">
+              <span style="color: #666;">Segunda sesión:</span>
+              <strong style="color: #4caf50;">${this.sessionStats.errorsDetected} errores</strong>
+            </p>
+            <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="font-size: 20px; color: ${color}; margin: 10px 0;">
+              <strong>
+                ${result.errorReduction > 0 ? '+' : ''}${result.errorReduction} errores ${improvement}
+              </strong>
+            </p>
+          </div>
+          <p style="font-size: 14px; color: #666; margin-top: 15px;">
+            ${result.errorReduction > 0
+              ? 'Tu técnica ha mejorado significativamente. ¡Sigue así!'
+              : result.errorReduction < 0
+                ? 'No te desanimes, la práctica constante es clave.'
+                : 'Mantén la constancia para seguir mejorando.'}
+          </p>
+        </div>
+      `;
+    } else {
+      // Sesión 3 o más
+      header = `📊 Sesión ${result.sessionNumber} Completada`;
+      messageHtml = `
+        <div style="text-align: center; padding: 10px;">
+          <h3 style="color: #2196f3; margin-bottom: 10px;">¡Sesión registrada!</h3>
+          <p style="font-size: 16px; margin: 15px 0;">
+            <strong>${this.getExerciseName()}</strong>
+          </p>
+          <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 10px 0;">
+            <p style="font-size: 18px; color: #ff5722; margin: 5px 0;">
+              <strong>${this.sessionStats.errorsDetected}</strong> errores detectados
+            </p>
+          </div>
+          <p style="font-size: 14px; color: #666; margin-top: 15px;">
+            Nota: Solo las segundas sesiones cuentan para el progreso semanal.
+          </p>
+        </div>
+      `;
+    }
+
+    const alert = await this.alertController.create({
+      header,
+      message: messageHtml,
+      buttons: [
+        {
+          text: 'Ver Dashboard',
+          handler: () => {
+            this.router.navigate(['/tabs/tab1']);
+          }
+        },
+        {
+          text: 'Continuar',
+          role: 'cancel'
+        }
+      ]
+    });
+
+    await alert.present();
+  }
 
 }
